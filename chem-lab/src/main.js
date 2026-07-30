@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {elementsData} from './periodicTable.js'; // Importing elements data
 // 1. Scene
@@ -44,13 +44,41 @@ function createFloorTexture(){
   return texture;
 }
 
-// 4. Controls
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI / 2; // Applied limits directly to controls
-controls.minDistance = 0.5;
-controls.maxDistance = 12;            // room is only 14 m wide now — 30 would fly outside
-controls.target.set(0, 1.4, -2);      // look slightly into the room, at "chest height"
+// 4. Controls — first-person "walking" controls.
+// PointerLockControls uses the browser's Pointer Lock API: the cursor is
+// hidden + trapped, and we receive RAW mouse movement to turn the head.
+// The browser ONLY allows locking inside a user click — hence the overlay.
+const controls = new PointerLockControls(camera, document.body);
+
+const overlay = document.getElementById('start-overlay');
+overlay.addEventListener('click', () => controls.lock());
+controls.addEventListener('lock',   () => { overlay.style.display = 'none'; });
+controls.addEventListener('unlock', () => { overlay.style.display = 'flex'; });
+
+// Keyboard state: we DON'T move inside the event (keydown only repeats
+// stutteringly). We just record which keys are held, and move every frame.
+const keys = {};
+window.addEventListener('keydown', (e) => { keys[e.code] = true;  });
+window.addEventListener('keyup',   (e) => { keys[e.code] = false; });
+
+const WALK_SPEED = 3;                 // meters per second (a brisk walk)
+const EYE_HEIGHT = 1.6;               // camera stays at standing eye level
+
+function updatePlayer(delta) {
+  if (!controls.isLocked) return;     // don't walk while the overlay is up
+
+  const step = WALK_SPEED * delta;    // meters to move THIS frame
+  if (keys['KeyW']) controls.moveForward(step);
+  if (keys['KeyS']) controls.moveForward(-step);
+  if (keys['KeyA']) controls.moveRight(-step);
+  if (keys['KeyD']) controls.moveRight(step);
+
+  // Poor-man's collision: clamp inside the room (walls at ±7 and ±5,
+  // minus 0.3 m so your "shoulders" don't clip through the plaster).
+  camera.position.x = THREE.MathUtils.clamp(camera.position.x, -6.7, 6.7);
+  camera.position.z = THREE.MathUtils.clamp(camera.position.z, -4.7, 4.7);
+  camera.position.y = EYE_HEIGHT;     // no flying, no crouching
+}
 
 // 5. Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
@@ -371,9 +399,12 @@ window.addEventListener('click', (event) => {
 });
 
 // 8. Animation Loop
+const clock = new THREE.Clock();      // measures real time between frames
+
 function animate() {
   requestAnimationFrame(animate);
-  controls.update(); 
+  const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
+  updatePlayer(delta);
   renderer.render(scene, camera);
 }
 animate();
