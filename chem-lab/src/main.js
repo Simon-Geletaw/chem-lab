@@ -1,68 +1,97 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-//scene
+
+// 1. Scene
 const scene = new THREE.Scene();
-const background = new THREE.Color(0x22222);// this creates a dark background color for the scene
-//camera
+scene.background = new THREE.Color(0x222222); // Applied background directly to scene
+
+// 2. Camera
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 1, 5);
-//renderer
+camera.position.set(0, 5, 15); // Moved camera up and back so we can see the whole room
+
+// 3. Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true; // ENABLED SHADOWS HERE
 document.body.appendChild(renderer.domElement);
-//controls are used to allow the user to interact with the scene using mouse or touch input
+
+// 4. Controls
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; // this adds a smooth damping effect to the controls
-//light
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // soft white light
-const maxPolarAngle = Math.PI/2; // limit the vertical rotation to 90 degrees
-const minDistance = 5;// minimum distance from the target
-const maxDistance = 30; // maximum distance i can zoom in or out
-// we will create lighting 
-// ambinet light is a type of light that illuminates all objects in the scene equally, regardless of their position or orientation. It is often used to simulate indirect lighting or to provide a base level of illumination for the scene.
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // soft white light
+controls.enableDamping = true; 
+controls.maxPolarAngle = Math.PI / 2; // Applied limits directly to controls
+controls.minDistance = 5;
+controls.maxDistance = 30;
+
+// 5. Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
-//Directional Acts like a sun casts a shadow in a specific direction. It is often used to simulate sunlight or other directional light sources.
-const dirLight = new THREE.DirectionalLight(0xffffff, 1); // white light
-dirLight.position.set(10, 20, 10); // set the position of the light
-dirLight.shadow.camera.left = -10; // set the left boundary of the shadow camera
-dirLight.shadow.camera.right = 10; // set the right boundary of the shadow camera
-dirLight.shadow.camera.top = 10; // set the top boundary of the shadow camera
-dirLight.shadow.camera.bottom = -10; // set the bottom boundary of the shadow camera
-dirLight.castShadow = true; // enable shadow casting for the light
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1); 
+dirLight.position.set(10, 20, 10); 
+dirLight.castShadow = true; 
+dirLight.shadow.camera.left = -10; 
+dirLight.shadow.camera.right = 10; 
+dirLight.shadow.camera.top = 10; 
+dirLight.shadow.camera.bottom = -10; 
 scene.add(dirLight);
 
+// 6. Room Geometry
+const floorGeometry = new THREE.PlaneGeometry(100, 100); 
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8, metalness: 0.2 }); 
+const floor = new THREE.Mesh(floorGeometry, floorMaterial); 
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true; // FLOOR CAN NOW RECEIVE SHADOWS
+scene.add(floor); 
 
-//FLoor
-const floorGeometry = new THREE.PlaneGeometry(100, 100); // create a large plane geometry for the floor
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8, metalness: 0.2 }); // create a standard material for the floor with some roughness and metalness
-const floor = new THREE.Mesh(floorGeometry, floorMaterial); // create a mesh from the geometry and material
-floor.rotation.x = -Math.PI / 2; // rotate the floor to be horizontal
-scene.add(floor); // add the floor to the scene
+const wallGeometry = new THREE.PlaneGeometry(40, 15); 
+const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xabcdef, roughness: 0.8, metalness: 0.2 }); 
+const backwall = new THREE.Mesh(wallGeometry, wallMaterial); 
+backwall.position.set(0, 7.5, -15); 
+backwall.receiveShadow = true; 
+scene.add(backwall); 
 
+// 7. 3D Models
+const loader = new GLTFLoader(); // Fixed typo here
+const interactableObjects = []; 
 
-//periodic table wall
-const wallGeometry = new THREE.PlaneGeometry(40, 15); // create a large plane geometry for the wall
-const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xabcdef, roughness: 0.8, metalness: 0.2 }); // create a standard material for the wall with some roughness and metalness
-const backwall = new THREE.Mesh(wallGeometry, wallMaterial); // create a mesh from the geometry and material
-backwall.position.set(0, 7.5, -15); //  the scene is used to push a wall back and up
-backwall.receiveShadow = true; // enable shadow receiving for the wall
-scene.add(backwall); // add the wall to the scene
-
-
-
-function animate() {
-requestAnimationFrame(animate);// this tells the browser to call the animate function again before the next repaint
-controls.update(); // update the controls
-
-renderer.render(scene, camera);
+function loadModel(url, position, scale, name, description){
+  loader.load(url, (gltf) => {
+    const model = gltf.scene;
+    model.position.set(position.x, position.y, position.z);
+    model.scale.set(scale, scale, scale);
+    
+    // Traverse to apply shadows to all child meshes
+    model.traverse((node) => {
+      if (node.isMesh) {
+        node.castShadow = true;
+        node.receiveShadow = true;
+      }
+    });
+    
+    model.userData = { name: name, description: description };
+    scene.add(model);
+    interactableObjects.push(model); // Only pushing once now
+  });
 }
-animate()
-window.addEventListener('resize',()=>{
+
+// Note: Make sure your folder is lowercase 'models' if that's how you named it in VS Code!
+loadModel('../public/Models/beaker.glb', {x:-2, y:0, z:0}, 1, 'Beaker', 'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
+loadModel('../public/Models/bunsenBurner.glb', {x:0, y:0, z:2}, 1, 'Bunsen Burner', 'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, which is used for heating, sterilization, and combustion.');
+loadModel('../public/Models/FireEx.glb', {x:0, y:0, z:-2}, 1, 'Fire Extinguisher', 'A fire extinguisher is a device that is used to put out small fires. It typically contains a pressurized agent that can be sprayed onto the fire to extinguish it.');
+loadModel('../public/Models/folding_table.glb', {x:2, y:0, z:0}, 1, 'Folding Table', 'A folding table is a type of table that can be collapsed and stored away when not in use. It is often used in laboratories for temporary workspaces or for events where additional table space is needed.');
+
+// 8. Animation Loop
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update(); 
+  renderer.render(scene, camera);
+}
+animate();
+
+// 9. Window Resize
+window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-})
-
-
+});
