@@ -10,11 +10,17 @@
     <div id="start-overlay">
       <div id="start-card">
         <h1>Chemistry Lab</h1>
-        <p>Click anywhere to enter</p>
-        <p class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor</p>
+        <p id="overlay-enter">Click anywhere to enter</p>
+        <p id="overlay-keys" class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor</p>
       </div>
     </div>
     <div id="crosshair"></div>
+    <div id="mobile-controls">
+      <button id="btn-up" class="dpad">&#9650;</button>
+      <button id="btn-left" class="dpad">&#9664;</button>
+      <button id="btn-down" class="dpad">&#9660;</button>
+      <button id="btn-right" class="dpad">&#9654;</button>
+    </div>
     <div id="info-panel">
       <button id="info-close">✕</button>
       <h2 id="info-title"></h2>
@@ -54,6 +60,35 @@
         z-index: 15;
         pointer-events: none;           /* clicks pass straight through it */
       }
+
+      #mobile-controls {
+        display: none;                  /* player.js switches this to 'grid' on touch devices */
+        position: fixed;
+        left: 18px;
+        bottom: 18px;
+        z-index: 15;
+        /* a 3x2 grid: up sits in the top-middle cell, left/down/right below */
+        grid-template-columns: repeat(3, 64px);
+        grid-template-rows: repeat(2, 64px);
+        gap: 8px;
+      }
+      #btn-up    { grid-column: 2; grid-row: 1; }
+      #btn-left  { grid-column: 1; grid-row: 2; }
+      #btn-down  { grid-column: 2; grid-row: 2; }
+      #btn-right { grid-column: 3; grid-row: 2; }
+      .dpad {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(20, 30, 40, 0.55);
+        color: #fff;
+        font-size: 22px;
+        touch-action: none;             /* stop the browser scrolling/zooming */
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .dpad:active { background: rgba(70, 120, 170, 0.75); }
 
       #info-panel {
         display: none;                 /* hidden until something is clicked */

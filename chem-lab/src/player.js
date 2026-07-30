@@ -11,9 +11,32 @@ const EYE_HEIGHT = 1.6;               // camera stays at standing eye level
 export function createPlayer(camera) {
   const controls = new PointerLockControls(camera, document.body);
 
+  // --- Mobile detection ---
+  // 'pointer: coarse' = the PRIMARY input is a finger (phone/tablet).
+  // Phones have NO Pointer Lock and NO keyboard, so they get:
+  //   on-screen D-pad buttons -> walking, drag on the screen -> looking.
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+  let mobileActive = false;            // "the player tapped Enter" (mobile's isLocked)
+
   const overlay = document.getElementById('start-overlay');
   const crosshair = document.getElementById('crosshair');
-  overlay.addEventListener('click', () => controls.lock());
+  const mobileControls = document.getElementById('mobile-controls');
+
+  if (isTouchDevice) {
+    document.getElementById('overlay-enter').textContent = 'Tap anywhere to enter';
+    document.getElementById('overlay-keys').innerHTML =
+      '<b>Buttons</b> walk &nbsp;•&nbsp; <b>Drag</b> look &nbsp;•&nbsp; <b>Tap</b> inspect';
+  }
+
+  overlay.addEventListener('click', () => {
+    if (isTouchDevice) {
+      mobileActive = true;                        // no lock on phones — just a flag
+      overlay.style.display = 'none';
+      mobileControls.style.display = 'grid';
+    } else {
+      controls.lock();
+    }
+  });
   controls.addEventListener('lock', () => {
     overlay.style.display = 'none';
     crosshair.style.display = 'block';
@@ -29,6 +52,49 @@ export function createPlayer(camera) {
   window.addEventListener('keydown', (e) => { keys[e.code] = true;  });
   window.addEventListener('keyup',   (e) => { keys[e.code] = false; });
 
+  // --- D-pad buttons write into the SAME keys object ---
+  // The movement code below doesn't know or care whether 'KeyW' was set
+  // by a real keyboard or by a thumb on a button. That's the whole trick.
+  const dpad = { 'btn-up': 'KeyW', 'btn-down': 'KeyS', 'btn-left': 'KeyA', 'btn-right': 'KeyD' };
+  for (const [id, code] of Object.entries(dpad)) {
+    const btn = document.getElementById(id);
+    const press   = (e) => { e.preventDefault(); keys[code] = true;  };
+    const release = (e) => { e.preventDefault(); keys[code] = false; };
+    btn.addEventListener('touchstart',  press,   { passive: false });
+    btn.addEventListener('touchend',    release, { passive: false });
+    btn.addEventListener('touchcancel', release, { passive: false });
+    btn.addEventListener('mousedown',   press);    // so it also works in
+    btn.addEventListener('mouseup',     release);  // desktop DevTools testing
+  }
+
+  // --- Drag-to-look (mobile) ---
+  // Same math PointerLockControls uses internally: a YXZ Euler where
+  // y = turning left/right (yaw) and x = looking up/down (pitch).
+  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+  const LOOK_SPEED = 0.005;            // radians per pixel of finger movement
+  let lastTouch = null;
+
+  window.addEventListener('touchstart', (e) => {
+    if (!mobileActive || e.target.closest('#mobile-controls')) return;
+    lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: false });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!mobileActive || !lastTouch || e.target.closest('#mobile-controls')) return;
+    e.preventDefault();                // stop the page from scrolling under us
+    const dx = e.touches[0].clientX - lastTouch.x;
+    const dy = e.touches[0].clientY - lastTouch.y;
+    lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+
+    euler.setFromQuaternion(camera.quaternion);
+    euler.y -= dx * LOOK_SPEED;        // drag right -> turn right
+    euler.x -= dy * LOOK_SPEED;        // drag down  -> look down
+    euler.x = THREE.MathUtils.clamp(euler.x, -Math.PI / 2, Math.PI / 2); // no backflips
+    camera.quaternion.setFromEuler(euler);
+  }, { passive: false });
+
+  window.addEventListener('touchend', () => { lastTouch = null; });
+
   // Furniture bounding boxes (filled by furniture.js in a later phase).
   // If a step would land inside one of these, we undo the step.
   const colliders = [];
@@ -37,9 +103,10 @@ export function createPlayer(camera) {
     controls,
     colliders,
     enabled: true,                    // the tour will set this to false later
+    get isActive() { return controls.isLocked || mobileActive; },
 
     update(delta) {
-      if (!player.enabled || !controls.isLocked) return;
+      if (!player.enabled || !player.isActive) return;
 
       const prevPos = camera.position.clone();   // remember, in case we collide
 

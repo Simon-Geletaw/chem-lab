@@ -128,8 +128,10 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   }
 
   window.addEventListener('click', (event) => {
-    // Ignore clicks on UI elements (start overlay, info panel...)
-    if (event.target.closest('#start-overlay') || event.target.closest('#info-panel')) return;
+    // Ignore clicks on UI elements (start overlay, info panel, mobile D-pad...)
+    if (event.target.closest('#start-overlay') ||
+        event.target.closest('#info-panel') ||
+        event.target.closest('#mobile-controls')) return;
 
     if (controls.isLocked) {
       raycaster.setFromCamera(CENTER, camera);          // crosshair aim
