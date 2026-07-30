@@ -23,13 +23,13 @@ function createFloorTexture(){
   canvas.height = 512;
   const context = canvas.getContext('2d');
 
-  ctx.fillStyle = '#d9d9d2'; // Gray color for the floor
-  ctx.fillRect(0,0,512,512)
-  ctx.fillStyle = '#bdbdb4';               // darker tile color
+  context.fillStyle = '#d9d9d2'; // Gray color for the floor
+  context.fillRect(0,0,512,512)
+  context.fillStyle = '#bdbdb4';               // darker tile color
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       if ((row + col) % 2 === 0) {         // every other square, like a chessboard
-        ctx.fillRect(col * 64, row * 64, 64, 64);
+        context.fillRect(col * 64, row * 64, 64, 64);
       }
     }
   }
@@ -112,25 +112,41 @@ scene.add(ceiling);
 const loader = new GLTFLoader(); // Fixed typo here
 const interactableObjects = []; 
 
-function loadModel(url, position, scale, name, description){
-  loader.load(url, (gltf) => {
-    const model = gltf.scene;
-    model.position.set(position.x, position.y, position.z);
-    model.scale.set(scale, scale, scale);
-    
-    // Traverse to apply shadows to all child meshes
-    model.traverse((node) => {
-      if (node.isMesh) {
-        node.castShadow = true;
-        node.receiveShadow = true;
-      }
-    });
-    
-    model.userData = { name: name, description: description };
-    scene.add(model);
-    interactableObjects.push(model); // Only pushing once now
-  });
+function loadModel(url, position, scale, name, description, onLoad) {
+  loader.load(
+    url,
+    (gltf) => {
+      const model = gltf.scene;
+      model.scale.set(scale, scale, scale);
+      model.position.set(position.x, position.y, position.z);
+
+      // Measure the model, then lift it so its FEET sit exactly at position.y
+      const box = new THREE.Box3().setFromObject(model);
+      model.position.y += position.y - box.min.y;
+
+      // Print the size so YOU can judge if the scale looks right
+      const size = box.getSize(new THREE.Vector3());
+      console.log(name, '→ width:', size.x.toFixed(2), 'height:', size.y.toFixed(2), 'depth:', size.z.toFixed(2));
+
+      model.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
+        }
+      });
+
+      model.userData = { name: name, description: description };
+      scene.add(model);
+      interactableObjects.push(model);
+
+      // Tell whoever asked: "the model is ready" (and hand over its final box)
+      if (onLoad) onLoad(model, new THREE.Box3().setFromObject(model));
+    },
+    undefined,                                            // (progress - not needed)
+    (error) => console.error('FAILED to load', url, error) // loud errors instead of silence
+  );
 }
+
 const elementsGroup = new THREE.Group();
 const tilesize = 1.1;
 const gap = 0.1;
@@ -188,10 +204,23 @@ elementsData.forEach((element, index) => {
 
 scene.add(elementsGroup);
 // Note: Make sure your folder is lowercase 'models' if that's how you named it in VS Code!
-loadModel('/Models/beaker.glb', {x:-2, y:0, z:0}, 1, 'Beaker', 'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
-loadModel('/Models/bunsen_burner.glb', {x:0, y:0, z:2}, 1, 'Bunsen Burner', 'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, which is used for heating, sterilization, and combustion.');
-loadModel('/Models/FireEx.glb', {x:0, y:0, z:-2}, 1, 'Fire Extinguisher', 'A fire extinguisher is a device that is used to put out small fires. It typically contains a pressurized agent that can be sprayed onto the fire to extinguish it.');
-loadModel('/Models/folding_table.glb', {x:2, y:0, z:0}, 1, 'Folding Table', 'A folding table is a type of table that can be collapsed and stored away when not in use. It is often used in laboratories for temporary workspaces.');
+// Load the TABLE first. Only when it's loaded do we know how tall it is -
+// then we load the items that sit on top of it.
+loadModel('/Models/folding_table.glb', { x: 0, y: 0, z: -8 }, 1, 'Folding Table',
+  'A folding table is a type of table that can be collapsed and stored away when not in use. It is often used in laboratories for temporary workspaces.',
+  (tableModel, tableBox) => {
+    const tableTopY = tableBox.max.y;   // world height of the tabletop
+    console.log('Table top is at y =', tableTopY.toFixed(2));
+
+    loadModel('/Models/beaker.glb', { x: -0.8, y: tableTopY, z: -8 }, 1, 'Beaker',
+      'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
+
+    loadModel('/Models/bunsen_burner.glb', { x: 0.8, y: tableTopY, z: -8 }, 1, 'Bunsen Burner',
+      'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, used for heating, sterilization, and combustion.');
+  }
+  
+);
+
 // 8. Animation Loop
 function animate() {
   requestAnimationFrame(animate);
