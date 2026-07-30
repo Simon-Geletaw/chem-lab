@@ -17,6 +17,30 @@ renderer.shadowMap.enabled = true; // ENABLED SHADOWS HERE
 document.body.appendChild(renderer.domElement);
 
 // lab floor
+function createFloorTexture(){
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const context = canvas.getContext('2d');
+
+  ctx.fillStyle = '#d9d9d2'; // Gray color for the floor
+  ctx.fillRect(0,0,512,512)
+  ctx.fillStyle = '#bdbdb4';               // darker tile color
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if ((row + col) % 2 === 0) {         // every other square, like a chessboard
+        ctx.fillRect(col * 64, row * 64, 64, 64);
+      }
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;    // allow tiling horizontally
+  texture.wrapT = THREE.RepeatWrapping;    // allow tiling vertically
+  texture.repeat.set(5, 4);                // repeat the 8x8 board 5x4 times
+  return texture;
+}
+
 // 4. Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
