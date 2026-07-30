@@ -8,7 +8,8 @@ scene.background = new THREE.Color(0xcfdde6); // Applied background directly to 
 
 // 2. Camera
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 5, 15); // Moved camera up and back so we can see the whole room
+// SCALE RULE: from now on, 1 unit = 1 METER. Eye height of a standing person ≈ 1.6 m.
+camera.position.set(0, 1.6, 4);
 
 // 3. Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -37,35 +38,41 @@ function createFloorTexture(){
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;    // allow tiling horizontally
   texture.wrapT = THREE.RepeatWrapping;    // allow tiling vertically
-  texture.repeat.set(5, 4);                // repeat the 8x8 board 5x4 times
+  // One canvas = 8x8 squares. One square = 0.5 m, so one canvas covers 4 m.
+  // Floor is 14 m x 10 m  ->  repeat 14/4 x 10/4
+  texture.repeat.set(3.5, 2.5);
   return texture;
 }
 
 // 4. Controls
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; 
+controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI / 2; // Applied limits directly to controls
-controls.minDistance = 5;
-controls.maxDistance = 30;
+controls.minDistance = 0.5;
+controls.maxDistance = 12;            // room is only 14 m wide now — 30 would fly outside
+controls.target.set(0, 1.4, -2);      // look slightly into the room, at "chest height"
 
 // 5. Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
 const fillLight = new THREE.HemisphereLight(0xffffff, 0x777788, 0.6);
-const dirLight = new THREE.DirectionalLight(0xffffff, 1); 
-dirLight.position.set(10, 20, 10); 
-dirLight.castShadow = true; 
-dirLight.shadow.camera.left = -10; 
-dirLight.shadow.camera.right = 10; 
-dirLight.shadow.camera.top = 10; 
-dirLight.shadow.camera.bottom = -10; 
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(5, 6, 3);   // "sun" just above the 3.5 m ceiling height
+dirLight.castShadow = true;
+// Shadow camera = the invisible box shadows are computed inside.
+// Smaller box over the same shadow map = SHARPER shadows.
+dirLight.shadow.camera.left = -8;
+dirLight.shadow.camera.right = 8;
+dirLight.shadow.camera.top = 8;
+dirLight.shadow.camera.bottom = -8;
 scene.add(dirLight);
 scene.add(fillLight);
 
 // 6. Room Geometry
-// 6. Room Geometry
-// Room dimensions: 40 wide (x), 30 deep (z: -15 to +15), 15 tall (y)
-const floorGeometry = new THREE.PlaneGeometry(40, 30);
+// REAL-WORLD SCALE: 14 m wide (x: -7..+7), 10 m deep (z: -5..+5), 3.5 m tall ceiling.
+// A big school classroom. (Before this was 40x30x15 — an aircraft hangar,
+// which is why every model looked like a speck!)
+const floorGeometry = new THREE.PlaneGeometry(14, 10);
 const floorMaterial = new THREE.MeshStandardMaterial({
   map: createFloorTexture(),   // 'map' = the color texture the material wears
   roughness: 0.7,
@@ -78,32 +85,32 @@ scene.add(floor);
 
 const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.9, metalness: 0.0 });
 
-// Back wall (you already had this one)
-const backwall = new THREE.Mesh(new THREE.PlaneGeometry(40, 15), wallMaterial);
-backwall.position.set(0, 7.5, -15);
+// Back wall
+const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMaterial);
+backwall.position.set(0, 1.75, -5);
 backwall.receiveShadow = true;
 scene.add(backwall);
 
 // Left wall — rotated +90° so its visible face points INTO the room
-const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(30, 15), wallMaterial);
-leftWall.position.set(-20, 7.5, 0);
+const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMaterial);
+leftWall.position.set(-7, 1.75, 0);
 leftWall.rotation.y = Math.PI / 2;
 leftWall.receiveShadow = true;
 scene.add(leftWall);
 
 // Right wall — rotated −90°, same reason
-const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(30, 15), wallMaterial);
-rightWall.position.set(20, 7.5, 0);
+const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMaterial);
+rightWall.position.set(7, 1.75, 0);
 rightWall.rotation.y = -Math.PI / 2;
 rightWall.receiveShadow = true;
 scene.add(rightWall);
 
 // Ceiling — rotated +90° around X so it faces DOWN into the room
 const ceiling = new THREE.Mesh(
-  new THREE.PlaneGeometry(40, 30),
+  new THREE.PlaneGeometry(14, 10),
   new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.9 })
 );
-ceiling.position.set(0, 15, 0);
+ceiling.position.set(0, 3.5, 0);
 ceiling.rotation.x = Math.PI / 2;
 scene.add(ceiling);
  
@@ -112,21 +119,33 @@ scene.add(ceiling);
 const loader = new GLTFLoader(); // Fixed typo here
 const interactableObjects = []; 
 
-function loadModel(url, position, scale, name, description, onLoad) {
+// desiredHeight = how tall the object should be IN METERS.
+// Downloaded GLB files use random unit sizes (one artist's "1" is a meter,
+// another's is a millimeter). So instead of guessing a scale number, we:
+//   1) measure the model's natural height with Box3
+//   2) compute scale = desiredHeight / naturalHeight
+//   3) apply it -> the model is now EXACTLY desiredHeight meters tall.
+function loadModel(url, position, desiredHeight, name, description, onLoad) {
   loader.load(
     url,
     (gltf) => {
       const model = gltf.scene;
+
+      // Measure the model at its natural size
+      let box = new THREE.Box3().setFromObject(model);
+      let size = box.getSize(new THREE.Vector3());
+
+      // Scale so its height becomes desiredHeight meters
+      const scale = desiredHeight / size.y;
       model.scale.set(scale, scale, scale);
-      model.position.set(position.x, position.y, position.z);
 
-      // Measure the model, then lift it so its FEET sit exactly at position.y
-      const box = new THREE.Box3().setFromObject(model);
-      model.position.y += position.y - box.min.y;
+      // Re-measure AFTER scaling, then lift so its FEET sit exactly at position.y
+      // (box.min.y = lowest point of the model; subtracting it plants the feet)
+      box = new THREE.Box3().setFromObject(model);
+      model.position.set(position.x, position.y - box.min.y, position.z);
 
-      // Print the size so YOU can judge if the scale looks right
-      const size = box.getSize(new THREE.Vector3());
-      console.log(name, '→ width:', size.x.toFixed(2), 'height:', size.y.toFixed(2), 'depth:', size.z.toFixed(2));
+      size = box.getSize(new THREE.Vector3());
+      console.log(name, '→ width:', size.x.toFixed(2), 'height:', size.y.toFixed(2), 'depth:', size.z.toFixed(2), '(meters)');
 
       model.traverse((node) => {
         if (node.isMesh) {
@@ -226,7 +245,7 @@ function createElementTexture(element, atomicNumber, bgColor) {
   return new THREE.CanvasTexture(canvas);
 }
 
-const tileStep = 1.1;   // tile size 1.0 + gap 0.1
+const tileStep = 0.30;   // tile size 0.28 m + gap 0.02 m (classroom-poster sized)
 
 elementsData.forEach((element, index) => {
   const atomicNumber = index + 1;
@@ -235,11 +254,11 @@ elementsData.forEach((element, index) => {
 
   const texture = createElementTexture(element, atomicNumber, color);
   const material = new THREE.MeshStandardMaterial({ map: texture });
-  const tile = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 0.08), material);
+  const tile = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.02), material);
 
   const xPos = (cell.col - 9.5) * tileStep;      // cols 1..18 centered on x=0
-  const yPos = 13.2 - cell.row * tileStep;       // row 1 at top, lower rows descend
-  tile.position.set(xPos, yPos, -14.8);
+  const yPos = 3.25 - cell.row * tileStep;       // row 1 near ceiling, rows descend
+  tile.position.set(xPos, yPos, -4.96);
 
   tile.userData = {
     name: element.name + ' (' + element.symbol + ')',
@@ -254,10 +273,10 @@ scene.add(elementsGroup);
 
 // Dark board behind the tiles ("poster frame")
 const board = new THREE.Mesh(
-  new THREE.BoxGeometry(21.5, 11.8, 0.15),
+  new THREE.BoxGeometry(5.9, 3.1, 0.04),
   new THREE.MeshStandardMaterial({ color: 0x22303c, roughness: 0.85 })
 );
-board.position.set(0, 7.1, -14.93);
+board.position.set(0, 1.68, -4.99);
 scene.add(board);
 
 // Title strip
@@ -272,33 +291,34 @@ function createTitleTexture() {
   ctx.font = 'bold 64px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('PERIODIC TABLE OF THE ELEMENTS', 512, 64);
+  ctx.fillText(' Elements', 512, 64);
   return new THREE.CanvasTexture(canvas);
 }
 const title = new THREE.Mesh(
-  new THREE.PlaneGeometry(12, 1.5),
+  new THREE.PlaneGeometry(3, 0.375),   // same 8:1 ratio as the 1024x128 canvas
   new THREE.MeshStandardMaterial({ map: createTitleTexture() })
 );
-title.position.set(0, 13.6, -14.8);
+title.position.set(0, 3.3, -4.97);
 scene.add(title);
 // Note: Make sure your folder is lowercase 'models' if that's how you named it in VS Code!
 // Load the TABLE first. Only when it's loaded do we know how tall it is -
 // then we load the items that sit on top of it.
-loadModel('/Models/folding_table.glb', { x: 0, y: 0, z: -8 }, 1, 'Folding Table',
+// 3rd argument = REAL HEIGHT IN METERS (loadModel auto-scales to match).
+loadModel('/Models/folding_table.glb', { x: 0, y: 0, z: -3.2 }, 0.74, 'Folding Table',
   'A folding table is a type of table that can be collapsed and stored away when not in use. It is often used in laboratories for temporary workspaces.',
   (tableModel, tableBox) => {
     const tableTopY = tableBox.max.y;   // world height of the tabletop
-    console.log('Table top is at y =', tableTopY.toFixed(2));
+    console.log('Table top is at y =', tableTopY.toFixed(2), 'm');
 
-    loadModel('/Models/beaker.glb', { x: -0.8, y: tableTopY, z: -8 }, 1, 'Beaker',
-      'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
-
-    loadModel('/Models/bunsen_burner.glb', { x: 0.8, y: tableTopY, z: -8 }, 1, 'Bunsen Burner',
+    loadModel('/Models/bunsen_burner.glb', { x: 0.25, y: tableTopY, z: -3.2 }, 0.15, 'Bunsen Burner',
       'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, used for heating, sterilization, and combustion.');
+
+    loadModel('/Models/beaker.glb', { x: -0.25, y: tableTopY, z: -3.2 }, 0.12, 'Beaker',
+      'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
   }
-  
+
 );
-loadModel('/Models/FireEx.glb', { x: 19.3, y: 3.5, z: 8 }, 1, 'Fire Extinguisher',
+loadModel('/Models/FireEx.glb', { x: 6.85, y: 1.0, z: 2 }, 0.55, 'Fire Extinguisher',
   'A fire extinguisher is a device used to put out small fires. It contains a pressurized agent that is sprayed onto the fire to extinguish it.',
   (model) => {
     model.rotation.y = -Math.PI / 2;   // turn it to face into the room
@@ -307,10 +327,10 @@ loadModel('/Models/FireEx.glb', { x: 19.3, y: 3.5, z: 8 }, 1, 'Fire Extinguisher
 
 // Red mounting backplate so it reads as "wall-mounted", not "floating"
 const bracket = new THREE.Mesh(
-  new THREE.BoxGeometry(0.15, 2.2, 1.2),
+  new THREE.BoxGeometry(0.04, 0.7, 0.35),
   new THREE.MeshStandardMaterial({ color: 0xb02020, roughness: 0.5 })
 );
-bracket.position.set(19.85, 4.3, 8);
+bracket.position.set(6.97, 1.3, 2);
 scene.add(bracket);
 
 // --- Click to inspect ---
