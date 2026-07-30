@@ -141,9 +141,109 @@ function createTestTubeRack() {
   return rack;
 }
 
+// A paper label texture for a chemical bottle — same canvas-texture trick
+// as the periodic table tiles, just smaller.
+function createLabelTexture(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 96;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#f5f0e6';                // paper
+  ctx.fillRect(0, 0, 128, 96);
+  ctx.strokeStyle = '#8a2020';              // red border, like real reagent labels
+  ctx.lineWidth = 6;
+  ctx.strokeRect(4, 4, 120, 88);
+
+  ctx.fillStyle = '#222222';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 30px Arial';
+  ctx.fillText(text, 64, 48, 110);          // maxWidth squeezes long names
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+// A reagent bottle: cylinder body + neck + cap + paper label.
+// labelAngle = which way the label faces (radians around Y).
+function createBottle(liquidColor, labelText, labelAngle) {
+  const bottle = new THREE.Group();
+
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.045, 0.045, 0.16, 20),
+    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
+  );
+  body.position.y = 0.08;
+  bottle.add(body);
+
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.03, 0.04, 20),
+    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
+  );
+  neck.position.y = 0.18;
+  bottle.add(neck);
+
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.02, 0.025, 20),
+    new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 })
+  );
+  cap.position.y = 0.21;
+  bottle.add(cap);
+
+  const label = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.07, 0.05),
+    new THREE.MeshStandardMaterial({ map: createLabelTexture(labelText) })
+  );
+  // 1 mm off the body surface so it doesn't "z-fight" (flicker) with it
+  label.position.set(Math.sin(labelAngle) * 0.046, 0.09, Math.cos(labelAngle) * 0.046);
+  label.rotation.y = labelAngle;
+  bottle.add(label);
+
+  return bottle;
+}
+
+// Two wall shelves with a row of labeled chemical bottles each.
+function createShelves(scene, interactableObjects) {
+  const shelves = new THREE.Group();
+  const boardMat = new THREE.MeshStandardMaterial({ color: 0xb0a58f, roughness: 0.8 });
+
+  // Shelf boards: 2.4 m long ALONG the left wall (so long side is z)
+  for (const yPos of [1.4, 1.75]) {
+    const board = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 2.4), boardMat);
+    board.position.set(-6.85, yPos, -1);
+    board.castShadow = true;
+    board.receiveShadow = true;
+    shelves.add(board);
+  }
+
+  // Bottles: name + liquid color. Labels face +x (into the room).
+  const chemicals = [
+    ['HCl',     0xf0e68c], ['NaOH',    0xf5f5f5], ['H₂SO₄', 0xf7e8b0], ['CuSO₄', 0x2e86c1],
+    ['KMnO₄', 0x6c3483], ['Ethanol', 0xd5f5e3], ['NaCl',    0xffffff], ['Acetone', 0xd6eaf8]
+  ];
+  const labelAngle = Math.PI / 2;           // face +x = into the room
+
+  chemicals.forEach(([name, color], i) => {
+    const shelfY = i < 4 ? 1.415 : 1.765;   // first 4 on lower board, rest on top
+    const zPos = -1.9 + (i % 4) * 0.6;
+    const bottle = createBottle(color, name, labelAngle);
+    bottle.position.set(-6.85, shelfY, zPos);
+    shelves.add(bottle);
+  });
+
+  shelves.userData = {
+    name: 'Chemical Shelf',
+    description: 'Reagent bottles used in experiments: acids like HCl and H₂SO₄, bases like NaOH, and salts like CuSO₄ (blue) and KMnO₄ (purple). Always read the label before use!'
+  };
+  scene.add(shelves);
+  interactableObjects.push(shelves);
+}
+
 // ---------- put it all together ----------
 export function createFurniture(scene, interactableObjects, colliders) {
   const TOP = 0.9;   // bench worktop height in meters
+
+  createShelves(scene, interactableObjects);
 
   // Island bench in the middle of the room — the main workstation
   const islandBench = createBench(0, -1.5, 0);

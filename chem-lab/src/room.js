@@ -31,14 +31,15 @@ function createFloorTexture() {
 
 export function createRoom(scene) {
   // --- Lighting ---
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  // Ambient lowered to 0.3 so the ceiling fixtures below visibly matter.
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
   scene.add(ambientLight);
 
-  const fillLight = new THREE.HemisphereLight(0xffffff, 0x777788, 0.6);
+  const fillLight = new THREE.HemisphereLight(0xffffff, 0x777788, 0.5);
   scene.add(fillLight);
 
   const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.position.set(5, 6, 3);   // "sun" just above the 3.5 m ceiling height
+  dirLight.position.set(10, 5, 0);  // "sun" outside the RIGHT wall = light through the windows
   dirLight.castShadow = true;
   // Shadow camera = the invisible box shadows are computed inside.
   // Smaller box over the same shadow map = SHARPER shadows.
@@ -84,6 +85,13 @@ export function createRoom(scene) {
   rightWall.receiveShadow = true;
   scene.add(rightWall);
 
+  // Front wall — rotated 180° so its face points back INTO the room
+  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMaterial);
+  frontWall.position.set(0, 1.75, 5);
+  frontWall.rotation.y = Math.PI;
+  frontWall.receiveShadow = true;
+  scene.add(frontWall);
+
   // Ceiling — rotated +90° around X so it faces DOWN into the room
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(14, 10),
@@ -92,6 +100,67 @@ export function createRoom(scene) {
   ceiling.position.set(0, 3.5, 0);
   ceiling.rotation.x = Math.PI / 2;
   scene.add(ceiling);
+
+  // --- Door (on the front wall, decorative) ---
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(0.9, 2.1, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.7 })
+  );
+  door.position.set(3, 1.05, 4.97);
+  scene.add(door);
+
+  const handle = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03, 12, 12),
+    new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.8 })
+  );
+  handle.position.set(2.65, 1.05, 4.92);
+  scene.add(handle);
+
+  // --- Windows (on the right wall) ---
+  // Trick: MeshBasicMaterial IGNORES lighting — it is always full-bright.
+  // A light-blue always-bright plane reads as "daylight outside".
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+  const skyMat = new THREE.MeshBasicMaterial({ color: 0xbfe3ff });
+
+  for (const zPos of [-2.5, 0]) {
+    // glass pane: 1.5 m wide (along z), 1.2 m tall, centered at y=1.7
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.2), skyMat);
+    pane.position.set(6.98, 1.7, zPos);
+    pane.rotation.y = -Math.PI / 2;
+    scene.add(pane);
+
+    // frame: 2 horizontal + 2 vertical white bars around the pane
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 1.62), frameMat);
+    top.position.set(6.96, 2.34, zPos);
+    const bottom = top.clone();
+    bottom.position.y = 1.06;
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.36, 0.08), frameMat);
+    left.position.set(6.96, 1.7, zPos - 0.77);
+    const right = left.clone();
+    right.position.z = zPos + 0.77;
+    scene.add(top, bottom, left, right);
+  }
+
+  // --- Ceiling light fixtures ---
+  // 'emissive' makes the panel GLOW, but glowing materials cast NO light in
+  // three.js — so each fixture also carries a real PointLight.
+  const fixtureMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffffff,
+    emissiveIntensity: 1.5
+  });
+  for (const zPos of [-2.5, 0, 2.5]) {
+    const fixture = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.3), fixtureMat);
+    fixture.position.set(0, 3.47, zPos);
+    scene.add(fixture);
+
+    // (color, intensity, distance it reaches, decay) — physical units in r185,
+    // so tune the intensity number by eye in the browser.
+    const bulb = new THREE.PointLight(0xffffff, 12, 8, 1.8);
+    bulb.position.set(0, 3.3, zPos);
+    bulb.castShadow = false;   // only dirLight casts shadows = fast + sufficient
+    scene.add(bulb);
+  }
 
   return { dirLight, ambientLight };
 }
