@@ -7,7 +7,36 @@
     <title>chem-lab</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="info-panel">
+      <button id="info-close">✕</button>
+      <h2 id="info-title"></h2>
+      <p id="info-description"></p>
+    </div>
     <script type="module" src="/src/main.js"></script>
+
+    <style>
+      #info-panel {
+        display: none;                 /* hidden until something is clicked */
+        position: fixed;               /* floats over the 3D canvas */
+        top: 20px;
+        right: 20px;
+        width: 300px;
+        padding: 16px 20px;
+        background: rgba(20, 30, 40, 0.88);
+        color: #fff;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        font-family: system-ui, sans-serif;
+        z-index: 10;                   /* draw on top of the canvas */
+      }
+      #info-panel h2  { margin: 0 0 8px; font-size: 20px; }
+      #info-panel p   { margin: 0; font-size: 14px; line-height: 1.5; }
+      #info-close {
+        position: absolute;
+        top: 8px; right: 10px;
+        background: none; border: none;
+        color: #fff; font-size: 16px; cursor: pointer;
+      }
+    </style>
   </body>
 </html>

@@ -235,6 +235,43 @@ const bracket = new THREE.Mesh(
 bracket.position.set(19.85, 4.3, 8);
 scene.add(bracket);
 
+// --- Click to inspect ---
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+const panel = document.getElementById('info-panel');
+const panelTitle = document.getElementById('info-title');
+const panelText = document.getElementById('info-description');
+document.getElementById('info-close').addEventListener('click', () => {
+  panel.style.display = 'none';
+});
+
+window.addEventListener('click', (event) => {
+  // 1) Convert pixel coords to "normalized" coords (-1..+1, center = 0,0)
+  mouse.x =  (event.clientX / window.innerWidth)  * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // 2) Aim the laser from the camera through that point
+  raycaster.setFromCamera(mouse, camera);
+
+  // 3) Ask what it hits ('true' = also check every child mesh inside models)
+  const hits = raycaster.intersectObjects(interactableObjects, true);
+
+  if (hits.length > 0) {
+    // The ray hits a CHILD mesh (e.g. "glass" inside the beaker).
+    // Climb up the parent chain until we find the object holding userData.name.
+    let obj = hits[0].object;
+    while (obj && !obj.userData.name) {
+      obj = obj.parent;
+    }
+    if (obj) {
+      panelTitle.textContent = obj.userData.name;
+      panelText.textContent = obj.userData.description;
+      panel.style.display = 'block';
+    }
+  }
+});
+
 // 8. Animation Loop
 function animate() {
   requestAnimationFrame(animate);
