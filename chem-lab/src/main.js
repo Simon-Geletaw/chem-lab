@@ -220,6 +220,20 @@ loadModel('/Models/folding_table.glb', { x: 0, y: 0, z: -8 }, 1, 'Folding Table'
   }
   
 );
+loadModel('/Models/FireEx.glb', { x: 19.3, y: 3.5, z: 8 }, 1, 'Fire Extinguisher',
+  'A fire extinguisher is a device used to put out small fires. It contains a pressurized agent that is sprayed onto the fire to extinguish it.',
+  (model) => {
+    model.rotation.y = -Math.PI / 2;   // turn it to face into the room
+  }
+);
+
+// Red mounting backplate so it reads as "wall-mounted", not "floating"
+const bracket = new THREE.Mesh(
+  new THREE.BoxGeometry(0.15, 2.2, 1.2),
+  new THREE.MeshStandardMaterial({ color: 0xb02020, roughness: 0.5 })
+);
+bracket.position.set(19.85, 4.3, 8);
+scene.add(bracket);
 
 // 8. Animation Loop
 function animate() {
