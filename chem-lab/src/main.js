@@ -1,151 +1,32 @@
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import {elementsData} from './periodicTable.js'; // Importing elements data
+import { createRoom } from './room.js';
+import { createPeriodicWall } from './periodicWall.js';
+import { createPlayer } from './player.js';
+
 // 1. Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcfdde6); // Applied background directly to scene
+scene.background = new THREE.Color(0xcfdde6);
 
 // 2. Camera
+// SCALE RULE: 1 unit = 1 METER. Eye height of a standing person ≈ 1.6 m.
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-// SCALE RULE: from now on, 1 unit = 1 METER. Eye height of a standing person ≈ 1.6 m.
 camera.position.set(0, 1.6, 4);
 
 // 3. Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true; // ENABLED SHADOWS HERE
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// lab floor
-function createFloorTexture(){
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const context = canvas.getContext('2d');
+// 4. Build the world (each module adds its own part to the scene)
+const interactableObjects = [];
+createRoom(scene);
+createPeriodicWall(scene, interactableObjects);
+const player = createPlayer(camera);
 
-  context.fillStyle = '#d9d9d2'; // Gray color for the floor
-  context.fillRect(0,0,512,512)
-  context.fillStyle = '#bdbdb4';               // darker tile color
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      if ((row + col) % 2 === 0) {         // every other square, like a chessboard
-        context.fillRect(col * 64, row * 64, 64, 64);
-      }
-    }
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;    // allow tiling horizontally
-  texture.wrapT = THREE.RepeatWrapping;    // allow tiling vertically
-  // One canvas = 8x8 squares. One square = 0.5 m, so one canvas covers 4 m.
-  // Floor is 14 m x 10 m  ->  repeat 14/4 x 10/4
-  texture.repeat.set(3.5, 2.5);
-  return texture;
-}
-
-// 4. Controls — first-person "walking" controls.
-// PointerLockControls uses the browser's Pointer Lock API: the cursor is
-// hidden + trapped, and we receive RAW mouse movement to turn the head.
-// The browser ONLY allows locking inside a user click — hence the overlay.
-const controls = new PointerLockControls(camera, document.body);
-
-const overlay = document.getElementById('start-overlay');
-overlay.addEventListener('click', () => controls.lock());
-controls.addEventListener('lock',   () => { overlay.style.display = 'none'; });
-controls.addEventListener('unlock', () => { overlay.style.display = 'flex'; });
-
-// Keyboard state: we DON'T move inside the event (keydown only repeats
-// stutteringly). We just record which keys are held, and move every frame.
-const keys = {};
-window.addEventListener('keydown', (e) => { keys[e.code] = true;  });
-window.addEventListener('keyup',   (e) => { keys[e.code] = false; });
-
-const WALK_SPEED = 3;                 // meters per second (a brisk walk)
-const EYE_HEIGHT = 1.6;               // camera stays at standing eye level
-
-function updatePlayer(delta) {
-  if (!controls.isLocked) return;     // don't walk while the overlay is up
-
-  const step = WALK_SPEED * delta;    // meters to move THIS frame
-  if (keys['KeyW']) controls.moveForward(step);
-  if (keys['KeyS']) controls.moveForward(-step);
-  if (keys['KeyA']) controls.moveRight(-step);
-  if (keys['KeyD']) controls.moveRight(step);
-
-  // Poor-man's collision: clamp inside the room (walls at ±7 and ±5,
-  // minus 0.3 m so your "shoulders" don't clip through the plaster).
-  camera.position.x = THREE.MathUtils.clamp(camera.position.x, -6.7, 6.7);
-  camera.position.z = THREE.MathUtils.clamp(camera.position.z, -4.7, 4.7);
-  camera.position.y = EYE_HEIGHT;     // no flying, no crouching
-}
-
-// 5. Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
-scene.add(ambientLight);
-const fillLight = new THREE.HemisphereLight(0xffffff, 0x777788, 0.6);
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-dirLight.position.set(5, 6, 3);   // "sun" just above the 3.5 m ceiling height
-dirLight.castShadow = true;
-// Shadow camera = the invisible box shadows are computed inside.
-// Smaller box over the same shadow map = SHARPER shadows.
-dirLight.shadow.camera.left = -8;
-dirLight.shadow.camera.right = 8;
-dirLight.shadow.camera.top = 8;
-dirLight.shadow.camera.bottom = -8;
-scene.add(dirLight);
-scene.add(fillLight);
-
-// 6. Room Geometry
-// REAL-WORLD SCALE: 14 m wide (x: -7..+7), 10 m deep (z: -5..+5), 3.5 m tall ceiling.
-// A big school classroom. (Before this was 40x30x15 — an aircraft hangar,
-// which is why every model looked like a speck!)
-const floorGeometry = new THREE.PlaneGeometry(14, 10);
-const floorMaterial = new THREE.MeshStandardMaterial({
-  map: createFloorTexture(),   // 'map' = the color texture the material wears
-  roughness: 0.7,
-  metalness: 0.1
-});
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
-
-const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.9, metalness: 0.0 });
-
-// Back wall
-const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMaterial);
-backwall.position.set(0, 1.75, -5);
-backwall.receiveShadow = true;
-scene.add(backwall);
-
-// Left wall — rotated +90° so its visible face points INTO the room
-const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMaterial);
-leftWall.position.set(-7, 1.75, 0);
-leftWall.rotation.y = Math.PI / 2;
-leftWall.receiveShadow = true;
-scene.add(leftWall);
-
-// Right wall — rotated −90°, same reason
-const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMaterial);
-rightWall.position.set(7, 1.75, 0);
-rightWall.rotation.y = -Math.PI / 2;
-rightWall.receiveShadow = true;
-scene.add(rightWall);
-
-// Ceiling — rotated +90° around X so it faces DOWN into the room
-const ceiling = new THREE.Mesh(
-  new THREE.PlaneGeometry(14, 10),
-  new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.9 })
-);
-ceiling.position.set(0, 3.5, 0);
-ceiling.rotation.x = Math.PI / 2;
-scene.add(ceiling);
- 
-
-// 7. 3D Models
-const loader = new GLTFLoader(); // Fixed typo here
-const interactableObjects = []; 
+// 5. 3D Models
+const loader = new GLTFLoader();
 
 // desiredHeight = how tall the object should be IN METERS.
 // Downloaded GLB files use random unit sizes (one artist's "1" is a meter,
@@ -194,141 +75,6 @@ function loadModel(url, position, desiredHeight, name, description, onLoad) {
   );
 }
 
-const elementsGroup = new THREE.Group();
-
-// Returns the real periodic-table cell for atomic number z:
-// col 1..18 (left to right), row 1..7 (top to bottom),
-// rows 8.5/9.5 = the detached lanthanide/actinide strips.
-function getGridPosition(z) {
-  if (z === 1)   return { col: 1,       row: 1 };     // H
-  if (z === 2)   return { col: 18,      row: 1 };     // He
-  if (z <= 4)    return { col: z - 2,   row: 2 };     // Li, Be
-  if (z <= 10)   return { col: z + 8,   row: 2 };     // B..Ne
-  if (z <= 12)   return { col: z - 10,  row: 3 };     // Na, Mg
-  if (z <= 18)   return { col: z,       row: 3 };     // Al..Ar
-  if (z <= 36)   return { col: z - 18,  row: 4 };     // K..Kr
-  if (z <= 54)   return { col: z - 36,  row: 5 };     // Rb..Xe
-  if (z <= 56)   return { col: z - 54,  row: 6 };     // Cs, Ba
-  if (z <= 71)   return { col: z - 54,  row: 8.5 };   // La..Lu (detached)
-  if (z <= 86)   return { col: z - 68,  row: 6 };     // Hf..Rn
-  if (z <= 88)   return { col: z - 86,  row: 7 };     // Fr, Ra
-  if (z <= 103)  return { col: z - 86,  row: 9.5 };   // Ac..Lr (detached)
-  return { col: z - 100, row: 7 };                    // Rf..Og
-}
-
-// Chemical family for atomic number z (drives the tile color)
-function getCategory(z) {
-  if ([1, 6, 7, 8, 15, 16, 34].includes(z))         return 'nonmetal';
-  if ([2, 10, 18, 36, 54, 86, 118].includes(z))     return 'noble-gas';
-  if ([9, 17, 35, 53, 85, 117].includes(z))         return 'halogen';
-  if ([3, 11, 19, 37, 55, 87].includes(z))          return 'alkali';
-  if ([4, 12, 20, 38, 56, 88].includes(z))          return 'alkaline';
-  if ([5, 14, 32, 33, 51, 52].includes(z))          return 'metalloid';
-  if (z >= 57 && z <= 71)                           return 'lanthanide';
-  if (z >= 89 && z <= 103)                          return 'actinide';
-  if ([13, 31, 49, 50, 81, 82, 83, 84, 113, 114, 115, 116].includes(z)) return 'post-transition';
-  return 'transition';                              // everything else
-}
-
-const categoryColors = {
-  'alkali':          '#d95d39',
-  'alkaline':        '#e8a94b',
-  'transition':      '#3f6fa8',
-  'post-transition': '#7d8ca3',
-  'metalloid':       '#c9a227',
-  'nonmetal':        '#2a9d5c',
-  'halogen':         '#1f9e89',
-  'noble-gas':       '#8d5bd4',
-  'lanthanide':      '#c95f8e',
-  'actinide':        '#a4636f'
-};
-
-function createElementTexture(element, atomicNumber, bgColor) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;                       // doubled resolution = crisp text
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = bgColor;                  // category color
-  ctx.fillRect(0, 0, 256, 256);
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(6, 6, 244, 244);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'left';                   // atomic number, top-left corner
-  ctx.textBaseline = 'top';
-  ctx.font = 'bold 40px Arial';
-  ctx.fillText(String(atomicNumber), 16, 12);
-
-  ctx.textAlign = 'center';                 // big symbol, center
-  ctx.textBaseline = 'middle';
-  ctx.font = 'bold 110px Arial';
-  ctx.fillText(element.symbol, 128, 128);
-
-  ctx.font = '28px Arial';                  // name, bottom (maxWidth squeezes long names)
-  ctx.fillText(element.name, 128, 226, 236);
-
-  return new THREE.CanvasTexture(canvas);
-}
-
-const tileStep = 0.30;   // tile size 0.28 m + gap 0.02 m (classroom-poster sized)
-
-elementsData.forEach((element, index) => {
-  const atomicNumber = index + 1;
-  const cell = getGridPosition(atomicNumber);
-  const color = categoryColors[getCategory(atomicNumber)];
-
-  const texture = createElementTexture(element, atomicNumber, color);
-  const material = new THREE.MeshStandardMaterial({ map: texture });
-  const tile = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.02), material);
-
-  const xPos = (cell.col - 9.5) * tileStep;      // cols 1..18 centered on x=0
-  const yPos = 3.25 - cell.row * tileStep;       // row 1 near ceiling, rows descend
-  tile.position.set(xPos, yPos, -4.96);
-
-  tile.userData = {
-    name: element.name + ' (' + element.symbol + ')',
-    description: element.fact + ' ' + element.use,
-    isElement: true
-  };
-
-  interactableObjects.push(tile);
-  elementsGroup.add(tile);
-});
-scene.add(elementsGroup);
-
-// Dark board behind the tiles ("poster frame")
-const board = new THREE.Mesh(
-  new THREE.BoxGeometry(5.9, 3.1, 0.04),
-  new THREE.MeshStandardMaterial({ color: 0x22303c, roughness: 0.85 })
-);
-board.position.set(0, 1.68, -4.99);
-scene.add(board);
-
-// Title strip
-function createTitleTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#22303c';
-  ctx.fillRect(0, 0, 1024, 128);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 64px Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(' Elements', 512, 64);
-  return new THREE.CanvasTexture(canvas);
-}
-const title = new THREE.Mesh(
-  new THREE.PlaneGeometry(3, 0.375),   // same 8:1 ratio as the 1024x128 canvas
-  new THREE.MeshStandardMaterial({ map: createTitleTexture() })
-);
-title.position.set(0, 3.3, -4.97);
-scene.add(title);
-// Note: Make sure your folder is lowercase 'models' if that's how you named it in VS Code!
 // Load the TABLE first. Only when it's loaded do we know how tall it is -
 // then we load the items that sit on top of it.
 // 3rd argument = REAL HEIGHT IN METERS (loadModel auto-scales to match).
@@ -344,8 +90,8 @@ loadModel('/Models/folding_table.glb', { x: 0, y: 0, z: -3.2 }, 0.74, 'Folding T
     loadModel('/Models/beaker.glb', { x: -0.25, y: tableTopY, z: -3.2 }, 0.12, 'Beaker',
       'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
   }
-
 );
+
 loadModel('/Models/FireEx.glb', { x: 6.85, y: 1.0, z: 2 }, 0.55, 'Fire Extinguisher',
   'A fire extinguisher is a device used to put out small fires. It contains a pressurized agent that is sprayed onto the fire to extinguish it.',
   (model) => {
@@ -398,18 +144,18 @@ window.addEventListener('click', (event) => {
   }
 });
 
-// 8. Animation Loop
+// 6. Animation Loop
 const clock = new THREE.Clock();      // measures real time between frames
 
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
-  updatePlayer(delta);
+  player.update(delta);
   renderer.render(scene, camera);
 }
 animate();
 
-// 9. Window Resize
+// 7. Window Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
