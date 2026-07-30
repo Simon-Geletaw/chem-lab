@@ -7,7 +7,76 @@
     <title>chem-lab</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="start-overlay">
+      <div id="start-card">
+        <h1>Chemistry Lab</h1>
+        <p>Click anywhere to enter</p>
+        <p class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor</p>
+      </div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="info-panel">
+      <button id="info-close">✕</button>
+      <h2 id="info-title"></h2>
+      <p id="info-description"></p>
+    </div>
     <script type="module" src="/src/main.js"></script>
+
+    <style>
+      #start-overlay {
+        position: fixed;
+        inset: 0;                       /* shorthand: top/right/bottom/left = 0 */
+        display: flex;                  /* center the card both ways */
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 18, 26, 0.75);
+        z-index: 20;                    /* above the canvas AND the info panel */
+        cursor: pointer;
+        font-family: system-ui, sans-serif;
+        color: #fff;
+        text-align: center;
+      }
+      #start-card h1 { margin: 0 0 8px; font-size: 42px; letter-spacing: 2px; }
+      #start-card p  { margin: 4px 0; font-size: 18px; opacity: 0.9; }
+      #start-card .keys { font-size: 14px; opacity: 0.65; margin-top: 14px; }
+
+      #crosshair {
+        display: none;                  /* only shown while pointer is locked */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;          /* center the dot exactly */
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+        z-index: 15;
+        pointer-events: none;           /* clicks pass straight through it */
+      }
+
+      #info-panel {
+        display: none;                 /* hidden until something is clicked */
+        position: fixed;               /* floats over the 3D canvas */
+        top: 20px;
+        right: 20px;
+        width: 300px;
+        padding: 16px 20px;
+        background: rgba(20, 30, 40, 0.88);
+        color: #fff;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        font-family: system-ui, sans-serif;
+        z-index: 10;                   /* draw on top of the canvas */
+      }
+      #info-panel h2  { margin: 0 0 8px; font-size: 20px; }
+      #info-panel p   { margin: 0; font-size: 14px; line-height: 1.5; }
+      #info-close {
+        position: absolute;
+        top: 8px; right: 10px;
+        background: none; border: none;
+        color: #fff; font-size: 16px; cursor: pointer;
+      }
+    </style>
   </body>
 </html>
