@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {elementsData} from './periodicTable.js'; // Importing elements data
 // 1. Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x222222); // Applied background directly to scene
+scene.background = new THREE.Color(0xcfdde6); // Applied background directly to scene
 
 // 2. Camera
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -51,7 +51,7 @@ controls.maxDistance = 30;
 // 5. Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); 
 scene.add(ambientLight);
-
+const fillLight = new THREE.HemisphereLight(0xffffff, 0x777788, 0.6);
 const dirLight = new THREE.DirectionalLight(0xffffff, 1); 
 dirLight.position.set(10, 20, 10); 
 dirLight.castShadow = true; 
@@ -60,21 +60,53 @@ dirLight.shadow.camera.right = 10;
 dirLight.shadow.camera.top = 10; 
 dirLight.shadow.camera.bottom = -10; 
 scene.add(dirLight);
+scene.add(fillLight);
 
 // 6. Room Geometry
-const floorGeometry = new THREE.PlaneGeometry(100, 100); 
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8, metalness: 0.2 }); 
-const floor = new THREE.Mesh(floorGeometry, floorMaterial); 
+// 6. Room Geometry
+// Room dimensions: 40 wide (x), 30 deep (z: -15 to +15), 15 tall (y)
+const floorGeometry = new THREE.PlaneGeometry(40, 30);
+const floorMaterial = new THREE.MeshStandardMaterial({
+  map: createFloorTexture(),   // 'map' = the color texture the material wears
+  roughness: 0.7,
+  metalness: 0.1
+});
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true; // FLOOR CAN NOW RECEIVE SHADOWS
-scene.add(floor); 
+floor.receiveShadow = true;
+scene.add(floor);
 
-const wallGeometry = new THREE.PlaneGeometry(40, 15); 
-const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xabcdef, roughness: 0.8, metalness: 0.2 }); 
-const backwall = new THREE.Mesh(wallGeometry, wallMaterial); 
-backwall.position.set(0, 7.5, -15); 
-backwall.receiveShadow = true; 
-scene.add(backwall); 
+const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.9, metalness: 0.0 });
+
+// Back wall (you already had this one)
+const backwall = new THREE.Mesh(new THREE.PlaneGeometry(40, 15), wallMaterial);
+backwall.position.set(0, 7.5, -15);
+backwall.receiveShadow = true;
+scene.add(backwall);
+
+// Left wall — rotated +90° so its visible face points INTO the room
+const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(30, 15), wallMaterial);
+leftWall.position.set(-20, 7.5, 0);
+leftWall.rotation.y = Math.PI / 2;
+leftWall.receiveShadow = true;
+scene.add(leftWall);
+
+// Right wall — rotated −90°, same reason
+const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(30, 15), wallMaterial);
+rightWall.position.set(20, 7.5, 0);
+rightWall.rotation.y = -Math.PI / 2;
+rightWall.receiveShadow = true;
+scene.add(rightWall);
+
+// Ceiling — rotated +90° around X so it faces DOWN into the room
+const ceiling = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 30),
+  new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.9 })
+);
+ceiling.position.set(0, 15, 0);
+ceiling.rotation.x = Math.PI / 2;
+scene.add(ceiling);
+ 
 
 // 7. 3D Models
 const loader = new GLTFLoader(); // Fixed typo here
