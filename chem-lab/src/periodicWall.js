@@ -118,7 +118,8 @@ export function createPeriodicWall(scene, interactableObjects) {
       name: element.name + ' (' + element.symbol + ')',
       description: element.fact + ' ' + element.use,
       isElement: true,
-      atomicNumber: atomicNumber
+      atomicNumber: atomicNumber,
+      homePosition: tile.position.clone()   // where to fly back to after popping out
     };
 
     interactableObjects.push(tile);

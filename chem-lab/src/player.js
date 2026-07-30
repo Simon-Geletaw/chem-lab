@@ -12,9 +12,16 @@ export function createPlayer(camera) {
   const controls = new PointerLockControls(camera, document.body);
 
   const overlay = document.getElementById('start-overlay');
+  const crosshair = document.getElementById('crosshair');
   overlay.addEventListener('click', () => controls.lock());
-  controls.addEventListener('lock',   () => { overlay.style.display = 'none'; });
-  controls.addEventListener('unlock', () => { overlay.style.display = 'flex'; });
+  controls.addEventListener('lock', () => {
+    overlay.style.display = 'none';
+    crosshair.style.display = 'block';
+  });
+  controls.addEventListener('unlock', () => {
+    overlay.style.display = 'flex';
+    crosshair.style.display = 'none';
+  });
 
   // Keyboard state: we DON'T move inside the event (keydown only repeats
   // stutteringly). We just record which keys are held, and move every frame.

@@ -14,6 +14,7 @@
         <p class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor</p>
       </div>
     </div>
+    <div id="crosshair"></div>
     <div id="info-panel">
       <button id="info-close">✕</button>
       <h2 id="info-title"></h2>
@@ -38,6 +39,21 @@
       #start-card h1 { margin: 0 0 8px; font-size: 42px; letter-spacing: 2px; }
       #start-card p  { margin: 4px 0; font-size: 18px; opacity: 0.9; }
       #start-card .keys { font-size: 14px; opacity: 0.65; margin-top: 14px; }
+
+      #crosshair {
+        display: none;                  /* only shown while pointer is locked */
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;          /* center the dot exactly */
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+        z-index: 15;
+        pointer-events: none;           /* clicks pass straight through it */
+      }
 
       #info-panel {
         display: none;                 /* hidden until something is clicked */
