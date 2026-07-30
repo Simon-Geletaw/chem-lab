@@ -26,10 +26,13 @@ createRoom(scene);
 createPeriodicWall(scene, interactableObjects);
 const player = createPlayer(camera);
 // Furniture registers its bounding boxes in player.colliders so you bump into it
-createFurniture(scene, interactableObjects, player.colliders);
+const furniture = createFurniture(scene, interactableObjects, player.colliders);
 
 // Clicking: element tiles pop out with a 3D card; other objects use the HTML panel
 const interactions = createInteractions(camera, player.controls, scene, interactableObjects);
+
+// Walk-up info cards: fade in when the player comes within ~2.5 m
+furniture.proximitySpots.forEach((spot) => interactions.addProximityPanel(spot));
 
 // 6. Animation Loop
 const clock = new THREE.Clock();      // measures real time between frames

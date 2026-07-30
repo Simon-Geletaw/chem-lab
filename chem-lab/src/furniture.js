@@ -316,4 +316,30 @@ export function createFurniture(scene, interactableObjects, colliders) {
   );
   bracket.position.set(6.97, 1.3, 2);
   scene.add(bracket);
+
+  // "Walk-up spots": where a proximity info card should float, and what it
+  // says. main.js hands these to interactions.addProximityPanel().
+  // Anchors sit ~0.5 m above/beside their object, at comfortable reading height.
+  return {
+    proximitySpots: [
+      {
+        position: new THREE.Vector3(0, 1.7, -1.5),
+        title: 'Lab Bench',
+        description: islandBench.userData.description,
+        radius: 2.5
+      },
+      {
+        position: new THREE.Vector3(6.3, 1.7, 2),
+        title: 'Fire Extinguisher',
+        description: 'A fire extinguisher puts out small fires by spraying a pressurized agent. In a chemistry lab it hangs near the door, ready for burner or chemical fires.',
+        radius: 2.5
+      },
+      {
+        position: new THREE.Vector3(-6.2, 1.9, -1),
+        title: 'Chemical Shelf',
+        description: 'Reagent bottles used in experiments: acids like HCl and H2SO4, bases like NaOH, and colorful salts like CuSO4 and KMnO4. Always read the label before use!',
+        radius: 2.5
+      }
+    ]
+  };
 }

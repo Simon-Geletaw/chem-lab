@@ -30,9 +30,10 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   return y + lineHeight;                    // where the NEXT block may start
 }
 
-// The floating info card texture: dark rounded panel, title, atomic number,
-// wrapped description. Same canvas-texture trick as the element tiles.
-function createElementCardTexture(name, atomicNumber, description) {
+// The floating info card texture: dark rounded panel, title, optional badge
+// (e.g. '#26' for iron), wrapped description. Used by BOTH the element
+// pop-out cards and the walk-up proximity cards.
+function createCardTexture(title, description, badge) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 340;
@@ -50,11 +51,13 @@ function createElementCardTexture(name, atomicNumber, description) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.font = 'bold 36px Arial';
-  ctx.fillText(name, 28, 26, 380);
+  ctx.fillText(title, 28, 26, 380);
 
-  ctx.textAlign = 'right';                  // atomic number badge, top-right
-  ctx.fillStyle = '#9fc5e8';
-  ctx.fillText('#' + atomicNumber, 484, 26);
+  if (badge) {
+    ctx.textAlign = 'right';                // badge, top-right corner
+    ctx.fillStyle = '#9fc5e8';
+    ctx.fillText(badge, 484, 26);
+  }
 
   ctx.textAlign = 'left';
   ctx.fillStyle = '#e8eef2';
@@ -96,7 +99,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     card = new THREE.Mesh(
       new THREE.PlaneGeometry(0.9, 0.6),
       new THREE.MeshBasicMaterial({        // Basic = readable in any lighting
-        map: createElementCardTexture(name, atomicNumber, description),
+        map: createCardTexture(name, description, '#' + atomicNumber),
         transparent: true,
         opacity: 0,                        // fades in inside update()
         depthWrite: false                  // avoids flicker with the glass/tiles
@@ -125,6 +128,28 @@ export function createInteractions(camera, controls, scene, interactableObjects)
       scene.remove(card);
       card = null;
     }
+  }
+
+  // --- proximity panels: walk close -> card fades in, walk away -> fades out ---
+  const proximityPanels = [];
+
+  function addProximityPanel({ position, title, description, radius = 2.5 }) {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.9, 0.55),
+      new THREE.MeshBasicMaterial({
+        map: createCardTexture(title, description),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false
+      })
+    );
+    mesh.position.copy(position);
+    mesh.visible = false;
+    scene.add(mesh);
+
+    const panel = { mesh, radius, forced: false };  // 'forced' = the tour can pin it on
+    proximityPanels.push(panel);
+    return panel;
   }
 
   window.addEventListener('click', (event) => {
@@ -161,10 +186,22 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   });
 
   return {
+    addProximityPanel,
+    panels: proximityPanels,
+
     update(delta) {
       // The easing idiom: each frame move a FRACTION of the remaining distance.
       // Fast at first, slows near the target = smooth without a tween library.
       const t = Math.min(1, delta * 8);
+
+      // Proximity cards: fade by distance, always turn to face the player.
+      for (const panel of proximityPanels) {
+        const near = camera.position.distanceTo(panel.mesh.position) < panel.radius;
+        const target = (panel.forced || near) ? 1 : 0;
+        panel.mesh.material.opacity += (target - panel.mesh.material.opacity) * Math.min(1, delta * 6);
+        panel.mesh.visible = panel.mesh.material.opacity > 0.01;
+        if (panel.mesh.visible) panel.mesh.lookAt(camera.position);  // billboard
+      }
 
       if (selectedTile) {
         const target = selectedTile.userData.homePosition.clone().add(POP_OFFSET);
