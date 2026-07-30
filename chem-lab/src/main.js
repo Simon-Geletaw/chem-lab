@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-
+import {elementsData} from './periodicTable.js'; // Importing elements data
 // 1. Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222222); // Applied background directly to scene
@@ -74,7 +74,61 @@ function loadModel(url, position, scale, name, description){
     interactableObjects.push(model); // Only pushing once now
   });
 }
+const elementsGroup = new THREE.Group();
+const tilesize = 1.1;
+const gap = 0.1;
 
+function createElementTexture(symbol){
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext('2d');
+  //Background Color
+  context.fillStyle = '#2a9d8f'; // Fixed color code
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  //border
+  context.strokeStyle = '#e9c46a';
+  context.lineWidth = 8;
+  context.strokeRect(4, 4, 120, 120);
+  //Text
+  context.fillStyle = '#ffffff';
+  context.font = 'bold 64px Arial';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(symbol, canvas.width / 2, canvas.height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+elementsData.forEach((element, index) => {
+  const column = index % 18; 
+  const row = Math.floor(index / 18); 
+  
+  const texture = createElementTexture(element.symbol); // Fixed typo: texutre -> texture
+  const material = new THREE.MeshStandardMaterial({ map: texture });
+  const geometry = new THREE.BoxGeometry(tilesize, tilesize, 0.1);
+  
+  // WE MUST CREATE THE MESH HERE!
+  const tile = new THREE.Mesh(geometry, material);
+  
+  const xPos = (column - 8.5) * (tilesize + gap); 
+  const yPos = (3 - row) * (tilesize + gap);
+  
+  // Now we can set the position on the tile
+  tile.position.set(xPos, yPos, -14.9);
+
+  // 
+  tile.userData = {
+    name: element.name,
+    description: element.fact + " " + element.use,
+    isElement: true
+  };
+  
+  interactableObjects.push(tile);
+  elementsGroup.add(tile);
+});
+
+scene.add(elementsGroup);
 // Note: Make sure your folder is lowercase 'models' if that's how you named it in VS Code!
 loadModel('../public/Models/beaker.glb', {x:-2, y:0, z:0}, 1, 'Beaker', 'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
 loadModel('../public/Models/bunsenBurner.glb', {x:0, y:0, z:2}, 1, 'Bunsen Burner', 'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, which is used for heating, sterilization, and combustion.');
