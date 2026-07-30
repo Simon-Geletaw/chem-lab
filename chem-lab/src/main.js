@@ -16,6 +16,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true; // ENABLED SHADOWS HERE
 document.body.appendChild(renderer.domElement);
 
+// lab floor
 // 4. Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
@@ -87,7 +88,8 @@ function createElementTexture(symbol){
   context.fillStyle = '#2a9d8f'; // Fixed color code
   context.fillRect(0, 0, canvas.width, canvas.height);
   //border
-  context.strokeStyle = '#e9c46a';
+
+  context.strokeStyle = '#c9af6d';
   context.lineWidth = 8;
   context.strokeRect(4, 4, 120, 120);
   //Text
@@ -130,11 +132,10 @@ elementsData.forEach((element, index) => {
 
 scene.add(elementsGroup);
 // Note: Make sure your folder is lowercase 'models' if that's how you named it in VS Code!
-loadModel('../public/Models/beaker.glb', {x:-2, y:0, z:0}, 1, 'Beaker', 'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
-loadModel('../public/Models/bunsenBurner.glb', {x:0, y:0, z:2}, 1, 'Bunsen Burner', 'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, which is used for heating, sterilization, and combustion.');
-loadModel('../public/Models/FireEx.glb', {x:0, y:0, z:-2}, 1, 'Fire Extinguisher', 'A fire extinguisher is a device that is used to put out small fires. It typically contains a pressurized agent that can be sprayed onto the fire to extinguish it.');
-loadModel('../public/Models/folding_table.glb', {x:2, y:0, z:0}, 1, 'Folding Table', 'A folding table is a type of table that can be collapsed and stored away when not in use. It is often used in laboratories for temporary workspaces or for events where additional table space is needed.');
-
+loadModel('/Models/beaker.glb', {x:-2, y:0, z:0}, 1, 'Beaker', 'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
+loadModel('/Models/bunsen_burner.glb', {x:0, y:0, z:2}, 1, 'Bunsen Burner', 'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, which is used for heating, sterilization, and combustion.');
+loadModel('/Models/FireEx.glb', {x:0, y:0, z:-2}, 1, 'Fire Extinguisher', 'A fire extinguisher is a device that is used to put out small fires. It typically contains a pressurized agent that can be sprayed onto the fire to extinguish it.');
+loadModel('/Models/folding_table.glb', {x:2, y:0, z:0}, 1, 'Folding Table', 'A folding table is a type of table that can be collapsed and stored away when not in use. It is often used in laboratories for temporary workspaces.');
 // 8. Animation Loop
 function animate() {
   requestAnimationFrame(animate);
