@@ -5,6 +5,12 @@ import { createPlayer } from './player.js';
 import { createFurniture } from './furniture.js';
 import { createInteractions } from './interactions.js';
 import { createTour } from './tour.js';
+import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
+
+// PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
+// bottles are generated from it. Top-level await works in Vite ES modules.
+// (Phase 10 swaps the data source to the backend API — this line stays.)
+await loadChemistry();
 
 // 1. Scene
 const scene = new THREE.Scene();
@@ -27,7 +33,7 @@ createRoom(scene);
 createPeriodicWall(scene, interactableObjects);
 const player = createPlayer(camera);
 // Furniture registers its bounding boxes in player.colliders so you bump into it
-const furniture = createFurniture(scene, interactableObjects, player.colliders);
+const furniture = createFurniture(scene, interactableObjects, player.colliders, getShelfChemicals());
 
 // Clicking: element tiles pop out with a 3D card; other objects use the HTML panel
 const interactions = createInteractions(camera, player.controls, scene, interactableObjects);

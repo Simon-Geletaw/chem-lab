@@ -203,7 +203,12 @@ function createBottle(liquidColor, labelText, labelAngle) {
 }
 
 // Two wall shelves with a row of labeled chemical bottles each.
-function createShelves(scene, interactableObjects) {
+//
+// PHASE 1 REFACTOR: the chemical list used to be hard-coded right here. Now it
+// arrives as data (from server/data/chemicals.json via chemistry/registry.js).
+// Same visuals, different SOURCE — that one change is what lets a teacher add a
+// chemical without a programmer (book Ch 4).
+function createShelves(scene, interactableObjects, chemicals) {
   const shelves = new THREE.Group();
   const boardMat = new THREE.MeshStandardMaterial({ color: 0xb0a58f, roughness: 0.8 });
 
@@ -216,19 +221,29 @@ function createShelves(scene, interactableObjects) {
     shelves.add(board);
   }
 
-  // Bottles: name + liquid color. Labels face +x (into the room).
-  const chemicals = [
-    ['HCl',     0xf0e68c], ['NaOH',    0xf5f5f5], ['H₂SO₄', 0xf7e8b0], ['CuSO₄', 0x2e86c1],
-    ['KMnO₄', 0x6c3483], ['Ethanol', 0xd5f5e3], ['NaCl',    0xffffff], ['Acetone', 0xd6eaf8]
-  ];
   const labelAngle = Math.PI / 2;           // face +x = into the room
+  const PER_BOARD = 5;                      // wraps to the upper board after 5
 
-  chemicals.forEach(([name, color], i) => {
-    const shelfY = i < 4 ? 1.415 : 1.765;   // first 4 on lower board, rest on top
-    const zPos = -1.9 + (i % 4) * 0.6;
-    const bottle = createBottle(color, name, labelAngle);
+  chemicals.forEach((chem, i) => {
+    const shelfY = i < PER_BOARD ? 1.415 : 1.765;
+    const zPos = -1.9 + (i % PER_BOARD) * 0.5;
+
+    // The label shows the short formula; the full name lives in userData.
+    const bottle = createBottle(chem.color, chem.formula, labelAngle);
     bottle.position.set(-6.85, shelfY, zPos);
+
+    // The identity card the hand system reads (book Ch 2.1 pattern #2).
+    // homePosition is where Q sends the bottle back to.
+    bottle.userData = {
+      chemicalId: chem.id,
+      isBottle: true,
+      name: chem.name,
+      description: chem.description,
+      homePosition: bottle.position.clone()
+    };
+
     shelves.add(bottle);
+    interactableObjects.push(bottle);       // so the crosshair can find it
   });
 
   shelves.userData = {
@@ -240,10 +255,10 @@ function createShelves(scene, interactableObjects) {
 }
 
 // ---------- put it all together ----------
-export function createFurniture(scene, interactableObjects, colliders) {
+export function createFurniture(scene, interactableObjects, colliders, shelfChemicals) {
   const TOP = 0.9;   // bench worktop height in meters
 
-  createShelves(scene, interactableObjects);
+  createShelves(scene, interactableObjects, shelfChemicals);
 
   // Island bench in the middle of the room — the main workstation
   const islandBench = createBench(0, -1.5, 0);
