@@ -46,8 +46,9 @@ const interactions = createInteractions(camera, player.controls, scene, interact
 // The reaction vessel on the island bench (Phase 3)
 const beaker = createBeaker(scene, interactableObjects, camera);
 
-// The hand: E picks up an aimed bottle, Q sends it home (Phase 2)
-const hand = createHand(camera, scene, interactableObjects);
+// The hand: E picks up an aimed bottle / pours it into the beaker, Q sends it
+// home. Created AFTER the beaker because it pours into it (Phase 2 + 4).
+const hand = createHand(camera, scene, interactableObjects, beaker);
 
 // Temporary Phase 3 test hook — call beaker.receive('h2so4') in the console.
 window.beaker = beaker;
