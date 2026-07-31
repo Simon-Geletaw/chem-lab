@@ -18,7 +18,7 @@ import { findReaction, defaultMix } from './chemistry/reactionEngine.js';
 
 const getReactions = () => getData().reactions;
 
-export function createBeaker(scene, interactableObjects, camera) {
+export function createBeaker(scene, interactableObjects, camera, effectRunner) {
   const group = new THREE.Group();
 
   // --- glass: an OPEN cylinder (openEnded=true keeps the top uncovered).
@@ -98,7 +98,6 @@ export function createBeaker(scene, interactableObjects, camera) {
   let state = 'EMPTY';                // 'EMPTY' | 'HAS_CONTENTS' | 'REACTING'
   let contentsId = null;
   let pendingResult = null;           // what the beaker becomes once effects finish
-  let reactionClock = 0;
 
   function setLabel(chem) {
     if (label.material.map) label.material.map.dispose();   // old texture -> GPU leak otherwise
@@ -142,14 +141,17 @@ export function createBeaker(scene, interactableObjects, camera) {
       return;
     }
 
-    // A real reaction. Effects and the warning card arrive in Phases 6-7; until
-    // then a 1.5 s timer stands in for "effects still running".
+    // A real reaction (Ch 6.4 steps 7-9): hand the effect DESCRIPTORS — plain
+    // data straight from the teacher's JSON — to the runner, which turns them
+    // into particles, lights and shakes. The beaker never knows how.
     state = 'REACTING';
     pendingResult = rule.result.chemicalId;
-    reactionClock = 0;
 
     if (rule.danger) console.warn('DANGER:', rule.warning.title, '—', rule.warning.text);
-    console.log('REACTION:', rule.id, '-> effects:', rule.effects.map((e) => e.type).join(', '));
+
+    const mouth = group.position.clone();
+    mouth.y += 0.14;                     // effects spawn at the rim, not the base
+    effectRunner.play(rule.effects, mouth);
   }
 
   // R = reset, for demo flow (book Ch 3.3 step 3). Guarded so typing R in a
@@ -171,11 +173,10 @@ export function createBeaker(scene, interactableObjects, camera) {
       // lookAt takes a WORLD position; the group is unrotated, so this is safe.
       if (label.visible) label.lookAt(camera.position);
 
-      // While REACTING, wait for the effects to finish, then settle into the
-      // product. Phase 6 replaces the timer with `!effectRunner.busy`.
-      if (state === 'REACTING') {
-        reactionClock += delta;
-        if (reactionClock > 1.5) setContents(pendingResult);   // sets state too
+      // While REACTING, wait for every effect to finish, then settle into the
+      // product (Ch 6.4 step 10). runner.busy replaces the Phase 5 timer.
+      if (state === 'REACTING' && !effectRunner.busy) {
+        setContents(pendingResult);   // sets state = HAS_CONTENTS too
       }
     }
   };

@@ -7,6 +7,7 @@ import { createInteractions } from './interactions.js';
 import { createTour } from './tour.js';
 import { createHand } from './hand.js';
 import { createBeaker } from './beaker.js';
+import { createEffectRunner } from './effects/index.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 
 // PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
@@ -43,8 +44,17 @@ const furniture = createFurniture(scene, interactableObjects, player.colliders, 
 // Clicking: element tiles pop out with a 3D card; other objects use the HTML panel
 const interactions = createInteractions(camera, player.controls, scene, interactableObjects);
 
-// The reaction vessel on the island bench (Phase 3)
-const beaker = createBeaker(scene, interactableObjects, camera);
+// Effects: descriptors from the teacher's JSON become particles/lights/shakes.
+// getExtras supplies the two things effects can't build themselves (Ch 7.4):
+// the beaker's liquid material (colorChange) and the camera (shake). It's a
+// function because the beaker doesn't exist yet on this line — lazy lookup.
+const effectRunner = createEffectRunner(scene, () => ({
+  liquidMaterial: beaker.liquidMaterial,
+  camera
+}));
+
+// The reaction vessel on the island bench (Phase 3 + 5 + 6)
+const beaker = createBeaker(scene, interactableObjects, camera, effectRunner);
 
 // The hand: E picks up an aimed bottle / pours it into the beaker, Q sends it
 // home. Created AFTER the beaker because it pours into it (Phase 2 + 4).
@@ -68,6 +78,7 @@ function animate() {
   player.update(delta);               // walking (does nothing while the tour runs)
   hand.update(delta);                 // carry/return animation + hover hints
   beaker.update(delta);               // billboard the content label
+  effectRunner.update(delta);         // animate live effects, dispose finished ones
   tour.update(delta);                 // tour camera (does nothing while idle)
   interactions.update(delta);
   renderer.render(scene, camera);
