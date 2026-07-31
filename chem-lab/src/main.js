@@ -5,6 +5,7 @@ import { createPlayer } from './player.js';
 import { createFurniture } from './furniture.js';
 import { createInteractions } from './interactions.js';
 import { createTour } from './tour.js';
+import { createHand } from './hand.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 
 // PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
@@ -20,6 +21,9 @@ scene.background = new THREE.Color(0xcfdde6);
 // SCALE RULE: 1 unit = 1 METER. Eye height of a standing person ≈ 1.6 m.
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 1.6, 4);
+// Ch 10.3: the camera itself renders fine outside the scene graph, but its
+// CHILDREN (the held bottle!) are only drawn if the camera is IN the scene.
+scene.add(camera);
 
 // 3. Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -38,6 +42,9 @@ const furniture = createFurniture(scene, interactableObjects, player.colliders, 
 // Clicking: element tiles pop out with a 3D card; other objects use the HTML panel
 const interactions = createInteractions(camera, player.controls, scene, interactableObjects);
 
+// The hand: E picks up an aimed bottle, Q sends it home (Phase 2)
+const hand = createHand(camera, scene, interactableObjects);
+
 // Walk-up info cards: fade in when the player comes within ~2.5 m
 furniture.proximitySpots.forEach((spot) => interactions.addProximityPanel(spot));
 
@@ -51,6 +58,7 @@ function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
   player.update(delta);               // walking (does nothing while the tour runs)
+  hand.update(delta);                 // carry/return animation + hover hints
   tour.update(delta);                 // tour camera (does nothing while idle)
   interactions.update(delta);
   renderer.render(scene, camera);

@@ -1,8 +1,0 @@
-{
-  "id": "h2so4",              // machine name: lowercase, no spaces — the KEY others reference
-  "name": "Sulfuric Acid",    // human name for labels and cards
-  "formula": "H₂SO₄",         // shown on the bottle label (unicode subscripts work in canvas)
-  "color": "#f7e8b0",         // liquid + bottle color (hex string, teacher-friendly)
-  "hazard": "corrosive",      // one of: none | corrosive | flammable | toxic | oxidizer
-  "description": "Dense oily liquid. Reacts violently with water — always add ACID to WATER."
-}
