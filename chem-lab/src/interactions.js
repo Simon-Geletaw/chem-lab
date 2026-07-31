@@ -81,6 +81,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   });
 
   // --- tile pop-out state ---
+  let pickingEnabled = true;                // the tour sets this false while driving
   let selectedTile = null;                  // the tile currently popped out
   const returningTiles = new Set();         // tiles flying back home
   let card = null;                          // the floating info card mesh
@@ -153,6 +154,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   }
 
   window.addEventListener('click', (event) => {
+    if (!pickingEnabled) return;      // the tour turns picking off while it drives
     // Ignore clicks on UI elements (start overlay, info panel, mobile D-pad...)
     if (event.target.closest('#start-overlay') ||
         event.target.closest('#info-panel') ||
@@ -188,6 +190,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   return {
     addProximityPanel,
     panels: proximityPanels,
+    setPicking(v) { pickingEnabled = v; if (!v) deselect(); },
 
     update(delta) {
       // The easing idiom: each frame move a FRACTION of the remaining distance.

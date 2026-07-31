@@ -4,6 +4,7 @@ import { createPeriodicWall } from './periodicWall.js';
 import { createPlayer } from './player.js';
 import { createFurniture } from './furniture.js';
 import { createInteractions } from './interactions.js';
+import { createTour } from './tour.js';
 
 // 1. Scene
 const scene = new THREE.Scene();
@@ -34,13 +35,17 @@ const interactions = createInteractions(camera, player.controls, scene, interact
 // Walk-up info cards: fade in when the player comes within ~2.5 m
 furniture.proximitySpots.forEach((spot) => interactions.addProximityPanel(spot));
 
+// Guided tour: camera visits 4 stations, then hands control back
+const tour = createTour(camera, player, interactions);
+
 // 6. Animation Loop
 const clock = new THREE.Clock();      // measures real time between frames
 
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
-  player.update(delta);
+  player.update(delta);               // walking (does nothing while the tour runs)
+  tour.update(delta);                 // tour camera (does nothing while idle)
   interactions.update(delta);
   renderer.render(scene, camera);
 }

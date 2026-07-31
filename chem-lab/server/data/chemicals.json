@@ -1,0 +1,219 @@
+{
+  "chemicals": [
+    {
+      "id": "water",
+      "name": "Water",
+      "formula": "H2O",
+      "color": "#cfe8f5",
+      "hazard": "none",
+      "description": "Distilled water. The universal solvent. Used to dilute acids and bases - but ALWAYS add acid to water, never water to acid."
+    },
+    {
+      "id": "hcl",
+      "name": "Hydrochloric Acid",
+      "formula": "HCl",
+      "color": "#f0e68c",
+      "hazard": "corrosive",
+      "description": "A strong acid that fumes in air. Reacts with bases to form salt and water, and with metals to release hydrogen gas."
+    },
+    {
+      "id": "naoh",
+      "name": "Sodium Hydroxide",
+      "formula": "NaOH",
+      "color": "#f5f5f5",
+      "hazard": "corrosive",
+      "description": "A strong base, also called caustic soda. Dissolving it in water releases heat. Neutralises acids."
+    },
+    {
+      "id": "h2so4",
+      "name": "Sulfuric Acid",
+      "formula": "H2SO4",
+      "color": "#f7e8b0",
+      "hazard": "corrosive",
+      "description": "A dense, oily strong acid. Its heat of dilution is violent - adding water to concentrated sulfuric acid can make it boil and spit."
+    },
+    {
+      "id": "cuso4",
+      "name": "Copper(II) Sulfate",
+      "formula": "CuSO4",
+      "color": "#2e86c1",
+      "hazard": "toxic",
+      "description": "Bright blue salt solution. Reacts with sodium hydroxide to form a pale blue precipitate of copper hydroxide."
+    },
+    {
+      "id": "kmno4",
+      "name": "Potassium Permanganate",
+      "formula": "KMnO4",
+      "color": "#6c3483",
+      "hazard": "oxidizer",
+      "description": "A deep purple oxidising agent. Its colour fades as it is reduced, which makes it a useful visual indicator."
+    },
+    {
+      "id": "ethanol",
+      "name": "Ethanol",
+      "formula": "C2H5OH",
+      "color": "#d5f5e3",
+      "hazard": "flammable",
+      "description": "A volatile, flammable alcohol. Burns with a pale blue flame. Keep away from open burners."
+    },
+    {
+      "id": "nacl",
+      "name": "Sodium Chloride",
+      "formula": "NaCl",
+      "color": "#ffffff",
+      "hazard": "none",
+      "description": "Common table salt. Dissolves readily in water to give a clear, neutral solution."
+    },
+    {
+      "id": "acetone",
+      "name": "Acetone",
+      "formula": "C3H6O",
+      "color": "#d6eaf8",
+      "hazard": "flammable",
+      "description": "A fast-evaporating solvent used to clean glassware. Highly flammable vapour."
+    },
+
+    {
+      "id": "dilute-h2so4",
+      "name": "Dilute Sulfuric Acid",
+      "formula": "H2SO4 (aq)",
+      "color": "#e8dcb0",
+      "hazard": "corrosive",
+      "shelf": false,
+      "description": "Sulfuric acid diluted in water. Still corrosive, but far less aggressive than the concentrated form."
+    },
+    {
+      "id": "nacl-solution",
+      "name": "Salt Water",
+      "formula": "NaCl (aq)",
+      "color": "#e6f2f7",
+      "hazard": "none",
+      "shelf": false,
+      "description": "The neutral product of an acid-base reaction, or simply salt dissolved in water."
+    },
+    {
+      "id": "copper-hydroxide",
+      "name": "Copper(II) Hydroxide",
+      "formula": "Cu(OH)2",
+      "color": "#7fc4d8",
+      "hazard": "toxic",
+      "shelf": false,
+      "description": "A pale blue gelatinous precipitate. Formed when a base meets a copper salt solution."
+    },
+    {
+      "id": "mixture",
+      "name": "Unknown Mixture",
+      "formula": "?",
+      "color": "#b9b9b9",
+      "hazard": "none",
+      "shelf": false,
+      "description": "Two substances with no known reaction between them. They have simply mixed."
+    }
+  ],
+
+  "reactions": [
+    {
+      "id": "water-into-conc-acid",
+      "reactants": { "into": "h2so4", "added": "water" },
+      "ordered": true,
+      "danger": true,
+      "warning": {
+        "title": "NEVER add water to concentrated acid!",
+        "text": "Dilution releases intense heat right at the surface. The water can flash-boil and spit concentrated acid out of the beaker and into your face. Correct procedure: add the ACID to the WATER, slowly, down the side of the vessel, while stirring."
+      },
+      "effects": [
+        { "type": "smoke", "color": "#ffffff", "density": 2.5, "duration": 5 },
+        { "type": "bubbles", "intensity": 3, "duration": 4 },
+        { "type": "colorChange", "to": "#d9c9a0", "duration": 2 },
+        { "type": "flash", "color": "#fff2d0", "duration": 0.4 },
+        { "type": "shake", "strength": 0.8, "duration": 1.5 }
+      ],
+      "result": { "chemicalId": "dilute-h2so4", "note": "Acid has splattered - the bench needs cleaning." }
+    },
+    {
+      "id": "acid-into-water",
+      "reactants": { "into": "water", "added": "h2so4" },
+      "ordered": true,
+      "danger": false,
+      "warning": {
+        "title": "Correct procedure: acid into water",
+        "text": "The large volume of water absorbs the heat of dilution safely. The mixture only becomes warm. This is always the right order when diluting a concentrated acid."
+      },
+      "effects": [
+        { "type": "bubbles", "intensity": 1, "duration": 3 },
+        { "type": "smoke", "color": "#eaf4ff", "density": 0.6, "duration": 2.5 },
+        { "type": "colorChange", "to": "#e8dcb0", "duration": 2 }
+      ],
+      "result": { "chemicalId": "dilute-h2so4", "note": "Safely diluted acid, warm to the touch." }
+    },
+    {
+      "id": "neutralisation-hcl-naoh",
+      "reactants": { "into": "hcl", "added": "naoh" },
+      "ordered": false,
+      "danger": false,
+      "warning": {
+        "title": "Neutralisation",
+        "text": "A strong acid plus a strong base gives a neutral salt solution and water: HCl + NaOH -> NaCl + H2O. The reaction is exothermic, so the beaker feels warm."
+      },
+      "effects": [
+        { "type": "bubbles", "intensity": 1.5, "duration": 3 },
+        { "type": "colorChange", "to": "#e6f2f7", "duration": 2.5 }
+      ],
+      "result": { "chemicalId": "nacl-solution", "note": "Neutral salt water." }
+    },
+    {
+      "id": "precipitate-naoh-cuso4",
+      "reactants": { "into": "cuso4", "added": "naoh" },
+      "ordered": false,
+      "danger": false,
+      "warning": {
+        "title": "Precipitation",
+        "text": "Sodium hydroxide meets copper(II) sulfate and an insoluble pale blue solid, copper(II) hydroxide, drops out of the clear blue solution."
+      },
+      "effects": [
+        { "type": "colorChange", "to": "#7fc4d8", "duration": 3 },
+        { "type": "bubbles", "intensity": 0.6, "duration": 2 }
+      ],
+      "result": { "chemicalId": "copper-hydroxide", "note": "A pale blue precipitate has formed." }
+    },
+    {
+      "id": "redox-ethanol-kmno4",
+      "reactants": { "into": "kmno4", "added": "ethanol" },
+      "ordered": false,
+      "danger": false,
+      "effects": [
+        { "type": "colorChange", "to": "#c9a56b", "duration": 4 },
+        { "type": "smoke", "color": "#d8c8a8", "density": 0.8, "duration": 3 }
+      ],
+      "result": { "chemicalId": "mixture", "note": "The purple colour has been discharged by oxidation." }
+    },
+    {
+      "id": "dissolve-nacl-water",
+      "reactants": { "into": "water", "added": "nacl" },
+      "ordered": false,
+      "danger": false,
+      "effects": [
+        { "type": "colorChange", "to": "#e6f2f7", "duration": 2 },
+        { "type": "bubbles", "intensity": 0.4, "duration": 1.5 }
+      ],
+      "result": { "chemicalId": "nacl-solution", "note": "The salt has dissolved completely." }
+    },
+    {
+      "id": "ethanol-flame-test",
+      "reactants": { "into": "kmno4", "added": "acetone" },
+      "ordered": true,
+      "danger": true,
+      "warning": {
+        "title": "Oxidiser plus flammable solvent!",
+        "text": "A strong oxidising agent and a volatile flammable solvent can ignite on contact. Never store or mix oxidisers with solvents; keep them on separate shelves."
+      },
+      "effects": [
+        { "type": "fire", "height": 0.35, "duration": 3 },
+        { "type": "flash", "color": "#ffd27f", "duration": 0.4 },
+        { "type": "smoke", "color": "#3a3a3a", "density": 2, "duration": 4.5 },
+        { "type": "shake", "strength": 0.5, "duration": 1.2 }
+      ],
+      "result": { "chemicalId": "mixture", "note": "Burnt residue - use the fire extinguisher next time." }
+    }
+  ]
+}
