@@ -13,7 +13,10 @@
 // Phase 3 builds EMPTY <-> HAS_CONTENTS and logs the mix; Phase 5 adds the
 // reaction engine + REACTING.
 import * as THREE from 'three';
-import { getChemical } from './chemistry/registry.js';
+import { getChemical, getData } from './chemistry/registry.js';
+import { findReaction, defaultMix } from './chemistry/reactionEngine.js';
+
+const getReactions = () => getData().reactions;
 
 export function createBeaker(scene, interactableObjects, camera) {
   const group = new THREE.Group();
@@ -92,8 +95,10 @@ export function createBeaker(scene, interactableObjects, camera) {
   interactableObjects.push(group);
 
   // ------------------------------------------------------------------ state
-  let state = 'EMPTY';                // 'EMPTY' | 'HAS_CONTENTS'  (+ 'REACTING' in Phase 5)
+  let state = 'EMPTY';                // 'EMPTY' | 'HAS_CONTENTS' | 'REACTING'
   let contentsId = null;
+  let pendingResult = null;           // what the beaker becomes once effects finish
+  let reactionClock = 0;
 
   function setLabel(chem) {
     if (label.material.map) label.material.map.dispose();   // old texture -> GPU leak otherwise
@@ -117,14 +122,34 @@ export function createBeaker(scene, interactableObjects, camera) {
     setLabel(chem);
   }
 
-  // The single entry point the hand will call when a pour lands (Phase 4).
+  // The single entry point the hand calls when a pour lands (Phase 4), now
+  // routed through the reaction engine (Phase 5).
   function receive(addedId) {
+    if (state === 'REACTING') return;   // can't pour into an erupting beaker (Ch 6.3)
+
     if (state === 'EMPTY') {
       setContents(addedId);
       return;
     }
-    // Phase 5 replaces this line with the reaction engine:
-    console.log('MIX:', addedId, 'into', contentsId);
+
+    const rule = findReaction(contentsId, addedId, getReactions());
+
+    if (!rule) {
+      // No rule: they just mix. Average the colors, contents become 'mixture'.
+      const mix = defaultMix(getChemical(contentsId).color, getChemical(addedId).color);
+      setContents(mix.result.chemicalId);
+      liquid.material.color.set(mix.mixedColor);   // override the generic gray
+      return;
+    }
+
+    // A real reaction. Effects and the warning card arrive in Phases 6-7; until
+    // then a 1.5 s timer stands in for "effects still running".
+    state = 'REACTING';
+    pendingResult = rule.result.chemicalId;
+    reactionClock = 0;
+
+    if (rule.danger) console.warn('DANGER:', rule.warning.title, '—', rule.warning.text);
+    console.log('REACTION:', rule.id, '-> effects:', rule.effects.map((e) => e.type).join(', '));
   }
 
   // R = reset, for demo flow (book Ch 3.3 step 3). Guarded so typing R in a
@@ -145,6 +170,13 @@ export function createBeaker(scene, interactableObjects, camera) {
       // Billboard the label toward the player (same trick as proximity cards).
       // lookAt takes a WORLD position; the group is unrotated, so this is safe.
       if (label.visible) label.lookAt(camera.position);
+
+      // While REACTING, wait for the effects to finish, then settle into the
+      // product. Phase 6 replaces the timer with `!effectRunner.busy`.
+      if (state === 'REACTING') {
+        reactionClock += delta;
+        if (reactionClock > 1.5) setContents(pendingResult);   // sets state too
+      }
     }
   };
 }
