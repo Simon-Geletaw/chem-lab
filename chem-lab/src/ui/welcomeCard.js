@@ -154,6 +154,8 @@ export function createWelcomeCard(onStart) {
     window.addEventListener('keydown', (e) => {
         if (e.code !== 'KeyH') return;
         if (e.target.closest('input, textarea')) return;   // don't hijack typing
+        const pour = document.getElementById('pour-dialog');
+        if (pour && pour.style.display === 'flex') return; // F4 dialog owns the screen
         document.exitPointerLock();
         show();
     });

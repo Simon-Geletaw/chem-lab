@@ -300,8 +300,10 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     return { ok: true };
   }
 
-  // R = reset, for demo flow (book Ch 3.3 step 3).
+  // R = reset, for demo flow (book Ch 3.3 step 3). Guarded so typing in a
+  // dialog input (F4 custom amount) can never nuke the flask.
   window.addEventListener('keydown', (e) => {
+    if (e.target.closest('input, textarea')) return;
     if (e.code === 'KeyR' && state !== 'EMPTY') setContents(null);
   });
 

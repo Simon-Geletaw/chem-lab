@@ -10,6 +10,9 @@ import { createBeaker } from './beaker.js';
 import { createEffectRunner } from './effects/index.js';
 import { createWelcomeCard } from './ui/welcomeCard.js';
 import { createWarningCard } from './ui/warningCard.js';
+import { createPourDialog } from './ui/pourDialog.js';
+import { createHUD } from './ui/hud.js';
+import { createGloves } from './gloves.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 
 // PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
@@ -83,8 +86,14 @@ const warningCard = createWarningCard();
 const beaker = createBeaker(scene, interactableObjects, camera, effectRunner, warningCard);
 
 // The hand: E picks up an aimed bottle / pours it into the beaker, Q sends it
-// home. Created AFTER the beaker because it pours into it (Phase 2 + 4).
-const hand = createHand(camera, scene, interactableObjects, beaker);
+// home. The F4 dialog asks "how much?" before each pour; the hand drives it
+// through the player's modal mode so the pause menu stays out of the way.
+// F5: gloves — the box on the bench toggles them, the HUD shows the state,
+// and the hand refuses hazardous bottles bare-handed.
+const pourDialog = createPourDialog();
+const hud = createHUD();
+const gloves = createGloves(scene, camera, interactableObjects);
+const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud);
 
 // Temporary Phase 3 test hook — call beaker.receive('h2so4') in the console.
 window.beaker = beaker;
@@ -103,6 +112,7 @@ function animate() {
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
   player.update(delta);               // walking (does nothing while the tour runs)
   hand.update(delta);                 // carry/return animation + hover hints
+  gloves.update(delta);               // hands easing in/out of view (F5)
   beaker.update(delta);               // billboard the content label
   effectRunner.update(delta);         // animate live effects, dispose finished ones
   tour.update(delta);                 // tour camera (does nothing while idle)

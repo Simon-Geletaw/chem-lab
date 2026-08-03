@@ -12,6 +12,7 @@
 // are where bugs live. A single enum makes illegal states unrepresentable.
 import * as THREE from 'three';
 import { getChemical } from './chemistry/registry.js';
+import { RIGHT_REST, RIGHT_POUR, LEFT_REST, LEFT_SUPPORT, GRIP_POS } from './gloves.js';
 
 // --- F2: auto chemical info card -----------------------------------------
 // Aiming the crosshair at a bottle fills the top-right #info-panel with its
@@ -82,8 +83,8 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker) {
-    let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'RETURNING' | 'POURING'
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud) {
+    let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
     // The bottle's FULL home transform, captured ONCE at pickup, BEFORE
@@ -92,22 +93,23 @@ export function createHand(camera, scene, interactableObjects, beaker) {
     // and a y-only lerp can never undo that, leaving bottles upside-down.
     let homeTransform = null;
 
-    // Camera space: 35 cm right, 30 cm down, 60 cm forward of the eyes —
-    // the classic first-person "held item" corner.
-    const Hand_Pos = new THREE.Vector3(0.35, -0.3, -0.6);
-    // While pouring, reach up-and-forward toward the beaker so the tilt reads
-    // as a deliberate gesture, not a wrist-flick in the corner.
-    const Pour_Pos = new THREE.Vector3(0.35, -0.2, -0.75);
-    // A NATURAL pour pose, not an upside-down bottle: z tilts the mouth ~60°
-    // toward the flask at screen center; x leans it ~20° forward so the
-    // stream aims down at the rim. (1.9 rad = 109° looked like the bottle
-    // had been upended in the hand.)
+    // REALISTIC HANDS: the bottle no longer floats in front of the camera —
+    // it is re-parented INTO the right hand rig (gloves.js), fingers curled
+    // around it. The pour choreography then animates the whole HAND, and the
+    // bottle rides along exactly like a real held object.
+    //
+    // A NATURAL pour: z tilts the mouth ~60° toward the flask at screen
+    // center; x leans it ~20° forward so the stream aims down at the rim.
     const POUR_TILT = 1.05;
     const POUR_LEAN = -0.35;
+    // Anticipation: real pours LIFT first, then tip. For the first slice of
+    // the tilt phase the hand aims at this raised point before settling.
+    const POUR_LIFT = RIGHT_POUR.clone().add(new THREE.Vector3(0.03, 0.06, 0.02));
 
-    // F3: every pour delivers a fixed 25 ml. TEMPORARY — the F4 dialog will
-    // let the player choose 25/50/100/custom and this constant disappears.
-    const POUR_ML = 25;
+    // F4: the dialog decides how much each pour delivers; the hold phase
+    // stretches with the amount so a 100 ml pour visibly takes longer.
+    let pourMl = 25;
+    let holdDuration = 0.6;
 
     // The pour is a fixed CHOREOGRAPHY (book Ch 15.1): a mini-FSM inside the
     // POURING state. tilt (0.4s) -> hold (0.6s, receive fires ONCE) -> return (0.4s).
@@ -118,8 +120,9 @@ export function createHand(camera, scene, interactableObjects, beaker) {
     // The stream: a thin translucent cylinder between bottle mouth and beaker
     // rim, visible only during 'hold'. A scene child using WORLD coordinates —
     // parenting it to the tilted bottle would be a coordinate headache.
+    // Tapered like a real pour: narrow at the mouth, widening as it falls.
     const stream = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.004, 0.004, 1, 8),
+        new THREE.CylinderGeometry(0.0065, 0.0035, 1, 8),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55, depthWrite: false })
     );
     stream.visible = false;
@@ -168,16 +171,38 @@ export function createHand(camera, scene, interactableObjects, beaker) {
 
     window.addEventListener('keydown', (event) => {
         if (event.code === 'KeyE' && state === 'EMPTY') {
+            // F5: the glove box toggles gloves — but only empty-handed, so the
+            // ray checks it BEFORE bottles (they never overlap anyway).
+            const gbox = aimAt('gloveBox', 2.5);
+            if (gbox) {
+                hud.setGloves(gloves.toggle());
+                return;
+            }
+
             const bottle = aimAt('isBottle', 2.5);
             if (bottle) {
+                // F5 pickup gate: hazardous chemicals demand gloves. The rule
+                // is assembled from the registry data — no hardcoded names.
+                const chem = getChemical(bottle.userData.chemicalId);
+                if (chem && chem.hazard !== 'none' && !gloves.on) {
+                    warningCard.show({
+                        title: 'Gloves required!',
+                        text: `${chem.name} is ${chem.hazard}. Put on nitrile gloves from the glove box before handling it.`
+                    }, 'danger');
+                    return;
+                }
                 // Capture the full home transform in the bottle's OWN parent
-                // space (the shelf group) before camera.attach re-parents it.
+                // space (the shelf group) before re-parenting it.
                 homeTransform = {
                     parent: bottle.parent,
                     position: bottle.position.clone(),
                     rotation: bottle.rotation.clone()
                 };
-                camera.attach(bottle);      // re-parent, world position preserved
+                // Into the HAND, not the camera: attach() preserves the world
+                // position (no teleport), then update() lerps it into the
+                // curled fingers while the grip pose closes around it.
+                gloves.rightRig.attach(bottle);
+                gloves.setRightPose('grip');
                 heldBottle = bottle;
                 state = 'HOLDING';
             }
@@ -190,22 +215,43 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                 // F3: ask the flask BEFORE animating — a rejected pour must not
                 // play a stream that delivers nothing. 'full' teaches with a
                 // card; 'reacting' just refuses silently (the eruption says why).
-                const verdict = beaker.checkReceive(POUR_ML);
+                const verdict = beaker.checkReceive(1);
                 if (verdict === 'full') { beaker.warnFull(); return; }
                 if (verdict !== 'ok') return;
-                state = 'POURING';
-                pourPhase = 'tilt';
-                pourClock = 0;
-                delivered = false;
-                stream.material.color.set(
-                    heldBottle.children[0].material.color   // stream matches the liquid
-                );
+
+                // F4: free the mouse (no pause menu — modal mode) and ask how
+                // much. The pour choreography only starts on a chosen amount.
+                state = 'CHOOSING';
+                player.beginModal();
+                const info = beaker.getInfo();
+                pourDialog.open({
+                    chem: getChemical(heldBottle.userData.chemicalId),
+                    totalMl: info.totalMl,
+                    capacity: info.capacity,
+                    onChoose(ml) {
+                        pourMl = ml;
+                        holdDuration = 0.4 + (ml / 100) * 0.8;   // 25→0.6s, 100→1.2s
+                        state = 'POURING';
+                        pourPhase = 'tilt';
+                        pourClock = 0;
+                        delivered = false;
+                        stream.material.color.set(
+                            heldBottle.children[0].material.color   // stream matches the liquid
+                        );
+                        player.endModal();       // re-lock from the button's click gesture
+                    },
+                    onCancel() {
+                        state = 'HOLDING';
+                        player.endModal();
+                    }
+                });
             }
         }
 
         if (event.code === 'KeyQ' && state === 'HOLDING') {
             if (homeTransform) homeTransform.parent.attach(heldBottle);  // back to its shelf
             else scene.attach(heldBottle);
+            gloves.setRightPose('relaxed');  // fingers open as the bottle leaves
             state = 'RETURNING';            // update() flies it home, then releases it
         }
     });
@@ -218,11 +264,18 @@ export function createHand(camera, scene, interactableObjects, beaker) {
         update(delta) {
             const t = Math.min(1, delta * 8);   // the easing idiom (book Ch 2.1 #4)
 
-            if (state === 'HOLDING') {
-                // Coords are camera-space now, since the bottle is a camera child.
-                // Also ease the shelf rotation away so the label turns to face us.
-                heldBottle.position.lerp(Hand_Pos, t);
+            if (state === 'HOLDING' || state === 'CHOOSING') {
+                // Coords are RIG-space now (the bottle is a child of the right
+                // hand). Ease it into the palm while the fingers curl shut;
+                // all three rotation axes settle so the bottle stands upright
+                // in the grip with its label facing the player.
+                heldBottle.position.lerp(GRIP_POS, t);
+                heldBottle.rotation.x += (0 - heldBottle.rotation.x) * t;
                 heldBottle.rotation.y += (0 - heldBottle.rotation.y) * t;
+                heldBottle.rotation.z += (0 - heldBottle.rotation.z) * t;
+                // The hand itself drifts back to rest (it may return from a pour).
+                gloves.rightRig.position.lerp(RIGHT_REST, t);
+                gloves.leftRig.position.lerp(LEFT_REST, t);
             }
 
             if (state === 'RETURNING') {
@@ -247,16 +300,21 @@ export function createHand(camera, scene, interactableObjects, beaker) {
 
             if (state === 'POURING') {
                 pourClock += delta;
+                const rig = gloves.rightRig;     // hand + gripped bottle move as one
 
                 if (pourPhase === 'tilt') {
-                    // Reach toward the beaker and tip past the shoulder. z-rotation
-                    // tips the bottle LEFT — toward screen center where the beaker is
-                    // (the bottle rides at the right edge of the view). x-rotation
-                    // leans the mouth forward-down so the stream hits the rim.
-                    heldBottle.position.lerp(Pour_Pos, t);
-                    heldBottle.rotation.z += (POUR_TILT - heldBottle.rotation.z) * t;
-                    heldBottle.rotation.x += (POUR_LEAN - heldBottle.rotation.x) * t;
-                    if (pourClock > 0.4) {
+                    // Real pours have ANTICIPATION: lift the bottle first, then
+                    // tip it. First 0.15 s the hand aims at a raised point; only
+                    // then does it settle to the pour position while the WRIST
+                    // rolls the whole hand (z toward screen center, x leaning
+                    // the mouth down at the rim). The bottle never moves inside
+                    // the grip — the hand carries it, like reality.
+                    rig.position.lerp(pourClock < 0.15 ? POUR_LIFT : RIGHT_POUR, t);
+                    rig.rotation.z += (POUR_TILT - rig.rotation.z) * t;
+                    rig.rotation.x += (POUR_LEAN - rig.rotation.x) * t;
+                    // The free hand rises instinctively to guard the flask.
+                    gloves.leftRig.position.lerp(LEFT_SUPPORT, t);
+                    if (pourClock > 0.45) {
                         pourPhase = 'hold';
                         pourClock = 0;
                     }
@@ -267,8 +325,12 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                     // (Without the flag this fires ~36 times = 36 pours. Book Ch 15.1.)
                     if (!delivered) {
                         delivered = true;
-                        beaker.receive(heldBottle.userData.chemicalId, POUR_ML);
+                        beaker.receive(heldBottle.userData.chemicalId, pourMl);
                     }
+
+                    // Micro-adjustments: nobody holds a pour statue-still. The
+                    // wrist breathes ±1.7° around the tilt the whole time.
+                    rig.rotation.z = POUR_TILT + Math.sin(pourClock * 7) * 0.03;
 
                     // Stream: world-space line from bottle mouth to beaker rim.
                     // localToWorld handles all the tilt math for us (book Phase 4).
@@ -278,12 +340,17 @@ export function createHand(camera, scene, interactableObjects, beaker) {
 
                     stream.position.copy(_mid);
                     stream.scale.y = _mouthWorld.distanceTo(_rimWorld);
+                    // GLUG: the stream's thickness pulses as air replaces liquid
+                    // in the bottle — the signature rhythm of a real pour.
+                    const glug = 1 + 0.3 * Math.sin(pourClock * 22);
+                    stream.scale.x = glug;
+                    stream.scale.z = glug;
                     // Cylinders point along Y but lookAt aims Z — orient, then fix 90°.
                     stream.lookAt(_rimWorld);
                     stream.rotateX(Math.PI / 2);
                     stream.visible = true;
 
-                    if (pourClock > 0.6) {
+                    if (pourClock > holdDuration) {
                         pourPhase = 'return';
                         pourClock = 0;
                         stream.visible = false;
@@ -291,14 +358,15 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                 }
 
                 if (pourPhase === 'return') {
-                    heldBottle.position.lerp(Hand_Pos, t);
-                    heldBottle.rotation.z += (0 - heldBottle.rotation.z) * t;
-                    heldBottle.rotation.x += (0 - heldBottle.rotation.x) * t;
-                    if (pourClock > 0.4) {
-                        heldBottle.rotation.z = 0;
-                        heldBottle.rotation.x = 0;   // upright again — never stays leaned
+                    rig.position.lerp(RIGHT_REST, t);
+                    rig.rotation.z += (0 - rig.rotation.z) * t;
+                    rig.rotation.x += (0 - rig.rotation.x) * t;
+                    gloves.leftRig.position.lerp(LEFT_REST, t);
+                    if (pourClock > 0.45) {
+                        rig.rotation.z = 0;
+                        rig.rotation.x = 0;      // wrist square again — no residual lean
                         pourPhase = null;
-                        state = 'HOLDING';     // still in hand: pour again, or Q
+                        state = 'HOLDING';       // still in hand: pour again, or Q
                     }
                 }
             }
@@ -308,16 +376,21 @@ export function createHand(camera, scene, interactableObjects, beaker) {
             if (!hint) return;
             if (state === 'EMPTY') {
                 const target = aimAt('isBottle', 2.5);
-                hint.textContent = target ? `[E] Pick up ${target.userData.name}` : '';
-                hint.style.display = target ? 'block' : 'none';
+                const gbox = target ? null : aimAt('gloveBox', 2.5);
+                if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
+                else if (gbox) hint.textContent = gloves.on ? '[E] Take off gloves' : '[E] Put on gloves';
+                hint.style.display = (target || gbox) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask
                 // shows its contents breakdown instead.
                 showAimInfo(target || aimAt('isBeaker', 2.5), beaker);
             } else if (state === 'HOLDING') {
                 const overBeaker = aimAt('isBeaker', 2);
+                const overGloveBox = overBeaker ? null : aimAt('gloveBox', 2.5);
                 hint.textContent = overBeaker
                     ? `[E] Pour ${heldBottle.userData.name}`
-                    : `[Q] Put back ${heldBottle.userData.name}`;
+                    : overGloveBox
+                        ? 'Put the bottle down first'      // F5: no gloving-up mid-carry
+                        : `[Q] Put back ${heldBottle.userData.name}`;
                 hint.style.display = 'block';
                 // Over the flask: show ITS panel (contents) right as the pour is
                 // prepared; elsewhere the stale bottle sheet fades out.

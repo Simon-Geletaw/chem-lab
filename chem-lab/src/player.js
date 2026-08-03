@@ -42,6 +42,9 @@ export function createPlayer(camera) {
     crosshair.style.display = 'block';
   });
   controls.addEventListener('unlock', () => {
+    // F4: while a DOM dialog (pour amount, experiment menu…) owns the screen,
+    // the unlock it triggered must NOT flip the pause menu up behind it.
+    if (modal) { crosshair.style.display = 'none'; return; }
     overlay.style.display = 'flex';
     crosshair.style.display = 'none';
     // Esc = pause: flip the start screen into a pause screen.
@@ -59,6 +62,7 @@ export function createPlayer(camera) {
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Escape') return;
     if (e.target.closest('input, textarea')) return;
+    if (modal) return;                                    // an open dialog owns Esc
     if (controls.isLocked || mobileActive) return;        // locked: pause is native
     const welcome = document.getElementById('welcome-card');
     if (welcome && welcome.style.display === 'flex') return;   // card is open: no resume
@@ -76,6 +80,7 @@ export function createPlayer(camera) {
   // stutteringly). We just record which keys are held, and move every frame.
   const keys = {};
   let unlockTime = 0;                   // when pointer lock was last released
+  let modal = false;                    // F4: a DOM dialog is on screen right now
   window.addEventListener('keydown', (e) => { keys[e.code] = true;  });
   window.addEventListener('keyup',   (e) => { keys[e.code] = false; });
 
@@ -152,8 +157,25 @@ export function createPlayer(camera) {
       }
     },
 
+    // F4 modal protocol: a dialog opens -> beginModal() frees the mouse WITHOUT
+    // raising the pause menu; the dialog closes -> endModal() re-locks from the
+    // user's click/keypress gesture. If the browser's relock cooldown bites,
+    // the pause menu surfaces after a beat so the player is never stranded.
+    get isModal() { return modal; },
+    beginModal() {
+      modal = true;
+      if (controls.isLocked) controls.unlock();
+    },
+    endModal() {
+      modal = false;
+      player.enter();
+      if (!isTouchDevice) setTimeout(() => {
+        if (!controls.isLocked && !modal) overlay.style.display = 'flex';
+      }, 350);
+    },
+
     update(delta) {
-      if (!player.enabled || !player.isActive) return;
+      if (!player.enabled || !player.isActive || modal) return;
 
       const prevPos = camera.position.clone();   // remember, in case we collide
 
