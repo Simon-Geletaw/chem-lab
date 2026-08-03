@@ -9,6 +9,7 @@ import { createHand } from './hand.js';
 import { createBeaker } from './beaker.js';
 import { createEffectRunner } from './effects/index.js';
 import { createWelcomeCard } from './ui/welcomeCard.js';
+import { createWarningCard } from './ui/warningCard.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 
 // PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
@@ -76,8 +77,10 @@ const effectRunner = createEffectRunner(scene, () => ({
   camera
 }));
 
-// The reaction vessel on the island bench (Phase 3 + 5 + 6)
-const beaker = createBeaker(scene, interactableObjects, camera, effectRunner);
+// The reaction vessel on the island bench (Phase 3 + 5 + 6 + F3). The warning
+// card serves double duty: reaction safety pedagogy AND the "flask is full" notice.
+const warningCard = createWarningCard();
+const beaker = createBeaker(scene, interactableObjects, camera, effectRunner, warningCard);
 
 // The hand: E picks up an aimed bottle / pours it into the beaker, Q sends it
 // home. Created AFTER the beaker because it pours into it (Phase 2 + 4).

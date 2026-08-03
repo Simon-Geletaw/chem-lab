@@ -26,19 +26,47 @@ const esc = (s) => s.replace(/[&<>"']/g, (c) =>
 const hazardColor = {
   corrosive: '#d63031', toxic: '#e67e22', flammable: '#d63031', oxidizer: '#8e44ad'
 };
-let aimInfoKey = null;   // the chemicalId the panel is currently showing
+let aimInfoKey = null;   // cache key of what the panel currently shows
 
-function showAimInfo(target) {
-    const chem = target?.userData?.chemicalId
+// F3: the flask gets its own data sheet — contents breakdown, volume, temp.
+// Pure DOM assembly from beaker.getInfo()'s plain data; the cache key encodes
+// volume/contents/temp so the panel rewrites itself the moment they change.
+function flaskInfoHTML(info) {
+    if (!info.currentId) {
+        return `Empty &middot; capacity ${info.capacity} ml<br><br>Carry a bottle here and pour to see what happens.`;
+    }
+    const rows = info.list.map((e) => {
+        const c = getChemical(e.chemicalId);
+        return `&middot; ${e.ml} ml ${esc(c.name)} (${esc(c.formula)})`;
+    }).join('<br>');
+    const chem = getChemical(info.currentId);
+    return `<b>Contents: ${info.totalMl} / ${info.capacity} ml</b><br>${rows}` +
+        `<br><b>Temp:</b> ${info.temp}&deg;C<br><br>${esc(chem.description)}`;
+}
+
+function showAimInfo(target, beaker) {
+    const isFlask = !!target?.userData?.isBeaker;
+    const chem = !isFlask && target?.userData?.chemicalId
         ? getChemical(target.userData.chemicalId)
         : null;
 
     clearTimeout(showAimInfo._timer);
-    if (!chem) {
+    if (!chem && !isFlask) {
         if (aimInfoKey) showAimInfo._timer = setTimeout(() => {
             infoPanel.style.display = 'none';
             aimInfoKey = null;
         }, 150);
+        return;
+    }
+
+    if (isFlask) {
+        const info = beaker.getInfo();
+        const key = `flask|${info.totalMl}|${info.currentId}|${info.temp}`;
+        if (key === aimInfoKey && infoPanel.style.display === 'block') return;
+        aimInfoKey = key;
+        infoTitle.textContent = 'Reaction Flask';
+        infoText.innerHTML = flaskInfoHTML(info);
+        infoPanel.style.display = 'block';
         return;
     }
 
@@ -77,6 +105,10 @@ export function createHand(camera, scene, interactableObjects, beaker) {
     const POUR_TILT = 1.05;
     const POUR_LEAN = -0.35;
 
+    // F3: every pour delivers a fixed 25 ml. TEMPORARY — the F4 dialog will
+    // let the player choose 25/50/100/custom and this constant disappears.
+    const POUR_ML = 25;
+
     // The pour is a fixed CHOREOGRAPHY (book Ch 15.1): a mini-FSM inside the
     // POURING state. tilt (0.4s) -> hold (0.6s, receive fires ONCE) -> return (0.4s).
     let pourPhase = null;           // 'tilt' | 'hold' | 'return'
@@ -96,7 +128,7 @@ export function createHand(camera, scene, interactableObjects, beaker) {
     const _mouthWorld = new THREE.Vector3();    // scratch vectors, allocated once
     const _rimWorld = new THREE.Vector3();      // (a new Vector3 per frame would
     const _mid = new THREE.Vector3();           //  churn the garbage collector)
-    const _rimOffset = new THREE.Vector3(0, 0.14, 0);   // beaker base -> rim height
+    const _rimOffset = new THREE.Vector3(0, beaker.rimY, 0);   // flask base -> rim height
 
     const raycaster = new THREE.Raycaster();
     const CENTER = new THREE.Vector2(0, 0);   // crosshair = exact screen center
@@ -155,6 +187,12 @@ export function createHand(camera, scene, interactableObjects, beaker) {
             // Pour: only if the crosshair rests on the beaker within arm's reach.
             const vessel = aimAt('isBeaker', 2);
             if (vessel) {
+                // F3: ask the flask BEFORE animating — a rejected pour must not
+                // play a stream that delivers nothing. 'full' teaches with a
+                // card; 'reacting' just refuses silently (the eruption says why).
+                const verdict = beaker.checkReceive(POUR_ML);
+                if (verdict === 'full') { beaker.warnFull(); return; }
+                if (verdict !== 'ok') return;
                 state = 'POURING';
                 pourPhase = 'tilt';
                 pourClock = 0;
@@ -229,7 +267,7 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                     // (Without the flag this fires ~36 times = 36 pours. Book Ch 15.1.)
                     if (!delivered) {
                         delivered = true;
-                        beaker.receive(heldBottle.userData.chemicalId);
+                        beaker.receive(heldBottle.userData.chemicalId, POUR_ML);
                     }
 
                     // Stream: world-space line from bottle mouth to beaker rim.
@@ -272,16 +310,18 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                 const target = aimAt('isBottle', 2.5);
                 hint.textContent = target ? `[E] Pick up ${target.userData.name}` : '';
                 hint.style.display = target ? 'block' : 'none';
-                showAimInfo(target);       // F2: auto data sheet, same ray, no extra cost
+                // F2 data sheet for bottles; F3: empty-handed aim at the flask
+                // shows its contents breakdown instead.
+                showAimInfo(target || aimAt('isBeaker', 2.5), beaker);
             } else if (state === 'HOLDING') {
                 const overBeaker = aimAt('isBeaker', 2);
                 hint.textContent = overBeaker
                     ? `[E] Pour ${heldBottle.userData.name}`
                     : `[Q] Put back ${heldBottle.userData.name}`;
                 hint.style.display = 'block';
-                // Aiming at the flask (not a chemical) hides the stale bottle
-                // data sheet; this fires right when the pour is prepared too.
-                showAimInfo(overBeaker);
+                // Over the flask: show ITS panel (contents) right as the pour is
+                // prepared; elsewhere the stale bottle sheet fades out.
+                showAimInfo(overBeaker, beaker);
             } else {
                 hint.style.display = 'none';
             }

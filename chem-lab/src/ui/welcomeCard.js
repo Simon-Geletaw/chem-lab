@@ -158,6 +158,7 @@ export function createWelcomeCard(onStart) {
         show();
     });
 
-    // Not shown on load — the pause menu / H key opens it on demand.
+    // Shown on load (CSS default display is flex); Start hides it. The pause
+    // menu's "Controls & Safety" button and the H key re-open it on demand.
     return { show, hide };
 }
