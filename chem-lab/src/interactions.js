@@ -39,11 +39,11 @@ function createCardTexture(title, description, badge) {
   canvas.height = 340;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = 'rgba(20, 30, 40, 0.92)';
+  ctx.fillStyle = 'rgba(24, 34, 48, 0.94)';
   ctx.beginPath();
   ctx.roundRect(4, 4, 504, 332, 18);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.strokeStyle = 'rgba(159, 182, 212, 0.55)';
   ctx.lineWidth = 3;
   ctx.stroke();
 
@@ -60,7 +60,7 @@ function createCardTexture(title, description, badge) {
   }
 
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#e8eef2';
+  ctx.fillStyle = '#c9d8ea';
   ctx.font = '26px Arial';
   wrapText(ctx, description, 28, 92, 456, 36);
 

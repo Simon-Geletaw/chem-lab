@@ -11,6 +11,48 @@
 // `isPouring` there are 4 combinations and one is nonsense — and nonsense states
 // are where bugs live. A single enum makes illegal states unrepresentable.
 import * as THREE from 'three';
+import { getChemical } from './chemistry/registry.js';
+
+// --- F2: auto chemical info card -----------------------------------------
+// Aiming the crosshair at a bottle fills the top-right #info-panel with its
+// data sheet (name, formula, hazard, description) — no click needed. The DOM
+// is only rewritten when the aimed chemical changes (cache), and the panel
+// hides ~150 ms after the aim leaves so it doesn't flicker frame-to-frame.
+const infoPanel = document.getElementById('info-panel');
+const infoTitle = document.getElementById('info-title');
+const infoText = document.getElementById('info-description');
+const esc = (s) => s.replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const hazardColor = {
+  corrosive: '#d63031', toxic: '#e67e22', flammable: '#d63031', oxidizer: '#8e44ad'
+};
+let aimInfoKey = null;   // the chemicalId the panel is currently showing
+
+function showAimInfo(target) {
+    const chem = target?.userData?.chemicalId
+        ? getChemical(target.userData.chemicalId)
+        : null;
+
+    clearTimeout(showAimInfo._timer);
+    if (!chem) {
+        if (aimInfoKey) showAimInfo._timer = setTimeout(() => {
+            infoPanel.style.display = 'none';
+            aimInfoKey = null;
+        }, 150);
+        return;
+    }
+
+    // Only rewrite the DOM when the aimed chemical changes AND the panel is
+    // not already showing it (a click may have hidden or replaced it).
+    if (chem.id === aimInfoKey && infoPanel.style.display === 'block') return;
+
+    aimInfoKey = chem.id;
+    infoTitle.textContent = chem.name;
+    const badge = chem.hazard === 'none' ? '' :
+        ` &middot; <b style="color:${hazardColor[chem.hazard] || '#9fb6d4'}">${chem.hazard.toUpperCase()}</b>`;
+    infoText.innerHTML = `<b>${esc(chem.formula)}</b>${badge}<br><br>${esc(chem.description)}`;
+    infoPanel.style.display = 'block';
+}
 
 export function createHand(camera, scene, interactableObjects, beaker) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'RETURNING' | 'POURING'
@@ -28,7 +70,12 @@ export function createHand(camera, scene, interactableObjects, beaker) {
     // While pouring, reach up-and-forward toward the beaker so the tilt reads
     // as a deliberate gesture, not a wrist-flick in the corner.
     const Pour_Pos = new THREE.Vector3(0.35, -0.2, -0.75);
-    const POUR_TILT = 1.9;          // radians (~110°) — past horizontal, liquid streams
+    // A NATURAL pour pose, not an upside-down bottle: z tilts the mouth ~60°
+    // toward the flask at screen center; x leans it ~20° forward so the
+    // stream aims down at the rim. (1.9 rad = 109° looked like the bottle
+    // had been upended in the hand.)
+    const POUR_TILT = 1.05;
+    const POUR_LEAN = -0.35;
 
     // The pour is a fixed CHOREOGRAPHY (book Ch 15.1): a mini-FSM inside the
     // POURING state. tilt (0.4s) -> hold (0.6s, receive fires ONCE) -> return (0.4s).
@@ -164,11 +211,13 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                 pourClock += delta;
 
                 if (pourPhase === 'tilt') {
-                    // Reach toward the beaker and tip past horizontal. z-rotation
+                    // Reach toward the beaker and tip past the shoulder. z-rotation
                     // tips the bottle LEFT — toward screen center where the beaker is
-                    // (the bottle rides at the right edge of the view).
+                    // (the bottle rides at the right edge of the view). x-rotation
+                    // leans the mouth forward-down so the stream hits the rim.
                     heldBottle.position.lerp(Pour_Pos, t);
                     heldBottle.rotation.z += (POUR_TILT - heldBottle.rotation.z) * t;
+                    heldBottle.rotation.x += (POUR_LEAN - heldBottle.rotation.x) * t;
                     if (pourClock > 0.4) {
                         pourPhase = 'hold';
                         pourClock = 0;
@@ -206,8 +255,10 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                 if (pourPhase === 'return') {
                     heldBottle.position.lerp(Hand_Pos, t);
                     heldBottle.rotation.z += (0 - heldBottle.rotation.z) * t;
+                    heldBottle.rotation.x += (0 - heldBottle.rotation.x) * t;
                     if (pourClock > 0.4) {
                         heldBottle.rotation.z = 0;
+                        heldBottle.rotation.x = 0;   // upright again — never stays leaned
                         pourPhase = null;
                         state = 'HOLDING';     // still in hand: pour again, or Q
                     }
@@ -221,12 +272,16 @@ export function createHand(camera, scene, interactableObjects, beaker) {
                 const target = aimAt('isBottle', 2.5);
                 hint.textContent = target ? `[E] Pick up ${target.userData.name}` : '';
                 hint.style.display = target ? 'block' : 'none';
+                showAimInfo(target);       // F2: auto data sheet, same ray, no extra cost
             } else if (state === 'HOLDING') {
                 const overBeaker = aimAt('isBeaker', 2);
                 hint.textContent = overBeaker
                     ? `[E] Pour ${heldBottle.userData.name}`
                     : `[Q] Put back ${heldBottle.userData.name}`;
                 hint.style.display = 'block';
+                // Aiming at the flask (not a chemical) hides the stale bottle
+                // data sheet; this fires right when the pour is prepared too.
+                showAimInfo(overBeaker);
             } else {
                 hint.style.display = 'none';
             }

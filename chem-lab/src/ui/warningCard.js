@@ -39,11 +39,12 @@ export function createWarningCard() {
       max-width: 480px;
       padding: 22px 28px;
       border-radius: 14px;
-      background: rgba(15, 22, 30, 0.94);
+      background: rgba(24, 34, 48, 0.9);
       color: #fff;
       text-align: center;
       border: 3px solid;
       box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+      font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
     }
     #warning-card.danger #warning-box { border-color: #e74c3c; }
     #warning-card.info   #warning-box { border-color: #3498db; }

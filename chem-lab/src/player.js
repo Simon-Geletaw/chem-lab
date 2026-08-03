@@ -29,13 +29,13 @@ export function createPlayer(camera) {
   }
 
   overlay.addEventListener('click', () => {
-    if (isTouchDevice) {
-      mobileActive = true;                        // no lock on phones — just a flag
-      overlay.style.display = 'none';
-      mobileControls.style.display = 'grid';
-    } else {
-      controls.lock();
-    }
+    player.enter();
+  });
+  // The pause-menu "Enter Lab / Resume" button — stopPropagation so the
+  // overlay's click-anywhere handler doesn't double-fire.
+  document.getElementById('enter-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    player.enter();
   });
   controls.addEventListener('lock', () => {
     overlay.style.display = 'none';
@@ -44,11 +44,38 @@ export function createPlayer(camera) {
   controls.addEventListener('unlock', () => {
     overlay.style.display = 'flex';
     crosshair.style.display = 'none';
+    // Esc = pause: flip the start screen into a pause screen.
+    document.getElementById('start-title').textContent = 'Paused';
+    document.getElementById('enter-btn').textContent = 'Resume';
+    unlockTime = performance.now();   // ignore the Esc that JUST paused
+  });
+
+  // Esc toggles pause/resume: while locked, the BROWSER exits pointer lock
+  // (that's the pause). While the pause menu is up, Esc resumes by re-locking
+  // — keydown counts as a user gesture, so the lock request is allowed.
+  // (Browsers impose a short cooldown after an Esc-exit; the guard below
+  // swallows the same keypress that caused the unlock, and the error listener
+  // catches the rare "too fast" case.)
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Escape') return;
+    if (e.target.closest('input, textarea')) return;
+    if (controls.isLocked || mobileActive) return;        // locked: pause is native
+    const welcome = document.getElementById('welcome-card');
+    if (welcome && welcome.style.display === 'flex') return;   // card is open: no resume
+    if (performance.now() - unlockTime < 400) return;     // same press that paused
+    player.enter();
+  });
+
+  document.addEventListener('pointerlockerror', () => {
+    // Cooldown after Esc too short — a second Esc press will work.
+    document.getElementById('overlay-enter').textContent =
+      'Too fast — press Esc again to resume';
   });
 
   // Keyboard state: we DON'T move inside the event (keydown only repeats
   // stutteringly). We just record which keys are held, and move every frame.
   const keys = {};
+  let unlockTime = 0;                   // when pointer lock was last released
   window.addEventListener('keydown', (e) => { keys[e.code] = true;  });
   window.addEventListener('keyup',   (e) => { keys[e.code] = false; });
 
@@ -104,6 +131,26 @@ export function createPlayer(camera) {
     colliders,
     enabled: true,                    // the tour will set this to false later
     get isActive() { return controls.isLocked || mobileActive; },
+
+    // The ONE entry point into "playing": pointer lock on desktop, the
+    // mobile flag on touch devices. Called by the start overlay AND the
+    // welcome card's Start button (which must lock from its own gesture).
+    enter() {
+      if (isTouchDevice) {
+        mobileActive = true;                    // no lock on phones — just a flag
+        overlay.style.display = 'none';
+        mobileControls.style.display = 'grid';
+        return;
+      }
+      try {
+        controls.lock();
+      } catch (err) {
+        // Browsers block re-locking for ~1.25 s after an Esc-exit and throw
+        // synchronously. Don't crash — tell the player the key again works.
+        document.getElementById('overlay-enter').textContent =
+          'Too fast — press Esc again to resume';
+      }
+    },
 
     update(delta) {
       if (!player.enabled || !player.isActive) return;

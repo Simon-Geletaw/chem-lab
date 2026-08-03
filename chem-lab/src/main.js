@@ -8,6 +8,7 @@ import { createTour } from './tour.js';
 import { createHand } from './hand.js';
 import { createBeaker } from './beaker.js';
 import { createEffectRunner } from './effects/index.js';
+import { createWelcomeCard } from './ui/welcomeCard.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 
 // PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
@@ -17,7 +18,7 @@ await loadChemistry();
 
 // 1. Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcfdde6);
+scene.background = new THREE.Color(0xaecbe4);   // soft day sky, matches the windows
 
 // 2. Camera
 // SCALE RULE: 1 unit = 1 METER. Eye height of a standing person ≈ 1.6 m.
@@ -31,6 +32,10 @@ scene.add(camera);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+// ACES filmic tone mapping: without it, bright primaries clip to ugly flat
+// colors. One line gives the whole room a natural, photographic response.
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
 document.body.appendChild(renderer.domElement);
 
 // 4. Build the world (each module adds its own part to the scene)
@@ -40,6 +45,24 @@ createPeriodicWall(scene, interactableObjects);
 const player = createPlayer(camera);
 // Furniture registers its bounding boxes in player.colliders so you bump into it
 const furniture = createFurniture(scene, interactableObjects, player.colliders, getShelfChemicals());
+
+// F2: welcome/help card on load; its Start button reuses player.enter() so the
+// pointer-lock request happens inside the user's real click gesture.
+const welcomeCard = createWelcomeCard(() => player.enter());
+
+// Pause-menu actions (the start overlay doubles as a pause screen):
+// "Reset Flask" empties the flask so any reaction can be re-run from scratch;
+// "Controls & Safety" reopens the welcome/help card without entering.
+document.getElementById('reset-flask-btn').addEventListener('click', (e) => {
+  e.stopPropagation();          // don't bubble up to the overlay's enter handler
+  beaker.reset();
+  document.getElementById('overlay-status').textContent =
+    'Flask emptied — pour again to redo the reaction.';
+});
+document.getElementById('controls-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  welcomeCard.show();
+});
 
 // Clicking: element tiles pop out with a 3D card; other objects use the HTML panel
 const interactions = createInteractions(camera, player.controls, scene, interactableObjects);

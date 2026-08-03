@@ -82,6 +82,8 @@ export function createTour(camera, player, interactions) {
     // Pointer lock can NEVER be re-engaged by code — only by a user click.
     // So we show the overlay again and let the player click back in.
     document.getElementById('overlay-enter').textContent = 'Tour finished — click to keep exploring';
+    document.getElementById('start-title').textContent = 'Chemistry Lab';
+    document.getElementById('enter-btn').textContent = 'Enter Lab';
     overlay.style.display = 'flex';
   }
 

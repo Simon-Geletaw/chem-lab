@@ -24,12 +24,20 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner) {
   // --- glass: an OPEN cylinder (openEnded=true keeps the top uncovered).
   // DoubleSide is essential: an open cylinder has an inside you can see into,
   // and single-sided faces are invisible from behind (book Phase 3 pitfalls).
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0xdfefff,
+  // MeshPhysicalMaterial.transmission = real refraction, so it reads as glass,
+  // not gray plastic.
+  const glassMat = new THREE.MeshPhysicalMaterial({
+    color: 0xe8f4ff,
+    metalness: 0,
+    roughness: 0.05,
+    transmission: 0.9,
+    thickness: 0.02,
+    ior: 1.5,
+    clearcoat: 1,
     transparent: true,
-    opacity: 0.3,
-    roughness: 0.1,
-    side: THREE.DoubleSide
+    opacity: 0.45,
+    side: THREE.DoubleSide,
+    depthWrite: false
   });
   const wall = new THREE.Mesh(
     new THREE.CylinderGeometry(0.05, 0.045, 0.14, 24, 1, true),
@@ -167,6 +175,7 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner) {
     get contentsId() { return contentsId; },
     receive,
     setContents,
+    reset() { setContents(null); },   // pause-menu "Reset Flask" = restart reactions
 
     update(delta) {
       // Billboard the label toward the player (same trick as proximity cards).

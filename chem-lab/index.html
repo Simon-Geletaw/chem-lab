@@ -9,10 +9,16 @@
   <body>
     <div id="start-overlay">
       <div id="start-card">
-        <h1>Chemistry Lab</h1>
+        <h1 id="start-title">Chemistry Lab</h1>
         <p id="overlay-enter">Click anywhere to enter</p>
         <p id="overlay-keys" class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor</p>
-        <button id="tour-btn">&#9654; Start Guided Tour</button>
+        <div id="overlay-buttons">
+          <button id="enter-btn">Enter Lab</button>
+          <button id="tour-btn">&#9654; Start Guided Tour</button>
+          <button id="reset-flask-btn">&#8635; Reset Flask</button>
+          <button id="controls-btn">&#9432; Controls &amp; Safety</button>
+        </div>
+        <p id="overlay-status"></p>
       </div>
     </div>
     <div id="crosshair"></div>
@@ -38,16 +44,43 @@
         display: flex;                  /* center the card both ways */
         align-items: center;
         justify-content: center;
-        background: rgba(10, 18, 26, 0.75);
+        background: linear-gradient(
+          rgba(10, 18, 26, 0.6),
+          rgba(10, 18, 26, 0.15) 45%,
+          rgba(10, 18, 26, 0.6)
+        );                              /* soft gradient — the lab glows through the middle */
         z-index: 20;                    /* above the canvas AND the info panel */
         cursor: pointer;
-        font-family: system-ui, sans-serif;
+        font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         color: #fff;
         text-align: center;
       }
-      #start-card h1 { margin: 0 0 8px; font-size: 42px; letter-spacing: 2px; }
-      #start-card p  { margin: 4px 0; font-size: 18px; opacity: 0.9; }
-      #start-card .keys { font-size: 14px; opacity: 0.65; margin-top: 14px; }
+      #start-card {
+        padding: 36px 48px;
+        border-radius: 16px;
+        background: rgba(24, 34, 48, 0.85);
+        border: 1px solid rgba(159, 182, 212, 0.35);
+        box-shadow: 0 16px 60px rgba(0, 0, 0, 0.45);
+      }
+      #start-card h1 {
+        margin: 0 0 10px;
+        font-size: 40px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        color: #ffffff;
+      }
+      #start-card p  {
+        margin: 4px 0;
+        font-size: 17px;
+        font-weight: 500;
+        color: #c9d8ea;
+      }
+      #start-card .keys {
+        font-size: 14px;
+        color: #9fb6d4;
+        margin-top: 16px;
+      }
+      #start-card .keys b { color: #ffffff; font-weight: 600; }
 
       #crosshair {
         display: none;                  /* only shown while pointer is locked */
@@ -70,12 +103,15 @@
         top: 56%;                       /* just under the crosshair dot */
         left: 50%;
         transform: translateX(-50%);
-        padding: 6px 14px;
+        padding: 7px 16px;
         border-radius: 8px;
-        background: rgba(20, 30, 40, 0.85);
+        background: rgba(30, 42, 56, 0.8);
+        border: 1px solid rgba(159, 182, 212, 0.3);
         color: #fff;
-        font-family: system-ui, sans-serif;
+        font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
         z-index: 15;
         pointer-events: none;           /* never steal clicks (book Phase 2 pitfalls) */
       }
@@ -109,18 +145,45 @@
       }
       .dpad:active { background: rgba(70, 120, 170, 0.75); }
 
-      #tour-btn {
-        margin-top: 22px;
-        padding: 12px 28px;
-        font-size: 17px;
+      #overlay-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 24px;
+      }
+      #overlay-buttons button {
+        padding: 12px 30px;
+        font-size: 15px;
         font-weight: 600;
+        letter-spacing: 0.4px;
         color: #fff;
-        background: #2a7d5c;
         border: none;
         border-radius: 10px;
         cursor: pointer;
+        font-family: inherit;
       }
+      #overlay-buttons button:focus-visible,
+      #overlay-buttons button:active {
+        outline: 2px solid #9fc5e8;
+        outline-offset: 2px;
+      }
+      #enter-btn { background: #3f6db3; }
+      #enter-btn:hover { background: #4d84c9; }
+      #tour-btn { background: #2a7d5c; }
       #tour-btn:hover { background: #349a71; }
+      #reset-flask-btn { background: rgba(214, 48, 49, 0.72); }
+      #reset-flask-btn:hover { background: #d63031; }
+      #controls-btn {
+        background: rgba(63, 109, 179, 0.35);
+        border: 1px solid rgba(159, 182, 212, 0.5);
+      }
+      #controls-btn:hover { background: rgba(63, 109, 179, 0.55); }
+      #overlay-status {
+        margin: 16px 0 0;
+        min-height: 20px;
+        font-size: 14px;
+        color: #9fb6d4;
+      }
 
       #tour-skip {
         display: none;                  /* only visible while the tour runs */
@@ -144,15 +207,15 @@
         right: 20px;
         width: 300px;
         padding: 16px 20px;
-        background: rgba(20, 30, 40, 0.88);
+        background: rgba(24, 34, 48, 0.85);
         color: #fff;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        font-family: system-ui, sans-serif;
+        border: 1px solid rgba(159, 182, 212, 0.35);
+        font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
         z-index: 10;                   /* draw on top of the canvas */
       }
-      #info-panel h2  { margin: 0 0 8px; font-size: 20px; }
-      #info-panel p   { margin: 0; font-size: 14px; line-height: 1.5; }
+      #info-panel h2  { margin: 0 0 8px; font-size: 20px; color: #ffffff; }
+      #info-panel p   { margin: 0; font-size: 14px; line-height: 1.55; color: #c9d8ea; }
       #info-close {
         position: absolute;
         top: 8px; right: 10px;

@@ -10,16 +10,24 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 const loader = new GLTFLoader();
 
 // ---------- shared materials (create once, reuse everywhere) ----------
-const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x3a4750, roughness: 0.8 });
-const worktopMat = new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: 0.3, metalness: 0.1 });
+const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x6b7a87, roughness: 0.8 });
+const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.4, metalness: 0.1 });
 const woodMat    = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness: 0.8 });
-// "Glass": see-through by lowering opacity. (Real refraction glass exists —
-// MeshPhysicalMaterial.transmission — but this is cheaper and looks fine here.)
-const glassMat = new THREE.MeshStandardMaterial({
-  color: 0xdfefff,
+// "Glass": MeshPhysicalMaterial.transmission is REAL refraction — it renders
+// the scene behind the glass through the material (IOR 1.5 = borosilicate).
+// The old opacity-only MeshStandardMaterial looked like frosted plastic.
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0xe8f4ff,
+  metalness: 0,
+  roughness: 0.05,
+  transmission: 1,
+  thickness: 0.04,
+  ior: 1.5,
+  clearcoat: 1,
   transparent: true,
-  opacity: 0.35,
-  roughness: 0.1
+  opacity: 1,
+  side: THREE.DoubleSide,
+  depthWrite: false
 });
 
 // ---------- GLB loader (moved from main.js) ----------
@@ -142,20 +150,21 @@ function createTestTubeRack() {
 }
 
 // A paper label texture for a chemical bottle — same canvas-texture trick
-// as the periodic table tiles, just smaller.
+// as the periodic table tiles, just smaller. Dark navy + white text so the
+// formula stays readable from across the room (and matches the poster board).
 function createLabelTexture(text) {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 96;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#f5f0e6';                // paper
+  ctx.fillStyle = '#22303c';                // dark navy panel
   ctx.fillRect(0, 0, 128, 96);
-  ctx.strokeStyle = '#8a2020';              // red border, like real reagent labels
-  ctx.lineWidth = 6;
-  ctx.strokeRect(4, 4, 120, 88);
+  ctx.strokeStyle = '#9fc5e8';              // soft blue border, like a framed tag
+  ctx.lineWidth = 4;
+  ctx.strokeRect(3, 3, 122, 90);
 
-  ctx.fillStyle = '#222222';
+  ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 30px Arial';
