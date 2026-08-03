@@ -156,7 +156,7 @@
         "text": "A strong acid plus a strong base gives a neutral salt solution and water: HCl + NaOH -> NaCl + H2O. The reaction is exothermic, so the beaker feels warm."
       },
       "effects": [
-        { "type": "bubbles", "intensity": 1.5, "duration": 3 },
+        { "type": "fire", "intensity": 1.5, "duration": 3 },
         { "type": "colorChange", "to": "#e6f2f7", "duration": 2.5 }
       ],
       "result": { "chemicalId": "nacl-solution", "note": "Neutral salt water." }
@@ -172,7 +172,7 @@
       },
       "effects": [
         { "type": "colorChange", "to": "#7fc4d8", "duration": 3 },
-        { "type": "bubbles", "intensity": 0.6, "duration": 2 }
+        { "type": "fire", "intensity": 0.6, "duration": 2 }
       ],
       "result": { "chemicalId": "copper-hydroxide", "note": "A pale blue precipitate has formed." }
     },

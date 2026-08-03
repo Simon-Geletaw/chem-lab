@@ -16,6 +16,12 @@ export function createHand(camera, scene, interactableObjects, beaker) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
+    // The bottle's FULL home transform, captured ONCE at pickup, BEFORE
+    // camera.attach() re-parents it: { parent, position, rotation }.
+    // Rotation must be a full Euler (x, y, z) — the pour tilts z by 1.9 rad,
+    // and a y-only lerp can never undo that, leaving bottles upside-down.
+    let homeTransform = null;
+
     // Camera space: 35 cm right, 30 cm down, 60 cm forward of the eyes —
     // the classic first-person "held item" corner.
     const Hand_Pos = new THREE.Vector3(0.35, -0.3, -0.6);
@@ -85,6 +91,13 @@ export function createHand(camera, scene, interactableObjects, beaker) {
         if (event.code === 'KeyE' && state === 'EMPTY') {
             const bottle = aimAt('isBottle', 2.5);
             if (bottle) {
+                // Capture the full home transform in the bottle's OWN parent
+                // space (the shelf group) before camera.attach re-parents it.
+                homeTransform = {
+                    parent: bottle.parent,
+                    position: bottle.position.clone(),
+                    rotation: bottle.rotation.clone()
+                };
                 camera.attach(bottle);      // re-parent, world position preserved
                 heldBottle = bottle;
                 state = 'HOLDING';
@@ -106,7 +119,8 @@ export function createHand(camera, scene, interactableObjects, beaker) {
         }
 
         if (event.code === 'KeyQ' && state === 'HOLDING') {
-            scene.attach(heldBottle);       // back to world coords, still no jump
+            if (homeTransform) homeTransform.parent.attach(heldBottle);  // back to its shelf
+            else scene.attach(heldBottle);
             state = 'RETURNING';            // update() flies it home, then releases it
         }
     });
@@ -127,15 +141,21 @@ export function createHand(camera, scene, interactableObjects, beaker) {
             }
 
             if (state === 'RETURNING') {
-                // Mirror of interactions.js returningTiles: fly home, snap the last mm.
-                const home = heldBottle.userData.homePosition;
-                heldBottle.position.lerp(home, t);
-                heldBottle.rotation.y += (Math.PI / 2 - heldBottle.rotation.y) * t;
+                // Fly home: lerp ALL THREE Euler axes toward the captured home
+                // rotation (not just y), plus position. The snap kills any
+                // residual tilt so the bottle lands perfectly upright and the
+                // label faces the room exactly as authored.
+                const home = homeTransform;
+                heldBottle.position.lerp(home.position, t);
+                heldBottle.rotation.x += (home.rotation.x - heldBottle.rotation.x) * t;
+                heldBottle.rotation.y += (home.rotation.y - heldBottle.rotation.y) * t;
+                heldBottle.rotation.z += (home.rotation.z - heldBottle.rotation.z) * t;
 
-                if (heldBottle.position.distanceTo(home) < 0.005) {
-                    heldBottle.position.copy(home);
-                    heldBottle.rotation.y = Math.PI / 2;   // label back toward the room
+                if (heldBottle.position.distanceTo(home.position) < 0.01) {
+                    heldBottle.position.copy(home.position);
+                    heldBottle.rotation.copy(home.rotation);   // exact, no drift
                     heldBottle = null;
+                    homeTransform = null;
                     state = 'EMPTY';
                 }
             }
