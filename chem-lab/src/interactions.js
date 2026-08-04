@@ -36,12 +36,12 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
 function createCardTexture(title, description, badge) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
-  canvas.height = 340;
+  canvas.height = 420;
   const ctx = canvas.getContext('2d');
 
   ctx.fillStyle = 'rgba(24, 34, 48, 0.94)';
   ctx.beginPath();
-  ctx.roundRect(4, 4, 504, 332, 18);
+  ctx.roundRect(4, 4, 504, 412, 18);
   ctx.fill();
   ctx.strokeStyle = 'rgba(159, 182, 212, 0.55)';
   ctx.lineWidth = 3;
@@ -98,7 +98,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     const { name, atomicNumber, description, homePosition } = tile.userData;
 
     card = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.9, 0.6),
+      new THREE.PlaneGeometry(0.9, 0.74),
       new THREE.MeshBasicMaterial({        // Basic = readable in any lighting
         map: createCardTexture(name, description, '#' + atomicNumber),
         transparent: true,
