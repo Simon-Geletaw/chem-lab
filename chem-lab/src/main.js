@@ -14,6 +14,8 @@ import { createPourDialog } from './ui/pourDialog.js';
 import { createHUD } from './ui/hud.js';
 import { createGloves } from './gloves.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
+import { quality, createFpsMeter, createQualityMonitor } from './quality.js';
+import { initLightPool } from './effects/lightPool.js';
 
 // PHASE 1: chemistry data loads BEFORE the world is built, because the shelf
 // bottles are generated from it. Top-level await works in Vite ES modules.
@@ -35,7 +37,11 @@ scene.add(camera);
 // 3. Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+// PERF: cap the render resolution. Without this call Three renders at the
+// screen's FULL devicePixelRatio (2-3× on laptops) — the single biggest
+// hidden cost in the app. 1.5× is visually identical at this art style.
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatioCap));
+renderer.shadowMap.enabled = quality.level !== 'low';   // LOW preset skips shadows entirely
 // ACES filmic tone mapping: without it, bright primaries clip to ugly flat
 // colors. One line gives the whole room a natural, photographic response.
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -45,6 +51,9 @@ document.body.appendChild(renderer.domElement);
 // 4. Build the world (each module adds its own part to the scene)
 const interactableObjects = [];
 createRoom(scene);
+// PERF: effect lights (fire/flash) come from a fixed 2-light pool created
+// once — reactions never allocate lights or trigger shader recompiles.
+initLightPool(scene);
 createPeriodicWall(scene, interactableObjects);
 const player = createPlayer(camera);
 // Furniture registers its bounding boxes in player.colliders so you bump into it
@@ -107,6 +116,11 @@ const tour = createTour(camera, player, interactions);
 // 6. Animation Loop
 const clock = new THREE.Clock();      // measures real time between frames
 
+// PERF instrumentation: live FPS readout + the auto-degrade monitor (drops
+// to the LOW preset once if this machine can't hold 45 fps — see quality.js).
+const fpsMeter = createFpsMeter();
+const qualityMonitor = createQualityMonitor(renderer, scene);
+
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
@@ -118,6 +132,8 @@ function animate() {
   tour.update(delta);                 // tour camera (does nothing while idle)
   interactions.update(delta);
   renderer.render(scene, camera);
+  fpsMeter.tick(delta);
+  qualityMonitor.tick(delta);
 }
 animate();
 

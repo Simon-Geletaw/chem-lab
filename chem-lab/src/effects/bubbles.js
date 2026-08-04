@@ -4,9 +4,10 @@
 // born at the liquid's BOTTOM, stay inside its radius, rise ~6 cm, and POP at
 // the surface (respawn, no fade) — popping is what reads as "fizz".
 import * as THREE from 'three';
+import { quality } from '../quality.js';
 
 export function createBubbles(params, position, scene) {
-  const COUNT = Math.round(40 * (params.intensity ?? 1));
+  const COUNT = Math.max(8, Math.round(40 * (params.intensity ?? 1) * quality.particleScale));
   const duration = params.duration ?? 3;
 
   const R = 0.035;          // stay inside the liquid cylinder (r=0.043)

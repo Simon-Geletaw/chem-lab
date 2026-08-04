@@ -5,9 +5,12 @@
 // small camera-facing sprite. We build the BufferGeometry by hand — raw typed
 // arrays — and animate by mutating the numbers + raising needsUpdate.
 import * as THREE from 'three';
+import { quality } from '../quality.js';
 
 export function createSmoke(params, position, scene) {
-  const COUNT = Math.round(60 * (params.density ?? 1));
+  // particleScale (quality.js): LOW machines run half the particles — the
+  // column stays readable, the per-frame buffer upload halves.
+  const COUNT = Math.max(12, Math.round(60 * (params.density ?? 1) * quality.particleScale));
   const duration = params.duration ?? 4;
 
   // The GPU-side buffer: xyzxyzxyz...

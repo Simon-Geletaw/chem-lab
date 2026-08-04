@@ -59,6 +59,9 @@ export function createRoom(scene) {
   const dirLight = new THREE.DirectionalLight(0xfff2dc, 1.2);
   dirLight.position.set(10, 5, 0);  // "sun" outside the RIGHT wall = light through the windows
   dirLight.castShadow = true;
+  // Explicit shadow map size (default is only 512² and blocky; 1024² is the
+  // sweet spot — sharper contact shadows for one extra ~4 MB texture).
+  dirLight.shadow.mapSize.set(1024, 1024);
   // Shadow camera = the invisible box shadows are computed inside.
   // Smaller box over the same shadow map = SHARPER shadows.
   dirLight.shadow.camera.left = -8;
