@@ -38,7 +38,8 @@
       "formula": "CuSO4",
       "color": "#2e86c1",
       "hazard": "toxic",
-      "description": "Bright blue salt solution. Reacts with sodium hydroxide to form a pale blue precipitate of copper hydroxide."
+      "state": "powder",
+      "description": "Bright blue crystalline powder. Reacts with sodium hydroxide to form a pale blue precipitate of copper hydroxide."
     },
     {
       "id": "kmno4",

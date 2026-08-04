@@ -28,6 +28,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { fitGrip } from './gripFit.js';
 
 const NITRILE = 0xf4f6f8;               // white nitrile (soft white, not pure — ACES tone mapping would blow out 0xffffff)
 const BOX_BLUE = 0x3f6db3;              // the dispenser box keeps the brand blue
@@ -67,6 +68,10 @@ const BOTTLE_R = 0.045;                 // reagent bottle body radius (furniture
 // the bottle surface (4.3–5.4 cm from the axis, surface = 4.5 cm), index and
 // middle tips wrap the FRONT-RIGHT of the bottle, ring and pinky the BACK-
 // RIGHT, thumb crosses the front at mid height — a real first-person hold.
+// The grip pose used to be numeric-fit constants. Now gripFit.js MEASURES the
+// loaded skeleton and computes per-joint contact angles at load time (idea #4
+// taken to its conclusion: nothing about the grip is hand-tuned anymore).
+// The flat arrays below remain as the FALLBACK if fitting fails.
 const POSES = {
   relaxed: {
     axis: 'x',
@@ -76,9 +81,10 @@ const POSES = {
   },
   grip: {
     axis: 'z',
-    finger: [0.36, 0.78, 0.65, 0.21],   // wrapped around the 4.5 cm bottle
+    finger: [0.36, 0.78, 0.65, 0.21],   // fallback: wrapped around the 4.5 cm bottle
     thumb:  [0.06, 0.88, 0.90, 0.34],
-    spread: 0.0
+    spread: 0.0,
+    perJoint: null                      // filled by fitGrip() once the model loads
   }
 };
 
@@ -284,6 +290,18 @@ export function createGloves(scene, camera, interactableObjects) {
         palm.multiplyScalar(HAND_SCALE);
         palm.applyQuaternion(entry.orient.quaternion);
         GRIP_POS.copy(palm);
+
+        // PROCEDURAL GRIP (T5): measure the actual skeleton and curl each
+        // joint until it touches the bottle surface at GRIP_POS. If at least
+        // 3 of 5 digits reach contact, the measured pose replaces the
+        // fallback constants. Runs once; restores the bones afterwards.
+        const fit = fitGrip(bones, entry.rig, GRIP_POS, BOTTLE_R);
+        if (fit.contacts >= 3) {
+          POSES.grip.perJoint = fit.perJoint;
+        } else {
+          console.warn('grip fit: only', fit.contacts, 'digits reached contact — keeping fallback pose');
+        }
+        console.info('grip fit report:\n' + fit.summary);
       }
 
       // Also keep the nitrile material fed with the hand's own skin texture
@@ -322,12 +340,15 @@ export function createGloves(scene, camera, interactableObjects) {
     if (!entry.bones) return;
     const pose = POSES[entry.pose];
     const flexAxis = pose.axis === 'z' ? Z_AXIS : X_AXIS;
+    // perJoint = the measured contact pose from fitGrip (per digit, per
+    // joint). Falls back to the flat arrays when fitting hasn't run/failed.
+    const pj = pose.perJoint || null;
 
     FINGERS.forEach((finger, fi) => {
       FINGER_JOINTS.forEach((joint, ji) => {
         const j = entry.bones[`${finger}_${joint}`];
         if (!j) return;
-        _flex.setFromAxisAngle(flexAxis, pose.finger[ji]);
+        _flex.setFromAxisAngle(flexAxis, pj ? pj[finger][ji] : pose.finger[ji]);
         _target.copy(j.baseQuat).multiply(_flex);
         // The meta joint also splays: fingers fan in the palm plane (about z,
         // because they point along +y). Index tilts toward the thumb (-x).
@@ -342,7 +363,7 @@ export function createGloves(scene, camera, interactableObjects) {
     THUMB_JOINTS.forEach((joint, ji) => {
       const j = entry.bones[`thumb_${joint}`];
       if (!j) return;
-      _flex.setFromAxisAngle(flexAxis, pose.thumb[ji]);
+      _flex.setFromAxisAngle(flexAxis, pj ? pj.thumb[ji] : pose.thumb[ji]);
       _target.copy(j.baseQuat).multiply(_flex);
       j.bone.quaternion.slerp(_target, t);
     });

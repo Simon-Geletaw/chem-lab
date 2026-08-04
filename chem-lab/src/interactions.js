@@ -111,8 +111,8 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     const side = homePosition.x > 2 ? -0.85 : 0.85;
     card.position.set(
       THREE.MathUtils.clamp(homePosition.x + side, -6.3, 6.3),
-      THREE.MathUtils.clamp(homePosition.y, 0.6, 2.9),
-      -4.4
+      THREE.MathUtils.clamp(homePosition.y, 0.75, 2.35),
+      -4.3
     );
     scene.add(card);
   }
@@ -136,7 +136,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
 
   function addProximityPanel({ position, title, description, radius = 2.5 }) {
     const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.9, 0.55),
+      new THREE.PlaneGeometry(0.9, 0.68),
       new THREE.MeshBasicMaterial({
         map: createCardTexture(title, description),
         transparent: true,

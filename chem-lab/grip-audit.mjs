@@ -100,29 +100,28 @@ bottle.position.copy(GRIP);   // rig-space; rig has no rotation while HOLDING
 rig.add(bottle);
 rig.updateMatrixWorld(true);
 
-// ---- apply the pose exactly like applyPose --------------------------------
-const X = new THREE.Vector3(1, 0, 0), Z = new THREE.Vector3(0, 0, 1), Y = new THREE.Vector3(0, 1, 0);
+// ---- apply the pose --------------------------------------------------------
+// T5: the pose is no longer hand-tuned constants — it is the SAME fitGrip()
+// the browser runs (src/gripFit.js), imported here so the audit verifies the
+// exact production code path.
+const { fitGrip } = await import('./src/gripFit.js');
+const fit = fitGrip(bones, rig, GRIP, BOTTLE_R);
+console.log('--- fitGrip report ---');
+console.log(fit.summary);
+
+const Z = new THREE.Vector3(0, 0, 1);
 const seed = new THREE.Quaternion(), f = new THREE.Quaternion();
-FINGERS.forEach((finger, fi) => {
-  FINGER_JOINTS.forEach((joint, ji) => {
-    const j = bones[`${finger}_${joint}`];
+function applyDigit(names, angles) {
+  names.forEach((n, ji) => {
+    const j = bones[n];
     if (!j) return;
-    f.setFromAxisAngle(X, POSE.finger[ji]);
+    f.setFromAxisAngle(Z, angles[ji]);
     seed.copy(j.baseQuat).multiply(f);
-    if (ji === 0 && POSE.spread) {
-      f.setFromAxisAngle(Z, (1.5 - fi) * POSE.spread);
-      seed.multiply(f);
-    }
     j.bone.quaternion.copy(seed);
   });
-});
-THUMB_JOINTS.forEach((joint, ji) => {
-  const j = bones[`thumb_${joint}`];
-  if (!j) return;
-  f.setFromAxisAngle(X, POSE.thumb[ji]);
-  seed.copy(j.baseQuat).multiply(f);
-  j.bone.quaternion.copy(seed);
-});
+}
+for (const fg of FINGERS) applyDigit(FINGER_JOINTS.map((j) => `${fg}_${j}`), fit.perJoint[fg]);
+applyDigit(THUMB_JOINTS.map((j) => `thumb_${j}`), fit.perJoint.thumb);
 model.updateMatrixWorld(true);
 
 // ---- world-space measurement ----------------------------------------------
@@ -158,4 +157,24 @@ for (const fg of FINGERS) {
   const azD = Math.atan2(d.x - axis.x, d.z - axis.z) * 180 / Math.PI;
   let w = azD - azM; while (w > 180) w -= 360; while (w < -180) w += 360;
   console.log(`${fg}: knuckle az ${azM.toFixed(0)} -> tip az ${azD.toFixed(0)}  (wrap ${w.toFixed(0)} deg around the bottle)`);
+}
+
+// ---- verdict ----------------------------------------------------------------
+// PASS = at least 3 digits reached contact, and no measured joint penetrates
+// deeper than 2 mm into the glass (fitGrip's own back-off tolerance).
+let penetrations = 0;
+const check = (name) => {
+  const p = jw(name);
+  const r = Math.hypot(p.x - axis.x, p.z - axis.z);
+  if (r < BOTTLE_R - 0.002) penetrations++;
+};
+for (const fg of FINGERS) for (const j of FINGER_JOINTS) check(`${fg}_${j}`);
+for (const j of THUMB_JOINTS) check(`thumb_${j}`);
+console.log('--- verdict ---');
+console.log(`digits in contact: ${fit.contacts}/5, joint penetrations: ${penetrations}`);
+if (fit.contacts >= 3 && penetrations === 0) {
+  console.log('GRIP AUDIT: PASS');
+} else {
+  console.log('GRIP AUDIT: FAIL');
+  process.exitCode = 1;
 }

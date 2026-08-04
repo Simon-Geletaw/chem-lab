@@ -99,7 +99,10 @@ export function createPeriodicWall(scene, interactableObjects) {
   const elementsGroup = new THREE.Group();
   const tiles = [];
 
-  const tileStep = 0.30;   // tile size 0.28 m + gap 0.02 m (classroom-poster sized)
+  // Poster scaled down to 71% and re-centered at eye height (1.6 m) so the
+  // whole board fits in the player's field of view without craning the neck.
+  const S = 0.71;
+  const tileStep = 0.30 * S;   // tile size 0.199 m + gap, scaled
 
   elementsData.forEach((element, index) => {
     const atomicNumber = index + 1;
@@ -108,10 +111,15 @@ export function createPeriodicWall(scene, interactableObjects) {
 
     const texture = createElementTexture(element, atomicNumber, color);
     const material = new THREE.MeshStandardMaterial({ map: texture });
-    const tile = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.02), material);
+    const tile = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28 * S, 0.28 * S, 0.02 * S),
+      material
+    );
 
     const xPos = (cell.col - 9.5) * tileStep;      // cols 1..18 centered on x=0
-    const yPos = 3.25 - cell.row * tileStep;       // row 1 near ceiling, rows descend
+    // Old layout ran rows 1..9.5 from y=2.95 down to 0.40 (center 1.675);
+    // scale that band about eye height so the poster stays put but shrinks.
+    const yPos = 1.6 + (3.25 - cell.row * 0.30 - 1.675) * S;
     tile.position.set(xPos, yPos, -4.96);
 
     tile.userData = {
@@ -130,18 +138,18 @@ export function createPeriodicWall(scene, interactableObjects) {
 
   // Dark board behind the tiles ("poster frame")
   const board = new THREE.Mesh(
-    new THREE.BoxGeometry(5.9, 3.1, 0.04),
+    new THREE.BoxGeometry(5.9 * S, 3.1 * S, 0.04 * S),
     new THREE.MeshStandardMaterial({ color: 0x22303c, roughness: 0.85 })
   );
-  board.position.set(0, 1.68, -4.99);
+  board.position.set(0, 1.6, -4.99);
   scene.add(board);
 
   // Title strip
   const title = new THREE.Mesh(
-    new THREE.PlaneGeometry(3, 0.375),   // same 8:1 ratio as the 1024x128 canvas
+    new THREE.PlaneGeometry(3 * S, 0.375 * S),   // same 8:1 ratio as the 1024x128 canvas
     new THREE.MeshStandardMaterial({ map: createTitleTexture() })
   );
-  title.position.set(0, 3.3, -4.97);
+  title.position.set(0, 2.75, -4.97);
   scene.add(title);
 
   return { tiles };
