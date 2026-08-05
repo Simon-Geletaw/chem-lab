@@ -433,6 +433,50 @@ export function createGloves(scene, camera, interactableObjects) {
   let on = false;
   let time = 0;
 
+  // ---- burn feedback (T6) --------------------------------------------------
+  // Picking up corrosives bare-handed BURNS: hand.js drives a 0..1 level, we
+  // tint the right hand's skin materials (color multiplies the skin texture —
+  // no texture edits) and raise thin smoke wisps from the palm. The wisps are
+  // a self-contained Points in RIG space (they ride the hand automatically) —
+  // deliberately NOT an effects/-registry effect, so this file stays the only
+  // owner of hand visuals.
+  const WISP_N = 14;
+  const wispPos = new Float32Array(WISP_N * 3);
+  const wispAge = new Float32Array(WISP_N);
+  const wispLife = new Float32Array(WISP_N);
+  const wispGeo = new THREE.BufferGeometry();
+  wispGeo.setAttribute('position', new THREE.BufferAttribute(wispPos, 3));
+  const wisps = new THREE.Points(wispGeo, new THREE.PointsMaterial({
+    color: 0x9a9a9a, size: 0.007, transparent: true, opacity: 0.6, depthWrite: false
+  }));
+  wisps.visible = false;
+  wisps.frustumCulled = false;          // camera child at the frustum edge
+  right.rig.add(wisps);
+  function spawnWisp(i) {
+    wispPos[i * 3] = GRIP_POS.x + (Math.random() - 0.5) * 0.05;
+    wispPos[i * 3 + 1] = GRIP_POS.y + 0.04 + Math.random() * 0.04;
+    wispPos[i * 3 + 2] = GRIP_POS.z + (Math.random() - 0.5) * 0.05;
+    wispAge[i] = 0;
+    wispLife[i] = 0.5 + Math.random() * 0.6;
+  }
+  for (let i = 0; i < WISP_N; i++) { spawnWisp(i); wispAge[i] = Math.random() * wispLife[i]; }
+
+  // The right hand's ORIGINAL skin materials (userData.skinMat) — tinting
+  // these leaves the shared nitrile material and the left hand untouched.
+  let burnMats = null;
+  function collectBurnMats() {
+    if (burnMats && burnMats.length) return burnMats;
+    burnMats = [];
+    right.orient.traverse((n) => {
+      if (n.isSkinnedMesh && n.userData.skinMat) burnMats.push(n.userData.skinMat);
+    });
+    return burnMats;
+  }
+  const _burnColor = new THREE.Color();
+  const BURN_RED = new THREE.Color(1.0, 0.42, 0.32);
+  const BURN_DARK = new THREE.Color(0.55, 0.25, 0.2);
+  const SKIN_WHITE = new THREE.Color(1, 1, 1);
+
   return {
     get on() { return on; },
     // hand.js animates these directly during pickup/pour choreography.
@@ -441,6 +485,15 @@ export function createGloves(scene, camera, interactableObjects) {
 
     // 'relaxed' | 'grip' — eased by update(), never snapped.
     setRightPose(name) { right.pose = name; },
+
+    // T6: level 0 = healthy, 0.5 = angry red, 1 = chemical burn. smoking=true
+    // while the acid is actively eating (wisps rise from the palm).
+    setBurn(level, smoking) {
+      if (level < 0.5) _burnColor.copy(SKIN_WHITE).lerp(BURN_RED, level * 2);
+      else _burnColor.copy(BURN_RED).lerp(BURN_DARK, (level - 0.5) * 2);
+      for (const m of collectBurnMats()) m.color.copy(_burnColor);
+      wisps.visible = smoking && level > 0.05;
+    },
 
     toggle() {
       on = !on;
@@ -472,6 +525,19 @@ export function createGloves(scene, camera, interactableObjects) {
       for (const entry of [right, left]) {
         const targetRoll = entry.pose === 'grip' ? (POSES.grip.roll || 0) : 0;
         entry.roll.rotation.z += (targetRoll - entry.roll.rotation.z) * t;
+      }
+
+      // T6: burn smoke. Only while setBurn() has made the wisps visible — each
+      // wisp rises off the palm, drifts a little, and respawns when its short
+      // life ends, giving a continuous curl of smoke from the burning skin.
+      if (wisps.visible) {
+        for (let i = 0; i < WISP_N; i++) {
+          wispAge[i] += delta;
+          if (wispAge[i] >= wispLife[i]) { spawnWisp(i); continue; }
+          wispPos[i * 3 + 1] += delta * 0.06;                       // rise
+          wispPos[i * 3] += Math.sin((time + i) * 2.3) * delta * 0.008;  // curl
+        }
+        wispGeo.attributes.position.needsUpdate = true;
       }
     }
   };

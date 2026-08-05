@@ -88,6 +88,15 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
+    // T6: bare-handed hazard burn. `heldIsHazardBare` latches at pickup (a
+    // hazardous bottle grabbed without gloves); `burnLevel` ramps 0→1 while it
+    // is true and eases back to 0 once the bottle leaves the hand. update()
+    // pushes both into gloves.setBurn() so the right hand reddens and smokes.
+    let heldIsHazardBare = false;
+    let burnLevel = 0;
+    const BURN_RAMP = 0.22;   // ~4.5 s bare contact to a full chemical burn
+    const BURN_HEAL = 0.6;    // fades out in <2 s once released
+
     // Zone-gate helper: a blocked E-action names the station instead of doing
     // nothing — the lab workflow is a sequence (PPE -> storage -> reaction).
     function zoneHint(text) {
@@ -268,15 +277,18 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     zoneHint('Chemicals are stored on the shelf along the left wall — pick them up there.');
                     return;
                 }
-                // F5 pickup gate: hazardous chemicals demand gloves. The rule
-                // is assembled from the registry data — no hardcoded names.
+                // T6 pickup gate: hazardous chemicals no longer BLOCK the grab —
+                // bare skin can grab them, but it starts to BURN. The warning is
+                // assembled from registry data (no hardcoded names) and the burn
+                // ramps in update() until the bottle is put back or gloved hands
+                // take over. Water / hazard-none is safe.
                 const chem = getChemical(bottle.userData.chemicalId);
-                if (chem && chem.hazard !== 'none' && !gloves.on) {
+                heldIsHazardBare = !!(chem && chem.hazard !== 'none' && !gloves.on);
+                if (heldIsHazardBare) {
                     warningCard.show({
-                        title: 'Gloves required!',
-                        text: `${chem.name} is ${chem.hazard}. Put on nitrile gloves from the glove box before handling it.`
+                        title: 'No gloves — your skin is burning!',
+                        text: `${chem.name} is ${chem.hazard}. Bare skin reacts with it. Press Q to put it back, or glove up at the PPE station first.`
                     }, 'danger');
-                    return;
                 }
                 // Capture the full home transform in the bottle's OWN parent
                 // space (the shelf group) before re-parenting it.
@@ -349,6 +361,7 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             if (homeTransform) homeTransform.parent.attach(heldBottle);  // back to its shelf
             else scene.attach(heldBottle);
             gloves.setRightPose('relaxed');  // fingers open as the bottle leaves
+            heldIsHazardBare = false;        // T6: contact ends → the skin heals
             state = 'RETURNING';            // update() flies it home, then releases it
         }
     });
@@ -360,6 +373,16 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
 
         update(delta) {
             const t = Math.min(1, delta * 8);   // the easing idiom (book Ch 2.1 #4)
+
+            // T6: the burn ramps while a hazardous bottle is held bare-handed
+            // (any carry state), and heals once it is released. gloves.setBurn()
+            // tints the right hand and raises smoke wisps while it is climbing.
+            const burning = heldIsHazardBare &&
+                (state === 'HOLDING' || state === 'CHOOSING' || state === 'POURING');
+            burnLevel = burning
+                ? Math.min(1, burnLevel + delta * BURN_RAMP)
+                : Math.max(0, burnLevel - delta * BURN_HEAL);
+            gloves.setBurn(burnLevel, burning);
 
             if (state === 'HOLDING' || state === 'CHOOSING') {
                 // Coords are RIG-space now (the bottle is a child of the right
