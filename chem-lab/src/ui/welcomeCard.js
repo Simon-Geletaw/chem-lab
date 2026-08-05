@@ -19,11 +19,16 @@ export function createWelcomeCard(onStart) {
         <div id="welcome-keys">
           <div class="key-row"><b class="key">W A S D</b><span>move</span></div>
           <div class="key-row"><b class="key">Mouse</b><span>look</span></div>
-          <div class="key-row"><b class="key">E</b><span>interact &middot; pick &middot; pour</span></div>
+          <div class="key-row"><b class="key">E</b><span>interact &middot; gloves/mask &middot; pick &middot; pour</span></div>
           <div class="key-row"><b class="key">Q</b><span>put back</span></div>
           <div class="key-row"><b class="key">R</b><span>reset flask</span></div>
           <div class="key-row"><b class="key">Esc</b><span>release mouse</span></div>
         </div>
+        <p id="welcome-flow">
+          <b>Lab workflow:</b> 1&rarr; PPE station by the door &mdash; put on gloves
+          and mask &middot; 2&rarr; take a chemical from the storage shelf
+          &middot; 3&rarr; pour it into the flask on the island bench.
+        </p>
         <p id="welcome-safety">
           <span id="welcome-warn" aria-hidden="true">&#9888;</span>
           <span>Wear gloves before handling hazardous chemicals. Never add water
@@ -120,6 +125,17 @@ export function createWelcomeCard(onStart) {
         align-items: flex-start;
       }
       #welcome-warn { color: ${theme.danger}; font-size: 16px; line-height: 1.5; }
+      #welcome-flow {
+        margin: 0 0 14px;
+        padding: 12px 18px;
+        border-radius: 10px;
+        border: 1px solid rgba(63, 109, 179, 0.45);
+        background: rgba(63, 109, 179, 0.14);
+        font-size: 14px;
+        line-height: 1.65;
+        color: #c9d8ea;
+        text-align: left;
+      }
       #welcome-start {
         width: 100%;                     /* full-width primary action, like the pause menu */
         padding: 12px 30px;

@@ -6,6 +6,7 @@
 // to a Group, then place/rotate the WHOLE group once. Children follow along.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { ZONES } from './zones.js';
 
 const loader = new GLTFLoader();
 
@@ -78,12 +79,12 @@ export function loadModel(scene, interactableObjects, url, position, desiredHeig
 function createBench(x, z, rotationY) {
   const bench = new THREE.Group();
 
-  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.85, 0.6), cabinetMat);
-  cabinet.position.y = 0.425;               // half its height -> sits on floor
+  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.95, 0.6), cabinetMat);
+  cabinet.position.y = 0.475;               // half its height -> sits on floor
   bench.add(cabinet);
 
   const worktop = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.05, 0.7), worktopMat);
-  worktop.position.y = 0.875;               // 0.85 cabinet + half of 0.05
+  worktop.position.y = 0.975;               // 0.95 cabinet + half of 0.05 = 1.0 m worktop
   bench.add(worktop);
 
   bench.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
@@ -154,40 +155,96 @@ function createTestTubeRack() {
 // formula stays readable from across the room (and matches the poster board).
 function createLabelTexture(text) {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 96;
+  canvas.width = 256;
+  canvas.height = 192;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#22303c';                // dark navy panel
-  ctx.fillRect(0, 0, 128, 96);
-  ctx.strokeStyle = '#9fc5e8';              // soft blue border, like a framed tag
-  ctx.lineWidth = 4;
-  ctx.strokeRect(3, 3, 122, 90);
+  ctx.fillStyle = '#ffffff';                // high-contrast white background
+  ctx.fillRect(0, 0, 256, 192);
+  ctx.strokeStyle = '#000000';              // bold black border
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, 246, 182);
 
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#000000';                // solid black text
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 30px Arial';
-  ctx.fillText(text, 64, 48, 110);          // maxWidth squeezes long names
+  ctx.font = 'bold 72px Arial';
+  ctx.fillText(text, 128, 96, 230);
 
-  return new THREE.CanvasTexture(canvas);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  return texture;
+}
+
+// A hanging station sign: dark board + white text, hung above each workflow
+// station so the three-step lab flow is readable from across the room.
+function createStationSign(scene, text, position, rotationY) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 96;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#22303c';
+  ctx.fillRect(0, 0, 512, 96);
+  ctx.strokeStyle = '#9fc5e8';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(4, 4, 504, 88);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 42px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 48, 500);
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.6, 0.3),
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(canvas) })
+  );
+  sign.position.set(position.x, position.y, position.z);
+  sign.rotation.y = rotationY;
+  scene.add(sign);
+}
+
+// A grainy canvas texture for powder chemicals: base color + speckles of
+// slightly lighter/darker shade, so the bottle reads "crystals", not liquid.
+function makePowderTexture(baseColor) {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = baseColor;
+  g.fillRect(0, 0, 128, 128);
+  const col = new THREE.Color(baseColor);
+  for (let i = 0; i < 2000; i++) {
+    const k = 0.75 + Math.random() * 0.5;          // ±25% lightness per grain
+    g.fillStyle = `rgb(${Math.min(255, col.r * 255 * k) | 0},${Math.min(255, col.g * 255 * k) | 0},${Math.min(255, col.b * 255 * k) | 0})`;
+    g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random(), 1 + Math.random());
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 2);
+  return t;
 }
 
 // A reagent bottle: cylinder body + neck + cap + paper label.
-// labelAngle = which way the label faces (radians around Y).
-function createBottle(liquidColor, labelText, labelAngle) {
+// chem = the full chemical object (color, state); labelAngle = label facing.
+// Powder chemicals (state 'powder') get a matte granular body — salts are
+// crystals in a jar, not glossy liquid.
+function createBottle(chem, labelText, labelAngle) {
   const bottle = new THREE.Group();
+  const liquidColor = chem.color;
+  const isPowder = chem.state === 'powder';
 
   const body = new THREE.Mesh(
     new THREE.CylinderGeometry(0.045, 0.045, 0.16, 20),
-    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
+    isPowder
+      ? new THREE.MeshStandardMaterial({ map: makePowderTexture(liquidColor), roughness: 0.95 })
+      : new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
   );
   body.position.y = 0.08;
   bottle.add(body);
 
   const neck = new THREE.Mesh(
     new THREE.CylinderGeometry(0.018, 0.03, 0.04, 20),
-    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
+    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: isPowder ? 0.95 : 0.35 })
   );
   neck.position.y = 0.18;
   bottle.add(neck);
@@ -238,7 +295,7 @@ function createShelves(scene, interactableObjects, chemicals) {
     const zPos = -1.9 + (i % PER_BOARD) * 0.5;
 
     // The label shows the short formula; the full name lives in userData.
-    const bottle = createBottle(chem.color, chem.formula, labelAngle);
+    const bottle = createBottle(chem, chem.formula, labelAngle);
     bottle.position.set(-6.85, shelfY, zPos);
 
     // The identity card the hand system reads (book Ch 2.1 pattern #2).
@@ -265,7 +322,7 @@ function createShelves(scene, interactableObjects, chemicals) {
 
 // ---------- put it all together ----------
 export function createFurniture(scene, interactableObjects, colliders, shelfChemicals) {
-  const TOP = 0.9;   // bench worktop height in meters
+  const TOP = 1.0;   // bench worktop height in meters
 
   createShelves(scene, interactableObjects, shelfChemicals);
 
@@ -288,6 +345,22 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
   scene.add(wallBench);
   interactableObjects.push(wallBench);
   colliders.push(new THREE.Box3().setFromObject(wallBench));
+
+  // PPE station by the door: gloves + mask boxes live on this table, and the
+  // 'ppe' zone gates where they can be put on/taken off.
+  const ppeBench = createBench(ZONES.ppe.x, ZONES.ppe.z, 0);
+  ppeBench.userData = {
+    name: 'PPE Station',
+    description: 'Personal protective equipment: nitrile gloves and face masks. Put both on HERE before handling hazardous chemicals, and take them off here before leaving.'
+  };
+  scene.add(ppeBench);
+  interactableObjects.push(ppeBench);
+  colliders.push(new THREE.Box3().setFromObject(ppeBench));
+
+  // Station signs — the workflow is readable from anywhere in the room.
+  createStationSign(scene, 'PPE STATION', new THREE.Vector3(ZONES.ppe.x, 2.3, ZONES.ppe.z), Math.PI);
+  createStationSign(scene, 'CHEMICAL STORAGE', new THREE.Vector3(-6.85, 2.35, -1), Math.PI / 2);
+  createStationSign(scene, 'REACTION BENCH', new THREE.Vector3(0, 2.3, -1.5), 0);
 
   // Glassware ON the island bench (positions in world coords, y = worktop)
   const flask1 = createFlask(0x2ecc71);           // green liquid
@@ -363,6 +436,12 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
         title: 'Chemical Shelf',
         description: 'Reagent bottles used in experiments: acids like HCl and H2SO4, bases like NaOH, and colorful salts like CuSO4 and KMnO4. Always read the label before use!',
         radius: 2.5
+      },
+      {
+        position: new THREE.Vector3(ZONES.ppe.x, 1.7, ZONES.ppe.z),
+        title: 'PPE Station',
+        description: 'Personal protective equipment: nitrile gloves and face masks. Put both on here before handling hazardous chemicals.',
+        radius: 2.2
       }
     ]
   };

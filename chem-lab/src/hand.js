@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { getChemical } from './chemistry/registry.js';
 import { RIGHT_REST, RIGHT_POUR, LEFT_REST, LEFT_SUPPORT, GRIP_POS } from './gloves.js';
+import { inZone } from './zones.js';
 
 // --- F2: auto chemical info card -----------------------------------------
 // Aiming the crosshair at a bottle fills the top-right #info-panel with its
@@ -83,9 +84,15 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud) {
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
+
+    // Zone-gate helper: a blocked E-action names the station instead of doing
+    // nothing — the lab workflow is a sequence (PPE -> storage -> reaction).
+    function zoneHint(text) {
+        warningCard.show({ title: 'Wrong station', text }, 'info');
+    }
 
     // The bottle's FULL home transform, captured ONCE at pickup, BEFORE
     // camera.attach() re-parents it: { parent, position, rotation }.
@@ -128,10 +135,40 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     stream.visible = false;
     scene.add(stream);
 
+    // The GRAIN stream (T4b): powders don't pour as a glassy cylinder — they
+    // fall as separate grains. One THREE.Points built ONCE (48 verts, recycled
+    // every pour, zero per-pour allocation), particles slide mouth -> rim with
+    // a gravity-flavored ease and a little sideways scatter.
+    const GRAINS = 48;
+    const grainPos = new Float32Array(GRAINS * 3);
+    const grainGeo = new THREE.BufferGeometry();
+    grainGeo.setAttribute('position', new THREE.BufferAttribute(grainPos, 3));
+    const grainProg = new Float32Array(GRAINS);       // 0..1 fall progress
+    const grainJit = [];                              // per-grain scatter + speed
+    for (let i = 0; i < GRAINS; i++) {
+        grainProg[i] = Math.random();
+        grainJit.push({
+            x: (Math.random() - 0.5) * 0.014,
+            z: (Math.random() - 0.5) * 0.014,
+            s: 0.7 + Math.random() * 0.6
+        });
+    }
+    const grains = new THREE.Points(grainGeo, new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.008,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false
+    }));
+    grains.visible = false;
+    scene.add(grains);
+    let pourIsPowder = false;   // set per-pour from the chemical's state
+
     const _mouthWorld = new THREE.Vector3();    // scratch vectors, allocated once
     const _rimWorld = new THREE.Vector3();      // (a new Vector3 per frame would
     const _mid = new THREE.Vector3();           //  churn the garbage collector)
     const _rimOffset = new THREE.Vector3(0, beaker.rimY, 0);   // flask base -> rim height
+    const _ppeFrom = new THREE.Vector3();   // where a discarded glove/mask leaves the body
 
     const raycaster = new THREE.Raycaster();
     const CENTER = new THREE.Vector2(0, 0);   // crosshair = exact screen center
@@ -175,12 +212,62 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             // ray checks it BEFORE bottles (they never overlap anyway).
             const gbox = aimAt('gloveBox', 2.5);
             if (gbox) {
+                // PPE gate: gear up (and down) only at the PPE station.
+                if (!inZone('ppe', camera)) {
+                    zoneHint('The gloves live at the PPE station by the door — walk over and put them on there.');
+                    return;
+                }
+                // Dispensers only put PPE ON. Used gloves are contaminated —
+                // they go in the biohazard bin, never back in the box.
+                if (gloves.on) {
+                    zoneHint('Used gloves never go back in the box — throw them into the biohazard bin (press E on it).');
+                    return;
+                }
                 hud.setGloves(gloves.toggle());
+                return;
+            }
+
+            const mbox = aimAt('maskBox', 2.5);
+            if (mbox) {
+                if (!inZone('ppe', camera)) {
+                    zoneHint('The masks live at the PPE station by the door — put one on there.');
+                    return;
+                }
+                if (mask.on) {
+                    zoneHint('Used masks never go back in the box — throw yours into the biohazard bin (press E on it).');
+                    return;
+                }
+                hud.setMask(mask.toggle());
+                return;
+            }
+
+            // The biohazard bin: the ONLY way to take PPE off. One item per
+            // press, gloves first (they are the dirtier layer), then the mask.
+            const tbin = aimAt('trashBin', 2.5);
+            if (tbin) {
+                if (!gloves.on && !mask.on) {
+                    zoneHint('You are not wearing any PPE — nothing to throw away.');
+                    return;
+                }
+                if (gloves.on) {
+                    hud.setGloves(gloves.toggle());          // hands go bare on screen
+                    trashBin.dispose('gloves', gloves.rightRig.getWorldPosition(_ppeFrom));
+                } else {
+                    hud.setMask(mask.toggle());
+                    _ppeFrom.set(0, -0.2, -0.3);             // the mask leaves the face
+                    camera.localToWorld(_ppeFrom);
+                    trashBin.dispose('mask', _ppeFrom);
+                }
                 return;
             }
 
             const bottle = aimAt('isBottle', 2.5);
             if (bottle) {
+                // Storage gate: chemicals are taken from the shelf, nowhere else.
+                if (!inZone('shelf', camera)) {
+                    zoneHint('Chemicals are stored on the shelf along the left wall — pick them up there.');
+                    return;
+                }
                 // F5 pickup gate: hazardous chemicals demand gloves. The rule
                 // is assembled from the registry data — no hardcoded names.
                 const chem = getChemical(bottle.userData.chemicalId);
@@ -212,6 +299,11 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             // Pour: only if the crosshair rests on the beaker within arm's reach.
             const vessel = aimAt('isBeaker', 2);
             if (vessel) {
+                // Reaction gate: the flask lives on the island bench.
+                if (!inZone('reaction', camera)) {
+                    zoneHint('The reaction flask sits on the island bench — carry the bottle there to pour.');
+                    return;
+                }
                 // F3: ask the flask BEFORE animating — a rejected pour must not
                 // play a stream that delivers nothing. 'full' teaches with a
                 // card; 'reacting' just refuses silently (the eruption says why).
@@ -235,9 +327,14 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                         pourPhase = 'tilt';
                         pourClock = 0;
                         delivered = false;
-                        stream.material.color.set(
-                            heldBottle.children[0].material.color   // stream matches the liquid
-                        );
+                        // Powder pours as falling grains; liquid as a stream.
+                        // Color from the DATA (chem.color), not the bottle
+                        // mesh — powder bottles carry a white-based grain map,
+                        // so their material color is not the chemical's color.
+                        const pourChem = getChemical(heldBottle.userData.chemicalId);
+                        pourIsPowder = pourChem.state === 'powder';
+                        if (pourIsPowder) grains.material.color.set(pourChem.color);
+                        else stream.material.color.set(pourChem.color);
                         player.endModal();       // re-lock from the button's click gesture
                     },
                     onCancel() {
@@ -336,24 +433,43 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     // localToWorld handles all the tilt math for us (book Phase 4).
                     heldBottle.localToWorld(_mouthWorld.set(0, 0.2, 0));
                     _rimWorld.copy(beaker.group.position).add(_rimOffset);
-                    _mid.addVectors(_mouthWorld, _rimWorld).multiplyScalar(0.5);
 
-                    stream.position.copy(_mid);
-                    stream.scale.y = _mouthWorld.distanceTo(_rimWorld);
-                    // GLUG: the stream's thickness pulses as air replaces liquid
-                    // in the bottle — the signature rhythm of a real pour.
-                    const glug = 1 + 0.3 * Math.sin(pourClock * 22);
-                    stream.scale.x = glug;
-                    stream.scale.z = glug;
-                    // Cylinders point along Y but lookAt aims Z — orient, then fix 90°.
-                    stream.lookAt(_rimWorld);
-                    stream.rotateX(Math.PI / 2);
-                    stream.visible = true;
+                    if (pourIsPowder) {
+                        // GRAINS: each particle slides mouth -> rim on its own
+                        // clock. t² easing = gravity acceleration; the jitter
+                        // scatters them into a falling column, not a line.
+                        for (let i = 0; i < GRAINS; i++) {
+                            grainProg[i] += delta * 1.7 * grainJit[i].s;
+                            if (grainProg[i] > 1) grainProg[i] -= 1;
+                            const p = grainProg[i];
+                            const e = p * p * 0.65 + p * 0.35;   // accelerate downward
+                            grainPos[i * 3] = _mouthWorld.x + (_rimWorld.x - _mouthWorld.x) * e + grainJit[i].x * p;
+                            grainPos[i * 3 + 1] = _mouthWorld.y + (_rimWorld.y - _mouthWorld.y) * e;
+                            grainPos[i * 3 + 2] = _mouthWorld.z + (_rimWorld.z - _mouthWorld.z) * e + grainJit[i].z * p;
+                        }
+                        grainGeo.attributes.position.needsUpdate = true;
+                        grains.visible = true;
+                    } else {
+                        _mid.addVectors(_mouthWorld, _rimWorld).multiplyScalar(0.5);
+
+                        stream.position.copy(_mid);
+                        stream.scale.y = _mouthWorld.distanceTo(_rimWorld);
+                        // GLUG: the stream's thickness pulses as air replaces liquid
+                        // in the bottle — the signature rhythm of a real pour.
+                        const glug = 1 + 0.3 * Math.sin(pourClock * 22);
+                        stream.scale.x = glug;
+                        stream.scale.z = glug;
+                        // Cylinders point along Y but lookAt aims Z — orient, then fix 90°.
+                        stream.lookAt(_rimWorld);
+                        stream.rotateX(Math.PI / 2);
+                        stream.visible = true;
+                    }
 
                     if (pourClock > holdDuration) {
                         pourPhase = 'return';
                         pourClock = 0;
                         stream.visible = false;
+                        grains.visible = false;
                     }
                 }
 
@@ -377,9 +493,17 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             if (state === 'EMPTY') {
                 const target = aimAt('isBottle', 2.5);
                 const gbox = target ? null : aimAt('gloveBox', 2.5);
+                const mbox = target || gbox ? null : aimAt('maskBox', 2.5);
+                const tbin = target || gbox || mbox ? null : aimAt('trashBin', 2.5);
                 if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
-                else if (gbox) hint.textContent = gloves.on ? '[E] Take off gloves' : '[E] Put on gloves';
-                hint.style.display = (target || gbox) ? 'block' : 'none';
+                else if (gbox) hint.textContent = gloves.on ? 'Used gloves go in the biohazard bin' : '[E] Put on gloves';
+                else if (mbox) hint.textContent = mask.on ? 'Used masks go in the biohazard bin' : '[E] Put on mask';
+                else if (tbin) {
+                    hint.textContent = gloves.on
+                        ? '[E] Throw away gloves'
+                        : mask.on ? '[E] Throw away mask' : 'Nothing to throw away';
+                }
+                hint.style.display = (target || gbox || mbox || tbin) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask
                 // shows its contents breakdown instead.
                 showAimInfo(target || aimAt('isBeaker', 2.5), beaker);

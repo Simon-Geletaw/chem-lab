@@ -137,6 +137,42 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
   group.add(surface);
   const _white = new THREE.Color(0xffffff);
 
+  // --- powder heap (T4b): a matte cone shown while the flask holds ONLY
+  // solids. Same translate trick as the liquid: base at local y=0, scale.y =
+  // heap height, so mlToY keeps powder honest against the graduations too.
+  // The grain look: one GRAYSCALE speckle texture × material.color — tinting
+  // beats regenerating a canvas for every chemical, and colorChange effects
+  // keep working (they mutate the color, the speckle stays).
+  function makeGrainTexture() {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#dcdcdc';
+    g.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 2000; i++) {
+      const v = 170 + (Math.random() * 85) | 0;    // light grays -> white grains
+      g.fillStyle = `rgb(${v},${v},${v})`;
+      g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random(), 1 + Math.random());
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(2, 2);
+    return t;
+  }
+  const heapMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    map: makeGrainTexture(),
+    roughness: 0.95
+  });
+  const heapGeom = new THREE.ConeGeometry(LIQ_R * 0.92, 1, 24);
+  heapGeom.translate(0, 0.5, 0);                   // base at y=0, apex up
+  const heap = new THREE.Mesh(heapGeom, heapMat);
+  heap.position.y = LIQ_BASE;
+  heap.visible = false;
+  group.add(heap);
+  let heapOnly = false;   // true while the contents are undissolved powder
+
   // --- floating content label: canvas-texture, redrawn only when contents
   // change. Line 1 = chemical name; line 2 = formula · volume · temperature.
   function makeLabelTexture(line1, line2) {
@@ -166,8 +202,8 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
   group.add(label);
 
   // --- placement: island bench worktop, left of the burner, clear of the GLB
-  // beaker at (-0.3, 0.9, -1.5).
-  group.position.set(-0.55, 0.9, -1.5);
+  // beaker at (-0.3, 1.0, -1.5).
+  group.position.set(-0.55, 1.0, -1.5);
   group.userData = {
     isBeaker: true,
     name: 'Reaction Flask',
@@ -185,6 +221,7 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
   //   temp     — °C; constant 25 until F6 (burner/ice bath) animates it
   const contents = { list: [], currentId: null, totalMl: 0, temp: 25 };
   let pendingResult = null;           // what the flask becomes once effects finish
+  let warningTimer = null;            // delayed reaction warning (shows after the effects start)
 
   function setLabel(line1, line2) {
     if (label.material.map) label.material.map.dispose();   // old texture -> GPU leak otherwise
@@ -201,24 +238,33 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     setLabel(chem.name, `${chem.formula} · ${contents.totalMl} ml · ${Math.round(contents.temp)}°C`);
   }
 
-  // Liquid height + surface disc follow totalMl. Called on every change.
-  function syncLiquid() {
+  // Contents visuals follow totalMl. ONE function for both physical states:
+  // heapOnly -> the powder cone rises to the graduation line; otherwise the
+  // liquid column + meniscus disc do (and the heap hides — dissolved).
+  function syncContents() {
     const has = contents.totalMl > 0;
-    liquid.visible = has;
-    surface.visible = has;
+    heap.visible = has && heapOnly;
+    liquid.visible = has && !heapOnly;
+    surface.visible = has && !heapOnly;
     if (!has) return;
-    liquid.scale.y = Math.max(0.0001, mlToY(contents.totalMl) - LIQ_BASE);
-    surface.position.y = mlToY(contents.totalMl) + 0.0004;
+    if (heapOnly) {
+      heap.scale.y = Math.max(0.0001, mlToY(contents.totalMl) - LIQ_BASE);
+    } else {
+      liquid.scale.y = Math.max(0.0001, mlToY(contents.totalMl) - LIQ_BASE);
+      surface.position.y = mlToY(contents.totalMl) + 0.0004;
+    }
   }
 
   // Full clear (R key / pause-menu reset) or post-reaction settle both land here.
   function setContents(id) {
     if (!id) {                        // emptied
+      clearTimeout(warningTimer);      // no queued card after a reset
       state = 'EMPTY';
       contents.list = [];
       contents.currentId = null;
       contents.totalMl = 0;
-      syncLiquid();
+      heapOnly = false;
+      syncContents();
       refreshLabel();
       return;
     }
@@ -227,8 +273,9 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     state = 'HAS_CONTENTS';
     contents.currentId = id;
     contents.list = [{ chemicalId: id, ml: contents.totalMl }];
+    heapOnly = chem.state === 'powder';   // a solid product stays a heap
     liquid.material.color.set(chem.color);   // .set mutates in place — no new material
-    syncLiquid();
+    syncContents();
     refreshLabel();
   }
 
@@ -261,8 +308,9 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
       contents.currentId = addedId;
       contents.list = [{ chemicalId: addedId, ml }];
       contents.totalMl = ml;
+      heapOnly = chem.state === 'powder';   // dry salt into a dry flask = a heap
       liquid.material.color.set(chem.color);
-      syncLiquid();
+      syncContents();
       refreshLabel();
       return { ok: true };
     }
@@ -270,6 +318,10 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     const rule = findReaction(contents.currentId, addedId, getReactions());
     contents.totalMl += ml;
     contents.list.push({ chemicalId: addedId, ml });
+    // Powder stays a heap only while EVERY pour has been powder. The first
+    // liquid wets it: the heap disappears into a liquid column (dissolution —
+    // or a real reaction, which the rule below decides).
+    heapOnly = heapOnly && getChemical(addedId).state === 'powder';
 
     if (!rule) {
       // No rule: they just mix. Average the colors, contents become 'mixture' —
@@ -277,7 +329,7 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
       const mix = defaultMix(getChemical(contents.currentId).color, getChemical(addedId).color);
       contents.currentId = mix.result.chemicalId;
       liquid.material.color.set(mix.mixedColor);   // override the generic gray
-      syncLiquid();
+      syncContents();
       refreshLabel();
       return { ok: true };
     }
@@ -287,12 +339,20 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     // into particles, lights and shakes. The flask never knows how.
     state = 'REACTING';
     pendingResult = rule.result.chemicalId;
-    syncLiquid();                        // the poured volume is in — liquid rises now
+    syncContents();                        // the poured volume is in — liquid rises now
     refreshLabel();
 
     // Phase 7 pedagogy: danger = red card over the eruption; a correct
-    // procedure with a warning block = blue reinforcement card.
-    if (rule.warning) warningCard.show(rule.warning, rule.danger ? 'danger' : 'info');
+    // procedure with a warning block = blue reinforcement card. Shown a beat
+    // AFTER the pour lands so the player sees the reaction start (fire, smoke,
+    // bubbles) before the card covers the screen — not instantly on the pour.
+    if (rule.warning) {
+      clearTimeout(warningTimer);
+      warningTimer = setTimeout(
+        () => warningCard.show(rule.warning, rule.danger ? 'danger' : 'info'),
+        2500
+      );
+    }
 
     const mouth = group.position.clone();
     mouth.y += RIM_Y;                    // effects spawn at the rim, not the base
@@ -340,6 +400,9 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
       // The surface disc shadows the liquid color every frame, so the
       // colorChange effect (which mutates liquidMat.color) carries it along.
       if (surface.visible) surfaceMat.color.copy(liquidMat.color).lerp(_white, 0.18);
+      // The heap tints the same way: grayscale speckle map × liquid color =
+      // colored crystals, and colorChange effects work on powder too.
+      if (heap.visible) heapMat.color.copy(liquidMat.color);
 
       // While REACTING, wait for every effect to finish, then settle into the
       // product (Ch 6.4 step 10). runner.busy replaces the Phase 5 timer.

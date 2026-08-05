@@ -15,6 +15,8 @@ export async function loadChemistry() {
   // Vite can import JSON as an ES module; `.default` is the parsed object.
   data = (await import('../../server/data/chemicals.json')).default;
   validate(data);
+  // Physical state drives rendering: 'liquid' (default) or 'powder'.
+  for (const c of data.chemicals) c.state = c.state ?? 'liquid';
   console.log(
     `chemistry: ${data.chemicals.length} chemicals, ${data.reactions.length} reactions loaded`
   );

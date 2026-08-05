@@ -22,8 +22,9 @@ export function createTour(camera, player, interactions) {
   // arc faces (baseAngle — pointing INTO the room so we never enter a wall),
   // how wide it sways (sweep), and which proximity panel to pin (-1 = none).
   const stops = [
-    { center: new THREE.Vector3(0, 0.9, -1.5),  radius: 2.2, baseAngle: 0,            sweep: Math.PI / 2, panelIndex: 0 },  // lab bench
+    { center: new THREE.Vector3(2.0, 1.0, 1.2), radius: 1.8, baseAngle: Math.PI, sweep: Math.PI / 3, panelIndex: 3 },  // PPE station
     { center: new THREE.Vector3(-6.5, 1.6, -1), radius: 2.0, baseAngle: Math.PI / 2,  sweep: Math.PI / 3, panelIndex: 2 },  // shelves
+    { center: new THREE.Vector3(0, 1.0, -1.5),  radius: 2.2, baseAngle: 0,            sweep: Math.PI / 2, panelIndex: 0 },  // lab bench
     { center: new THREE.Vector3(6.85, 1.2, 2),  radius: 2.0, baseAngle: -Math.PI / 2, sweep: Math.PI / 3, panelIndex: 1 },  // extinguisher
     { center: new THREE.Vector3(0, 1.7, -5),    radius: 3.5, baseAngle: 0,            sweep: Math.PI / 4, panelIndex: -1 }  // periodic table
   ];

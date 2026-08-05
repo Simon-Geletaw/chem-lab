@@ -10,7 +10,7 @@
 //                     we deliberately do NOT pause the simulation.
 //   'info' (blue)   — the student followed correct procedure; positive
 //                     reinforcement teaches as much as the warning does.
-export function createWarningCard() {
+export function createWarningCard(player) {
   const root = document.createElement('div');
   root.id = 'warning-card';
   root.innerHTML = `
@@ -70,6 +70,10 @@ export function createWarningCard() {
   const text = root.querySelector('#warning-text');
   root.querySelector('#warning-ok').addEventListener('click', () => {
     root.style.display = 'none';
+    // POINTER-LOCK CONTRACT: while the pointer is locked, clicks land at the
+    // frozen screen-center coordinates and can never hit this button. The card
+    // freed the mouse in show() (beginModal) — re-lock from this real gesture.
+    if (player && player.endModal) player.endModal();
   });
 
   return {
@@ -79,6 +83,9 @@ export function createWarningCard() {
       text.textContent = warning.text;
       root.className = kind;
       root.style.display = 'flex';
+      // Free the mouse (no pause menu — modal mode) so the button is actually
+      // clickable; endModal() in the button handler re-locks it.
+      if (player && player.beginModal) player.beginModal();
     },
     hide() {
       root.style.display = 'none';

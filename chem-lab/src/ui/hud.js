@@ -7,7 +7,9 @@ import { theme } from './theme.js';
 export function createHUD() {
     const root = document.createElement('div');
     root.id = 'hud';
-    root.innerHTML = `<div id="hud-gloves" class="hud-chip off">Gloves: OFF</div>`;
+    root.innerHTML = `
+      <div id="hud-gloves" class="hud-chip off">Gloves: OFF</div>
+      <div id="hud-mask" class="hud-chip off">Mask: OFF</div>`;
     document.body.appendChild(root);
 
     const style = document.createElement('style');
@@ -39,11 +41,16 @@ export function createHUD() {
     document.head.appendChild(style);
 
     const glovesChip = root.querySelector('#hud-gloves');
+    const maskChip = root.querySelector('#hud-mask');
 
     return {
         setGloves(on) {
             glovesChip.textContent = on ? 'Gloves: ON' : 'Gloves: OFF';
             glovesChip.classList.toggle('off', !on);
+        },
+        setMask(on) {
+            maskChip.textContent = on ? 'Mask: ON' : 'Mask: OFF';
+            maskChip.classList.toggle('off', !on);
         }
     };
 }

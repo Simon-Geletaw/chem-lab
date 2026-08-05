@@ -28,6 +28,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { ZONES } from './zones.js';
 import { fitGrip } from './gripFit.js';
 
 const NITRILE = 0xf4f6f8;               // white nitrile (soft white, not pure — ACES tone mapping would blow out 0xffffff)
@@ -84,7 +85,8 @@ const POSES = {
     finger: [0.36, 0.78, 0.65, 0.21],   // fallback: wrapped around the 4.5 cm bottle
     thumb:  [0.06, 0.88, 0.90, 0.34],
     spread: 0.0,
-    perJoint: null                      // filled by fitGrip() once the model loads
+    perJoint: null,                     // filled by fitGrip() once the model loads
+    roll: 0                             // hand roll (rad) fitted with the pose
   }
 };
 
@@ -139,7 +141,8 @@ export function createGloves(scene, camera, interactableObjects) {
   label.position.set(0, 0.04, 0.076);       // 1 mm off the front face
   box.add(label);
 
-  box.position.set(-1.15, 0.9, -1.4);
+  // On the PPE table by the door (its zone gates where gloving is allowed).
+  box.position.set(ZONES.ppe.x, 1.0, ZONES.ppe.z);
   box.rotation.y = 0.25;
   box.userData = {
     gloveBox: true,
@@ -155,7 +158,7 @@ export function createGloves(scene, camera, interactableObjects) {
   const sway = new THREE.Group();
   camera.add(sway);
 
-  // A rig = outer Group (what hand.js moves) -> orient fix -> [mirror?] model.
+  // A rig = outer Group (what hand.js moves) -> orient fix -> roll -> [mirror?] model.
   //
   // CRITICAL (measured, not assumed): hand_model.glb is a LEFT hand — palm
   // faces +z (the camera at bind), thumb on the -x side, fingers along +y.
@@ -164,19 +167,26 @@ export function createGloves(scene, camera, interactableObjects) {
   // center (+x from the left side); the mirrored right hand gets -90°. The
   // pitch (-0.08) tips the knuckles up; both hands share it because the
   // mirror commutes with the x-rotation (true reflection of the same person).
+  //
+  // The ROLL group (T5) rotates the whole hand about the palm normal: fingers
+  // swing from vertical (bind) toward horizontal — the orientation that can
+  // actually wrap a vertical bottle. fitGrip() finds the angle; update()
+  // eases roll in/out with the grip pose.
   function makeRig(restPos, yaw, pitch, mirror) {
     const rig = new THREE.Group();
     rig.position.copy(restPos);
     const orient = new THREE.Group();
     orient.rotation.set(pitch, yaw, 0);
     rig.add(orient);
+    const roll = new THREE.Group();
+    orient.add(roll);
     sway.add(rig);
-    return { rig, orient, bones: null, pose: 'relaxed', cuff: null, mirror };
+    return { rig, orient, roll, bones: null, pose: 'relaxed', cuff: null, mirror };
   }
 
   const right = makeRig(RIGHT_REST, -Math.PI / 2, -0.08, new THREE.Group());
-  right.mirror.scale.x = -1;            // mirrored hand lives INSIDE the orient
-  right.orient.add(right.mirror);
+  right.mirror.scale.x = -1;            // mirrored hand lives INSIDE the roll group
+  right.roll.add(right.mirror);
   const left  = makeRig(LEFT_REST, Math.PI / 2, -0.08, null);
 
   // ---- materials ----------------------------------------------------------
@@ -197,20 +207,23 @@ export function createGloves(scene, camera, interactableObjects) {
     side: THREE.DoubleSide   // shared by both hands; the left is a mirrored clone
   });
 
-  // A subtle procedural nitrile skin: matte blue with fine dimpled speckle.
+  // A subtle procedural nitrile skin: matte white with fine dimpled speckle.
   // Canvas textures beat a flat color — flat plastic reads "toy", not "glove".
+  // 256² + 4000 dots keeps the grain visible while staying a 4× smaller GPU
+  // upload than the old 512² / 9000-dot canvas (part of the toggle hitch fix).
   function makeNitrileTexture() {
+    const S = 256;
     const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 512;
+    c.width = S;
+    c.height = S;
     const g = c.getContext('2d');
     const rnd = () => (Math.random() - 0.5);
     g.fillStyle = '#eef1f4';
-    g.fillRect(0, 0, 512, 512);
-    for (let i = 0; i < 9000; i++) {
+    g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 4000; i++) {
       const v = 30 + rnd() * 70;
       g.fillStyle = `rgba(${Math.round(228 + rnd() * 22)}, ${Math.round(232 + rnd() * 20)}, ${Math.round(237 + rnd() * 16)}, 0.5)`;
-      g.fillRect((rnd() + 0.5) * 512, (rnd() + 0.5) * 512, v, v);
+      g.fillRect((rnd() + 0.5) * S, (rnd() + 0.5) * S, v, v);
     }
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -220,6 +233,10 @@ export function createGloves(scene, camera, interactableObjects) {
 
   // ----------------------------------------------------------- load the hand
   const loader = new GLTFLoader();
+  let loadedEntries = 0;
+  let warmupRenderer = null;
+  let warmed = false;
+
   function loadHand(entry, url) {
     loader.load(url, (gltf) => {
       const model = gltf.scene;
@@ -237,34 +254,52 @@ export function createGloves(scene, camera, interactableObjects) {
       entry.bones = bones;
       model.scale.setScalar(HAND_SCALE);
 
-      // The LEFT hand is a cloned skeleton under the -1 x mirror (one network
+      // The RIGHT hand is a cloned skeleton under the -1 x mirror (one network
       // load, textures shared). Mirroring flips the winding, so every mesh in
       // the clone gets its OWN materials with DoubleSide — normals are
-      // re-flipped per-face by the shader, keeping the lighting correct. The
-      // result is a true left hand (x-mirrored bones, correct thumb side).
+      // re-flipped per-face by the shader, keeping the lighting correct.
+      //
+      // BUG FIX (T5): entry.bones must point at the DISPLAYED skeleton. The
+      // clone has its own bones — posing the original (never added to the
+      // scene) left the visible right hand frozen in bind pose, which is a
+      // large part of why the grip never looked right.
+      let shown = model;                    // the object that actually renders
       if (entry.mirror) {
-        const mirror = SkeletonUtils.clone(model);
-        mirror.traverse((n) => {
+        shown = SkeletonUtils.clone(model);
+        shown.traverse((n) => {
           if (n.isMesh) {
             n.material = n.material.clone();
             n.material.side = THREE.DoubleSide;
             n.userData.skinMat = n.material;   // un-gloving restores THIS one
           }
         });
-        entry.mirror.add(mirror);
+        const cloneBones = {};
+        shown.traverse((n) => {
+          if (n.isBone) cloneBones[n.name] = { bone: n, baseQuat: n.quaternion.clone() };
+        });
+        entry.bones = cloneBones;
+        entry.mirror.add(shown);
       } else {
-        entry.orient.add(model);
+        entry.roll.add(model);
       }
-      // Calibrate the grip: the bottle's AXIS must sit exactly one bottle
-      // radius OUTSIDE the palm surface, so the glass rests against the palm
-      // without burying into it. The palm surface is found from the model's
-      // own mesh (max +z vertex in the knuckle band — the palm faces +z at
-      // bind), and the bottle base rests BELOW the knuckle line (in the palm
-      // bowl) — 4.0 model units down, like a hand cupping the bottle bottom.
-      // (A previous version used z=-0.2, which sat the axis 7 cm INSIDE the
-      // palm — the knuckles and thumb visibly pierced the glass.)
-      // Only the RIGHT hand calibrates (it owns GRIP_POS — the left load would
-      // overwrite it with a mirrored value).
+
+      // Cache the mesh lists for instant per-toggle swaps (no traverse).
+      const skinMeshes = [];
+      const nailMeshes = [];
+      shown.traverse((n) => {
+        if (n.isSkinnedMesh) skinMeshes.push(n);
+        else if (n.isMesh && /^Nails/.test(n.name)) nailMeshes.push(n);
+      });
+      entry.skinMeshes = skinMeshes;
+      entry.nailMeshes = nailMeshes;
+
+      // Calibrate the grip (T5): compute the palm ANCHOR (model units) — the
+      // bottle base sits below the knuckle line, one bottle radius outside
+      // the palm surface — then let fitGrip() search the hand roll, the
+      // palm-normal offset and every joint's curl angle by MEASURING the
+      // displayed skeleton. GRIP_POS and the grip pose both come out of the
+      // fit; nothing about the grip is hand-tuned anymore.
+      // Only the RIGHT hand calibrates (it owns GRIP_POS and the grip pose).
       if (entry === right) {
         const k = new THREE.Vector3();
         for (const f of FINGERS) {
@@ -286,20 +321,22 @@ export function createGloves(scene, camera, interactableObjects) {
           }
         });
 
-        const palm = new THREE.Vector3(k.x, k.y - 4.0, palmZ + BOTTLE_R / HAND_SCALE);
-        palm.multiplyScalar(HAND_SCALE);
-        palm.applyQuaternion(entry.orient.quaternion);
-        GRIP_POS.copy(palm);
-
-        // PROCEDURAL GRIP (T5): measure the actual skeleton and curl each
-        // joint until it touches the bottle surface at GRIP_POS. If at least
-        // 3 of 5 digits reach contact, the measured pose replaces the
-        // fallback constants. Runs once; restores the bones afterwards.
-        const fit = fitGrip(bones, entry.rig, GRIP_POS, BOTTLE_R);
-        if (fit.contacts >= 3) {
+        const anchorPoint = new THREE.Vector3(k.x, k.y - 4.0, palmZ + BOTTLE_R / HAND_SCALE);
+        const fit = fitGrip({
+          bones: entry.bones,       // the DISPLAYED (mirrored) skeleton
+          rig: entry.rig,
+          rollGroup: entry.roll,
+          anchorObject: shown,
+          anchorPoint,
+          bottleR: BOTTLE_R,
+          handScale: HAND_SCALE
+        });
+        GRIP_POS.copy(fit.gripPos);
+        if (fit.contacts >= 3 && fit.penetrations === 0) {
           POSES.grip.perJoint = fit.perJoint;
+          POSES.grip.roll = fit.roll;
         } else {
-          console.warn('grip fit: only', fit.contacts, 'digits reached contact — keeping fallback pose');
+          console.warn('grip fit rejected (contacts', fit.contacts, 'penetrations', fit.penetrations, ') — keeping fallback pose');
         }
         console.info('grip fit report:\n' + fit.summary);
       }
@@ -321,9 +358,32 @@ export function createGloves(scene, camera, interactableObjects) {
       );
       cuff.position.set(0, -0.03, 0.012);   // below the wrist, toward the player
       cuff.visible = false;
-      entry.orient.add(cuff);
+      entry.roll.add(cuff);                 // rolls with the hand during the grip
       entry.cuff = cuff;
+
+      // When both hands have finished loading, run a one-time GPU warmup
+      // behind the start overlay so the first toggle is instant.
+      loadedEntries++;
+      if (loadedEntries === 2 && warmupRenderer) doWarmup();
     }, undefined, (err) => console.error('FAILED to load hand model', url, err));
+  }
+
+  function setGloved(entry, gloved) {
+    for (let i = 0; i < entry.skinMeshes.length; i++) {
+      entry.skinMeshes[i].material = gloved ? nitrileMat : entry.skinMeshes[i].userData.skinMat;
+    }
+    for (let i = 0; i < entry.nailMeshes.length; i++) {
+      entry.nailMeshes[i].visible = !gloved;
+    }
+    if (entry.cuff) entry.cuff.visible = gloved;
+  }
+
+  function doWarmup() {
+    if (warmed) return;
+    warmed = true;
+    for (const entry of [right, left]) setGloved(entry, true);
+    warmupRenderer.render(scene, camera);
+    for (const entry of [right, left]) setGloved(entry, false);
   }
   loadHand(right, '/Models/hand_model.glb');
   loadHand(left, '/Models/hand_model.glb');
@@ -339,10 +399,11 @@ export function createGloves(scene, camera, interactableObjects) {
   function applyPose(entry, t) {
     if (!entry.bones) return;
     const pose = POSES[entry.pose];
-    const flexAxis = pose.axis === 'z' ? Z_AXIS : X_AXIS;
     // perJoint = the measured contact pose from fitGrip (per digit, per
-    // joint). Falls back to the flat arrays when fitting hasn't run/failed.
+    // joint, curled about the anatomical X axis). Falls back to the flat
+    // arrays (legacy z-sweep) when fitting hasn't run or was rejected.
     const pj = pose.perJoint || null;
+    const flexAxis = pj ? X_AXIS : (pose.axis === 'z' ? Z_AXIS : X_AXIS);
 
     FINGERS.forEach((finger, fi) => {
       FINGER_JOINTS.forEach((joint, ji) => {
@@ -383,15 +444,16 @@ export function createGloves(scene, camera, interactableObjects) {
 
     toggle() {
       on = !on;
-      for (const entry of [right, left]) {
-        entry.orient.traverse((n) => {
-          if (n.isSkinnedMesh) n.material = on ? nitrileMat : n.userData.skinMat;
-          // Nails disappear under the glove, like real nitrile.
-          if (n.isMesh && /^Nails/.test(n.name)) n.visible = !on;
-        });
-        if (entry.cuff) entry.cuff.visible = on;
-      }
+      for (const entry of [right, left]) setGloved(entry, on);
       return on;
+    },
+
+    // One-time GPU warmup: call from main.js with the renderer after creation.
+    // Renders the hands gloved once behind the start overlay so the shader
+    // compiles and the canvas texture uploads before the player can interact.
+    warmup(renderer) {
+      warmupRenderer = renderer;
+      if (loadedEntries === 2) doWarmup();
     },
 
     update(delta) {
@@ -404,6 +466,13 @@ export function createGloves(scene, camera, interactableObjects) {
       const t = Math.min(1, delta * 10);  // pose easing speed
       applyPose(right, t);
       applyPose(left, t);
+
+      // Hand roll (T5): the wrist rolls the fingers toward horizontal as the
+      // grip closes, back to vertical as it opens — same easing as the pose.
+      for (const entry of [right, left]) {
+        const targetRoll = entry.pose === 'grip' ? (POSES.grip.roll || 0) : 0;
+        entry.roll.rotation.z += (targetRoll - entry.roll.rotation.z) * t;
+      }
     }
   };
 }

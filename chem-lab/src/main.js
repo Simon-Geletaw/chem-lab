@@ -13,6 +13,8 @@ import { createWarningCard } from './ui/warningCard.js';
 import { createPourDialog } from './ui/pourDialog.js';
 import { createHUD } from './ui/hud.js';
 import { createGloves } from './gloves.js';
+import { createMask } from './mask.js';
+import { createTrashBin } from './trashBin.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 import { quality, createFpsMeter, createQualityMonitor } from './quality.js';
 import { initLightPool } from './effects/lightPool.js';
@@ -91,7 +93,7 @@ const effectRunner = createEffectRunner(scene, () => ({
 
 // The reaction vessel on the island bench (Phase 3 + 5 + 6 + F3). The warning
 // card serves double duty: reaction safety pedagogy AND the "flask is full" notice.
-const warningCard = createWarningCard();
+const warningCard = createWarningCard(player);
 const beaker = createBeaker(scene, interactableObjects, camera, effectRunner, warningCard);
 
 // The hand: E picks up an aimed bottle / pours it into the beaker, Q sends it
@@ -102,7 +104,10 @@ const beaker = createBeaker(scene, interactableObjects, camera, effectRunner, wa
 const pourDialog = createPourDialog();
 const hud = createHUD();
 const gloves = createGloves(scene, camera, interactableObjects);
-const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud);
+const mask = createMask(scene, camera, interactableObjects);
+// The biohazard bin: the ONLY way used PPE comes off (dispensers only put ON).
+const trashBin = createTrashBin(scene, interactableObjects);
+const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin);
 
 // Temporary Phase 3 test hook — call beaker.receive('h2so4') in the console.
 window.beaker = beaker;
@@ -131,6 +136,7 @@ function animate() {
   effectRunner.update(delta);         // animate live effects, dispose finished ones
   tour.update(delta);                 // tour camera (does nothing while idle)
   interactions.update(delta);
+  trashBin.update(delta);             // lid swing + flying PPE props
   renderer.render(scene, camera);
   fpsMeter.tick(delta);
   qualityMonitor.tick(delta);

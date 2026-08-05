@@ -47,7 +47,8 @@
       "formula": "KMnO4",
       "color": "#6c3483",
       "hazard": "oxidizer",
-      "description": "A deep purple oxidising agent. Its colour fades as it is reduced, which makes it a useful visual indicator."
+      "state": "powder",
+      "description": "Deep purple crystalline powder, a strong oxidising agent. Its colour fades as it is reduced, which makes it a useful visual indicator."
     },
     {
       "id": "ethanol",
@@ -63,7 +64,8 @@
       "formula": "NaCl",
       "color": "#ffffff",
       "hazard": "none",
-      "description": "Common table salt. Dissolves readily in water to give a clear, neutral solution."
+      "state": "powder",
+      "description": "Common table salt, a white crystalline powder. Dissolves readily in water to give a clear, neutral solution."
     },
     {
       "id": "acetone",
