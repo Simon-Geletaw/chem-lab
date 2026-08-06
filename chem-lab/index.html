@@ -62,7 +62,7 @@
 
       /* --- startup loading screen: static markup, paints before any JS --- */
       #loading-screen {
-        display: none;
+        display: flex;
         position: fixed;
         inset: 0;
         z-index: 40;                   /* top of everything while booting */
@@ -179,7 +179,7 @@
       #start-overlay {
         position: fixed;
         inset: 0;
-        display: flex;
+        display: none;                  /* revealed by loader.done() once the lab is ready */
         align-items: center;
         justify-content: center;
         background: rgba(2, 9, 20, 0.75);
