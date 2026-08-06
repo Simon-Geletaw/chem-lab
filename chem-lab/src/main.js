@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createRoom } from './room.js';
 import { createPeriodicWall } from './periodicWall.js';
 import { createPlayer } from './player.js';
@@ -7,7 +11,7 @@ import { createInteractions } from './interactions.js';
 import { createTour } from './tour.js';
 import { createHand } from './hand.js';
 import { createBeaker } from './beaker.js';
-import { createEffectRunner } from './effects/index.js';
+import { createEffectRunner, initEffectPools, prewarmEffects } from './effects/index.js';
 import { createWelcomeCard } from './ui/welcomeCard.js';
 import { createWarningCard } from './ui/warningCard.js';
 import { createPourDialog } from './ui/pourDialog.js';
@@ -26,7 +30,7 @@ await loadChemistry();
 
 // 1. Scene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xaecbe4);   // soft day sky, matches the windows
+scene.background = new THREE.Color(0x9fbdd6);   // late-afternoon day sky — dimmer than full noon
 
 // 2. Camera
 // SCALE RULE: 1 unit = 1 METER. Eye height of a standing person ≈ 1.6 m.
@@ -44,11 +48,30 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 // hidden cost in the app. 1.5× is visually identical at this art style.
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatioCap));
 renderer.shadowMap.enabled = quality.level !== 'low';   // LOW preset skips shadows entirely
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;       // soft penumbra = lights sit in the floor
 // ACES filmic tone mapping: without it, bright primaries clip to ugly flat
 // colors. One line gives the whole room a natural, photographic response.
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 0.9;
+// PERF (Phase 5a): glass transmission forces a hidden second scene pass per
+// frame. Rendering that pass at half resolution = a quarter of the fill cost,
+// visually near-identical for thin glass.
+renderer.transmissionResolutionScale = 0.5;
 document.body.appendChild(renderer.domElement);
+
+// Bloom: real lights glow (fixtures, EXIT sign, reaction fire). Post FX cost
+// is only paid on the HIGH preset — LOW renders straight to the screen.
+let composer = null;
+if (quality.level === 'high') {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2),
+    0.12, 0.5, 0.95      // strength, radius, threshold — only true lights glow, text stays sharp
+  );
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());   // tone mapping + color space, after bloom
+}
 
 // 4. Build the world (each module adds its own part to the scene)
 const interactableObjects = [];
@@ -56,6 +79,9 @@ createRoom(scene);
 // PERF: effect lights (fire/flash) come from a fixed 2-light pool created
 // once — reactions never allocate lights or trigger shader recompiles.
 initLightPool(scene);
+// PERF (Phase 3): particle effects come from pre-built pools, and prewarmEffects
+// below compiles their shaders so even the first reaction never stalls.
+initEffectPools(scene);
 createPeriodicWall(scene, interactableObjects);
 const player = createPlayer(camera);
 // Furniture registers its bounding boxes in player.colliders so you bump into it
@@ -107,7 +133,7 @@ const gloves = createGloves(scene, camera, interactableObjects);
 const mask = createMask(scene, camera, interactableObjects);
 // The biohazard bin: the ONLY way used PPE comes off (dispensers only put ON).
 const trashBin = createTrashBin(scene, interactableObjects);
-const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin);
+const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner);
 
 // Temporary Phase 3 test hook — call beaker.receive('h2so4') in the console.
 window.beaker = beaker;
@@ -126,9 +152,20 @@ const clock = new THREE.Clock();      // measures real time between frames
 const fpsMeter = createFpsMeter();
 const qualityMonitor = createQualityMonitor(renderer, scene);
 
+// If the auto-degrade monitor drops us to LOW at runtime, retire the bloom
+// composer so the GPU cost actually goes away (not just the pretty glow).
+let lastLevel = quality.level;
+
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
+  if (quality.level !== lastLevel) {
+    lastLevel = quality.level;
+    if (composer) {
+      composer.dispose();
+      composer = null;
+    }
+  }
   player.update(delta);               // walking (does nothing while the tour runs)
   hand.update(delta);                 // carry/return animation + hover hints
   gloves.update(delta);               // hands easing in/out of view (F5)
@@ -137,10 +174,15 @@ function animate() {
   tour.update(delta);                 // tour camera (does nothing while idle)
   interactions.update(delta);
   trashBin.update(delta);             // lid swing + flying PPE props
-  renderer.render(scene, camera);
+  if (composer) composer.render();
+  else renderer.render(scene, camera);
   fpsMeter.tick(delta);
   qualityMonitor.tick(delta);
 }
+// PERF (Phase 4): compile the pooled effect shaders + upload their sprite
+// textures NOW, behind the welcome card, so the first reaction is as smooth as
+// the tenth (no mid-reaction compile stall on Intel integrated graphics).
+prewarmEffects(renderer, scene, camera);
 animate();
 
 // 7. Window Resize
@@ -148,4 +190,5 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
