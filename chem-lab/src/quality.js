@@ -26,7 +26,10 @@ if (new URLSearchParams(location.search).get('quality') === 'low') {
   applyLowPreset();
 }
 
-// Small always-on FPS readout (top-left). Cheap: one DOM write per second.
+// Small FPS/frame-time readout (top-left). Press P to show/hide.
+// "worst" is the LONGEST frame in the window — a smooth 60 fps average can
+// still hide a single 80 ms hitch (e.g. a shader compile), and worst-ms is
+// exactly the number that exposes it.
 export function createFpsMeter() {
   const el = document.createElement('div');
   el.id = 'fps-meter';
@@ -36,16 +39,32 @@ export function createFpsMeter() {
     'border-radius:6px;pointer-events:none;';
   document.body.appendChild(el);
 
+  let visible = true;
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'KeyP') return;
+    if (e.target.closest('input, textarea')) return;   // typing, not toggling
+    visible = !visible;
+    el.style.display = visible ? '' : 'none';
+  });
+
   let frames = 0;
-  let acc = 0;
+  let acc = 0;       // seconds elapsed in this window
+  let worst = 0;     // longest single frame in this window
   return {
     tick(delta) {
+      if (!visible) return;                 // hidden = zero cost
       frames++;
       acc += delta;
-      if (acc >= 1) {
-        el.textContent = `${Math.round(frames / acc)} fps · ${quality.level}`;
+      if (delta > worst) worst = delta;
+      if (acc >= 0.5) {                     // refresh twice a second
+        const fps = Math.round(frames / acc);
+        const avgMs = ((acc / frames) * 1000).toFixed(1);
+        const worstMs = Math.round(worst * 1000);
+        el.textContent =
+          `${fps} fps · ${avgMs} ms · worst ${worstMs} ms · ${quality.level}`;
         frames = 0;
         acc = 0;
+        worst = 0;
       }
     }
   };
