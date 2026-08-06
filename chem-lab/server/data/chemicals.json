@@ -1,0 +1,1302 @@
+{
+  "chemicals": [
+    {
+      "id": "water",
+      "name": "Water",
+      "formula": "H2O",
+      "color": "#cfe8f5",
+      "hazard": "none",
+      "description": "Distilled water. The universal solvent. Used to dilute acids and bases - but ALWAYS add acid to water, never water to acid."
+    },
+    {
+      "id": "hcl",
+      "name": "Hydrochloric Acid",
+      "formula": "HCl",
+      "color": "#f0e68c",
+      "hazard": "corrosive",
+      "burnRate": 0.2,
+      "burnColor": "#ff5a3c",
+      "description": "A strong acid that fumes in air. Reacts with bases to form salt and water, and with metals to release hydrogen gas."
+    },
+    {
+      "id": "naoh",
+      "name": "Sodium Hydroxide",
+      "formula": "NaOH",
+      "color": "#f5f5f5",
+      "hazard": "corrosive",
+      "burnRate": 0.16,
+      "burnColor": "#ff7a4d",
+      "description": "A strong base, also called caustic soda. Dissolving it in water releases heat. Neutralises acids."
+    },
+    {
+      "id": "h2so4",
+      "name": "Sulfuric Acid",
+      "formula": "H2SO4",
+      "color": "#f7e8b0",
+      "hazard": "corrosive",
+      "burnRate": 0.2,
+      "burnColor": "#ff5a3c",
+      "description": "A dense, oily strong acid. Its heat of dilution is violent - adding water to concentrated sulfuric acid can make it boil and spit."
+    },
+    {
+      "id": "cuso4",
+      "name": "Copper(II) Sulfate",
+      "formula": "CuSO4",
+      "color": "#2e86c1",
+      "hazard": "toxic",
+      "state": "powder",
+      "burnRate": 0.08,
+      "burnColor": "#8fae3e",
+      "description": "Bright blue crystalline powder. Reacts with sodium hydroxide to form a pale blue precipitate of copper hydroxide."
+    },
+    {
+      "id": "kmno4",
+      "name": "Potassium Permanganate",
+      "formula": "KMnO4",
+      "color": "#6c3483",
+      "hazard": "oxidizer",
+      "state": "powder",
+      "burnRate": 0.12,
+      "burnColor": "#8e44ad",
+      "description": "Deep purple crystalline powder, a strong oxidising agent. Its colour fades as it is reduced, which makes it a useful visual indicator."
+    },
+    {
+      "id": "ethanol",
+      "name": "Ethanol",
+      "formula": "C2H5OH",
+      "color": "#d5f5e3",
+      "hazard": "flammable",
+      "burnRate": 0.05,
+      "burnColor": "#e0a24a",
+      "description": "A volatile, flammable alcohol. Burns with a pale blue flame. Keep away from open burners."
+    },
+    {
+      "id": "nacl",
+      "name": "Sodium Chloride",
+      "formula": "NaCl",
+      "color": "#ffffff",
+      "hazard": "none",
+      "state": "powder",
+      "description": "Common table salt, a white crystalline powder. Dissolves readily in water to give a clear, neutral solution."
+    },
+    {
+      "id": "acetone",
+      "name": "Acetone",
+      "formula": "C3H6O",
+      "color": "#d6eaf8",
+      "hazard": "flammable",
+      "burnRate": 0.05,
+      "burnColor": "#e0a24a",
+      "description": "A fast-evaporating solvent used to clean glassware. Highly flammable vapour."
+    },
+    {
+      "id": "dilute-h2so4",
+      "name": "Dilute Sulfuric Acid",
+      "formula": "H2SO4 (aq)",
+      "color": "#e8dcb0",
+      "hazard": "corrosive",
+      "shelf": false,
+      "burnRate": 0.2,
+      "burnColor": "#ff5a3c",
+      "description": "Sulfuric acid diluted in water. Still corrosive, but far less aggressive than the concentrated form."
+    },
+    {
+      "id": "nacl-solution",
+      "name": "Salt Water",
+      "formula": "NaCl (aq)",
+      "color": "#e6f2f7",
+      "hazard": "none",
+      "shelf": false,
+      "description": "The neutral product of an acid-base reaction, or simply salt dissolved in water."
+    },
+    {
+      "id": "copper-hydroxide",
+      "name": "Copper(II) Hydroxide",
+      "formula": "Cu(OH)2",
+      "color": "#7fc4d8",
+      "hazard": "toxic",
+      "shelf": false,
+      "description": "A pale blue gelatinous precipitate. Formed when a base meets a copper salt solution."
+    },
+    {
+      "id": "mixture",
+      "name": "Reaction Mixture",
+      "formula": "?",
+      "color": "#b9b9b9",
+      "hazard": "none",
+      "shelf": false,
+      "description": "The unseparated product of a reaction — a mix of products and leftover reactants."
+    }
+  ],
+  "reactions": [
+    {
+      "id": "water-into-conc-acid",
+      "reactants": {
+        "into": "h2so4",
+        "added": "water"
+      },
+      "ordered": true,
+      "danger": true,
+      "title": "Water added to concentrated acid",
+      "tempAfter": 95,
+      "explanation": "The water flash-boiled at the acid's surface and spat concentrated acid onto the bench. Dilute by adding the ACID to the WATER, slowly.",
+      "warning": {
+        "title": "NEVER add water to concentrated acid!",
+        "text": "Dilution releases intense heat right at the surface. The water can flash-boil and spit concentrated acid out of the beaker and into your face. Correct procedure: add the ACID to the WATER, slowly, down the side of the vessel, while stirring."
+      },
+      "effects": [
+        {
+          "type": "smoke",
+          "color": "#ffffff",
+          "density": 2.5,
+          "duration": 5
+        },
+        {
+          "type": "bubbles",
+          "intensity": 3,
+          "duration": 4
+        },
+        {
+          "type": "colorChange",
+          "to": "#d9c9a0",
+          "duration": 2
+        },
+        {
+          "type": "flash",
+          "color": "#fff2d0",
+          "duration": 0.4
+        },
+        {
+          "type": "shake",
+          "strength": 0.8,
+          "duration": 1.5
+        }
+      ],
+      "result": {
+        "chemicalId": "dilute-h2so4",
+        "note": "Acid has splattered - the bench needs cleaning."
+      }
+    },
+    {
+      "id": "acid-into-water",
+      "reactants": {
+        "into": "water",
+        "added": "h2so4"
+      },
+      "ordered": true,
+      "danger": false,
+      "title": "Correct dilution",
+      "tempAfter": 45,
+      "explanation": "The large water volume absorbed the heat of dilution safely — the acid is only warm to the touch. This is the correct order.",
+      "warning": {
+        "title": "Correct procedure: acid into water",
+        "text": "The large volume of water absorbs the heat of dilution safely. The mixture only becomes warm. This is always the right order when diluting a concentrated acid."
+      },
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 1,
+          "duration": 3
+        },
+        {
+          "type": "smoke",
+          "color": "#eaf4ff",
+          "density": 0.6,
+          "duration": 2.5
+        },
+        {
+          "type": "colorChange",
+          "to": "#e8dcb0",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "dilute-h2so4",
+        "note": "Safely diluted acid, warm to the touch."
+      }
+    },
+    {
+      "id": "neutralisation-hcl-naoh",
+      "reactants": {
+        "into": "hcl",
+        "added": "naoh"
+      },
+      "ordered": false,
+      "danger": false,
+      "title": "Neutralisation",
+      "tempAfter": 42,
+      "explanation": "The acid and base cancelled each other out. HCl + NaOH → NaCl + H2O — a neutral salt solution, and the reaction is exothermic so the beaker feels warm.",
+      "warning": {
+        "title": "Neutralisation",
+        "text": "A strong acid plus a strong base gives a neutral salt solution and water: HCl + NaOH -> NaCl + H2O. The reaction is exothermic, so the beaker feels warm."
+      },
+      "effects": [
+        {
+          "type": "fire",
+          "intensity": 1.5,
+          "duration": 3,
+          "color": "#ff8c3a"
+        },
+        {
+          "type": "colorChange",
+          "to": "#e6f2f7",
+          "duration": 2.5
+        }
+      ],
+      "result": {
+        "chemicalId": "nacl-solution",
+        "note": "Neutral salt water."
+      }
+    },
+    {
+      "id": "neutralisation-naoh-h2so4",
+      "reactants": {
+        "into": "naoh",
+        "added": "h2so4"
+      },
+      "ordered": false,
+      "danger": false,
+      "title": "Neutralisation",
+      "equation": "2NaOH + H2SO4 → Na2SO4 + 2H2O",
+      "tempAfter": 55,
+      "explanation": "The base cancelled the acid: a neutral solution of sodium sulfate in water forms. Strong acid plus strong base releases a lot of heat — the beaker is hot.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 1.5,
+          "duration": 3
+        },
+        {
+          "type": "fire",
+          "intensity": 1.2,
+          "duration": 2.5,
+          "color": "#ff8c3a"
+        },
+        {
+          "type": "colorChange",
+          "to": "#e6f2f7",
+          "duration": 2.5
+        }
+      ],
+      "result": {
+        "chemicalId": "nacl-solution",
+        "note": "Neutral sodium sulfate solution."
+      }
+    },
+    {
+      "id": "precipitate-naoh-cuso4",
+      "reactants": {
+        "into": "cuso4",
+        "added": "naoh"
+      },
+      "ordered": false,
+      "danger": false,
+      "title": "Precipitation",
+      "tempAfter": 30,
+      "explanation": "CuSO4 + 2NaOH → Cu(OH)2↓ + Na2SO4. The insoluble pale blue copper(II) hydroxide dropped out of the blue solution as a solid.",
+      "warning": {
+        "title": "Precipitation",
+        "text": "Sodium hydroxide meets copper(II) sulfate and an insoluble pale blue solid, copper(II) hydroxide, drops out of the clear blue solution."
+      },
+      "effects": [
+        {
+          "type": "colorChange",
+          "to": "#7fc4d8",
+          "duration": 3
+        },
+        {
+          "type": "fire",
+          "intensity": 0.6,
+          "duration": 2,
+          "color": "#ffb066"
+        }
+      ],
+      "result": {
+        "chemicalId": "copper-hydroxide",
+        "note": "A pale blue precipitate has formed."
+      }
+    },
+    {
+      "id": "redox-ethanol-kmno4",
+      "reactants": {
+        "into": "kmno4",
+        "added": "ethanol"
+      },
+      "ordered": false,
+      "danger": false,
+      "title": "Oxidation of Ethanol",
+      "equation": "C2H5OH + [O] → CH3CHO + H2O",
+      "tempAfter": 38,
+      "explanation": "The purple permanganate oxidised the ethanol to ethanal and was itself reduced — the deep purple colour was discharged as the reaction warmed the mixture.",
+      "effects": [
+        {
+          "type": "colorChange",
+          "to": "#c9a56b",
+          "duration": 4
+        },
+        {
+          "type": "smoke",
+          "color": "#d8c8a8",
+          "density": 0.8,
+          "duration": 3
+        }
+      ],
+      "result": {
+        "chemicalId": "mixture",
+        "note": "The purple colour has been discharged by oxidation.",
+        "name": "Oxidised Ethanol"
+      }
+    },
+    {
+      "id": "dissolve-nacl-water",
+      "reactants": {
+        "into": "water",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": false,
+      "title": "Salt dissolves",
+      "tempAfter": 25,
+      "explanation": "NaCl split into Na+ and Cl− ions in the water — a clear, neutral salt solution forms with no temperature change.",
+      "effects": [
+        {
+          "type": "colorChange",
+          "to": "#e6f2f7",
+          "duration": 2
+        },
+        {
+          "type": "bubbles",
+          "intensity": 0.4,
+          "duration": 1.5
+        }
+      ],
+      "result": {
+        "chemicalId": "nacl-solution",
+        "note": "The salt has dissolved completely."
+      }
+    },
+    {
+      "id": "ignite-kmno4-acetone",
+      "reactants": {
+        "into": "kmno4",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": true,
+      "title": "Ignition!",
+      "equation": "C3H6O + 4[O] → 3CO2 + 3H2O",
+      "tempAfter": 85,
+      "explanation": "The oxidiser and the volatile solvent ignited on contact, leaving burnt residue in the flask.",
+      "warning": {
+        "title": "Oxidiser plus flammable solvent!",
+        "text": "A strong oxidising agent and a volatile flammable solvent can ignite on contact. Never store or mix oxidisers with solvents; keep them on separate shelves."
+      },
+      "effects": [
+        {
+          "type": "fire",
+          "height": 0.35,
+          "duration": 3,
+          "color": "#5db8ff"
+        },
+        {
+          "type": "flash",
+          "color": "#ffd27f",
+          "duration": 0.4
+        },
+        {
+          "type": "smoke",
+          "color": "#3a3a3a",
+          "density": 2,
+          "duration": 4.5
+        },
+        {
+          "type": "shake",
+          "strength": 0.5,
+          "duration": 1.2
+        }
+      ],
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Burnt residue - use the fire extinguisher next time.",
+        "name": "Burnt Residue"
+      }
+    },
+    {
+      "id": "redox-hcl-kmno4",
+      "reactants": {
+        "into": "hcl",
+        "added": "kmno4"
+      },
+      "ordered": false,
+      "danger": true,
+      "title": "Chlorine gas!",
+      "equation": "2KMnO4 + 16HCl → 2MnCl2 + 2KCl + 5Cl2 + 8H2O",
+      "tempAfter": 35,
+      "explanation": "The permanganate oxidised the chloride ions and released toxic green-yellow chlorine gas (Cl2). This must only be done in a fume hood.",
+      "warning": {
+        "title": "Toxic chlorine gas!",
+        "text": "Potassium permanganate oxidises concentrated hydrochloric acid and releases chlorine gas (Cl2) — a toxic, corrosive, green-yellow gas. This reaction must only ever be done in a fume hood."
+      },
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 2.5,
+          "duration": 4
+        },
+        {
+          "type": "smoke",
+          "color": "#cfe06a",
+          "density": 2,
+          "duration": 4
+        },
+        {
+          "type": "colorChange",
+          "to": "#9db54a",
+          "duration": 3
+        },
+        {
+          "type": "shake",
+          "strength": 0.4,
+          "duration": 1
+        }
+      ],
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Green-yellow chlorine gas has bubbled off; a pale manganese(II) chloride solution remains.",
+        "name": "Manganese(II) Chloride Solution"
+      }
+    },
+    {
+      "id": "redox-h2so4-kmno4",
+      "reactants": {
+        "into": "h2so4",
+        "added": "kmno4"
+      },
+      "ordered": false,
+      "danger": true,
+      "title": "Manganese heptoxide!",
+      "equation": "2KMnO4 + 2H2SO4 → Mn2O7 + 2KHSO4 + H2O",
+      "tempAfter": 45,
+      "explanation": "The concentrated acid dehydrated the permanganate into manganese heptoxide — a dark green oil that explodes on contact with almost anything. Never mix oxidisers with concentrated acids!",
+      "warning": {
+        "title": "Explosive compound formed!",
+        "text": "KMnO4 with concentrated H2SO4 forms manganese heptoxide (Mn2O7), a dark green oil that detonates above ~55°C or on contact with organic matter. This mixture must never be attempted."
+      },
+      "effects": [
+        {
+          "type": "flash",
+          "color": "#d7ffce",
+          "duration": 0.4
+        },
+        {
+          "type": "fire",
+          "height": 0.25,
+          "duration": 2.5,
+          "color": "#ffb84d"
+        },
+        {
+          "type": "smoke",
+          "color": "#4a3d2e",
+          "density": 2,
+          "duration": 4
+        },
+        {
+          "type": "shake",
+          "strength": 0.6,
+          "duration": 1.5
+        },
+        {
+          "type": "colorChange",
+          "to": "#3f4a2f",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "mixture",
+        "note": "A dangerously unstable green oil has formed - don't touch it.",
+        "name": "Manganese Heptoxide Oil"
+      }
+    },
+    {
+      "id": "redox-h2so4-nacl",
+      "reactants": {
+        "into": "h2so4",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": true,
+      "title": "Hydrogen chloride fumes!",
+      "equation": "NaCl + H2SO4 → NaHSO4 + HCl↑",
+      "tempAfter": 40,
+      "explanation": "The concentrated acid displaced HCl from the salt — acrid white fumes of hydrogen chloride rose off the mixture. This is the classic lab preparation of HCl gas.",
+      "warning": {
+        "title": "Corrosive acid fumes!",
+        "text": "Concentrated H2SO4 reacts with NaCl to give hydrogen chloride gas — the classic lab preparation. It forms stinging white fumes that are corrosive to the airways, so it must be done in a fume hood."
+      },
+      "effects": [
+        {
+          "type": "smoke",
+          "color": "#f4f4f4",
+          "density": 2.5,
+          "duration": 4.5
+        },
+        {
+          "type": "bubbles",
+          "intensity": 2,
+          "duration": 3.5
+        },
+        {
+          "type": "colorChange",
+          "to": "#e8e4d8",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Fumes have cleared; sodium hydrogen sulfate remains.",
+        "name": "Sodium Hydrogen Sulfate"
+      }
+    },
+    {
+      "id": "aldol-naoh-acetone",
+      "reactants": {
+        "into": "naoh",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "title": "Aldol condensation",
+      "equation": "2CH3COCH3 → CH3C(OH)(CH3)CH2COCH3",
+      "tempAfter": 28,
+      "explanation": "The base pulled a hydrogen off an acetone molecule, joining two acetones into diacetone alcohol — the mixture slowly turns yellow-brown.",
+      "effects": [
+        {
+          "type": "colorChange",
+          "to": "#e6d27a",
+          "duration": 4
+        },
+        {
+          "type": "bubbles",
+          "intensity": 0.6,
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Diacetone alcohol has formed - the liquid is turning yellow.",
+        "name": "Diacetone Alcohol"
+      }
+    },
+    {
+      "id": "dissolve-hcl-water",
+      "reactants": {
+        "into": "water",
+        "added": "hcl"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Acid dilutes",
+      "equation": "HCl + H2O → HCl (aq)",
+      "tempAfter": 30,
+      "explanation": "The acid simply dissolved into the water, becoming more dilute. Dissolving hydrogen chloride releases heat, so the liquid warms slightly.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 1,
+          "duration": 2.5
+        },
+        {
+          "type": "smoke",
+          "color": "#eaf4ff",
+          "density": 0.4,
+          "duration": 2
+        },
+        {
+          "type": "colorChange",
+          "to": "#f0e68c",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "hcl",
+        "note": "Dilute hydrochloric acid."
+      }
+    },
+    {
+      "id": "dissolve-naoh-water",
+      "reactants": {
+        "into": "water",
+        "added": "naoh"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Caustic soda dissolves",
+      "equation": "NaOH + H2O → NaOH (aq)",
+      "tempAfter": 34,
+      "explanation": "The caustic soda dissolved vigorously, giving off heat — the flask is warm to the touch. No reaction: a sodium hydroxide solution forms.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 1.5,
+          "duration": 2.5
+        },
+        {
+          "type": "smoke",
+          "color": "#ffffff",
+          "density": 0.5,
+          "duration": 2
+        },
+        {
+          "type": "colorChange",
+          "to": "#f5f5f5",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "naoh",
+        "note": "Sodium hydroxide solution, warm from dissolution."
+      }
+    },
+    {
+      "id": "dissolve-cuso4-water",
+      "reactants": {
+        "into": "water",
+        "added": "cuso4"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Copper sulfate dissolves",
+      "equation": "CuSO4 + H2O → CuSO4 (aq)",
+      "tempAfter": 27,
+      "explanation": "The blue crystals dissolved into a deep blue solution — the copper(II) sulfate hydrate forms as the salt takes up water.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 0.8,
+          "duration": 2.5
+        },
+        {
+          "type": "colorChange",
+          "to": "#2e86c1",
+          "duration": 2.5
+        }
+      ],
+      "result": {
+        "chemicalId": "cuso4",
+        "note": "A deep blue copper sulfate solution."
+      }
+    },
+    {
+      "id": "dissolve-kmno4-water",
+      "reactants": {
+        "into": "water",
+        "added": "kmno4"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Permanganate dissolves",
+      "equation": "KMnO4 + H2O → KMnO4 (aq)",
+      "tempAfter": 25,
+      "explanation": "The purple crystals dissolved into a deep purple solution — the permanganate ion colours the water intensely.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 0.5,
+          "duration": 2.5
+        },
+        {
+          "type": "colorChange",
+          "to": "#6c3483",
+          "duration": 2.5
+        }
+      ],
+      "result": {
+        "chemicalId": "kmno4",
+        "note": "A deep purple permanganate solution."
+      }
+    },
+    {
+      "id": "mix-ethanol-water",
+      "reactants": {
+        "into": "water",
+        "added": "ethanol"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Ethanol mixes",
+      "equation": "C2H5OH + H2O → C2H5OH (aq)",
+      "tempAfter": 26,
+      "explanation": "Ethanol and water are completely miscible — no reaction, just one solution. The total volume shrinks slightly as the molecules pack together.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 0.4,
+          "duration": 2
+        },
+        {
+          "type": "colorChange",
+          "to": "#d5f5e3",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "ethanol",
+        "note": "Aqueous ethanol solution."
+      }
+    },
+    {
+      "id": "mix-acetone-water",
+      "reactants": {
+        "into": "water",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Acetone mixes",
+      "equation": "C3H6O + H2O → C3H6O (aq)",
+      "tempAfter": 24,
+      "explanation": "Acetone dissolves freely in water — the mixture cools a little as it mixes. No reaction.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 0.4,
+          "duration": 2
+        },
+        {
+          "type": "colorChange",
+          "to": "#d6eaf8",
+          "duration": 2
+        }
+      ],
+      "result": {
+        "chemicalId": "acetone",
+        "note": "Acetone dissolved in water."
+      }
+    },
+    {
+      "id": "dissolve-hcl-cuso4",
+      "reactants": {
+        "into": "hcl",
+        "added": "cuso4"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Salt dissolves in acid",
+      "equation": "CuSO4 + HCl → CuSO4 (aq) + HCl (aq)",
+      "tempAfter": 25,
+      "explanation": "No reaction — the copper sulfate crystals just dissolved into the acid, giving a blue solution.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 0.6,
+          "duration": 2.5
+        },
+        {
+          "type": "colorChange",
+          "to": "#2e86c1",
+          "duration": 2.5
+        }
+      ],
+      "result": {
+        "chemicalId": "cuso4",
+        "note": "Copper sulfate dissolved in the acid."
+      }
+    },
+    {
+      "id": "dissolve-hcl-nacl",
+      "reactants": {
+        "into": "hcl",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": false,
+      "dissolve": true,
+      "title": "Salt dissolves",
+      "equation": "NaCl (s) + HCl (aq) → NaCl (aq)",
+      "tempAfter": 25,
+      "explanation": "No reaction — the solution already contains chloride ions, so the extra salt simply dissolves into it.",
+      "effects": [
+        {
+          "type": "bubbles",
+          "intensity": 0.5,
+          "duration": 2
+        },
+        {
+          "type": "colorChange",
+          "to": "#e6f2f7",
+          "duration": 2.5
+        }
+      ],
+      "result": {
+        "chemicalId": "nacl-solution",
+        "note": "Extra salt dissolved into the chloride solution."
+      }
+    },
+    {
+      "id": "inert-hcl-h2so4",
+      "reactants": {
+        "into": "hcl",
+        "added": "h2so4"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "Two acids — no reaction",
+      "mixColor": "#f3eba9",
+      "explanation": "Both are acids; acids do not react with each other. The two liquids simply mixed.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Acidic mixture."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-hcl-ethanol",
+      "reactants": {
+        "into": "hcl",
+        "added": "ethanol"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#e9e6cf",
+      "explanation": "Ethanol does not react with hydrochloric acid at room temperature — they simply mixed.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Acid and alcohol mixture."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-hcl-acetone",
+      "reactants": {
+        "into": "hcl",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#e6e6c8",
+      "explanation": "Acetone and hydrochloric acid do not react at room temperature — they mixed into a pale liquid.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Acid and acetone mixture."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-naoh-kmno4",
+      "reactants": {
+        "into": "naoh",
+        "added": "kmno4"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#c9a2d6",
+      "explanation": "Cold sodium hydroxide does not react with permanganate. (Heated together they would turn green as manganate forms.)",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Purple base mixture."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-naoh-ethanol",
+      "reactants": {
+        "into": "naoh",
+        "added": "ethanol"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#f2f2ea",
+      "explanation": "Sodium hydroxide barely dissolves in ethanol and does not react with it at room temperature.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Base and alcohol mixture."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-naoh-nacl",
+      "reactants": {
+        "into": "naoh",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#fafafa",
+      "explanation": "Sodium chloride and sodium hydroxide share the same cation — nothing reacts; the salt just sits in the base.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Salt suspended in base."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-h2so4-cuso4",
+      "reactants": {
+        "into": "h2so4",
+        "added": "cuso4"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#e9dfb8",
+      "explanation": "Copper sulfate is stable in sulfuric acid — no reaction; the powder simply mixed with the acid.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Blue powder mixed with acid."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-h2so4-ethanol",
+      "reactants": {
+        "into": "h2so4",
+        "added": "ethanol"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction — for now",
+      "mixColor": "#e8e0b8",
+      "explanation": "At room temperature the alcohol and acid only mix. Heated, the acid would dehydrate ethanol into ethene gas.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Alcohol in acid."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-h2so4-acetone",
+      "reactants": {
+        "into": "h2so4",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#ece3be",
+      "explanation": "Acetone and sulfuric acid mix without reacting at room temperature.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Acetone in acid."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-cuso4-kmno4",
+      "reactants": {
+        "into": "cuso4",
+        "added": "kmno4"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#9377b4",
+      "explanation": "The blue sulfate and purple permanganate simply mixed — both salts stay as they are.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Two coloured powders mixed."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-cuso4-ethanol",
+      "reactants": {
+        "into": "cuso4",
+        "added": "ethanol"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#9abfd8",
+      "explanation": "Copper sulfate does not dissolve in ethanol or react with it — the crystals settle at the bottom.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Crystals in alcohol."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-cuso4-nacl",
+      "reactants": {
+        "into": "cuso4",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#97bfd4",
+      "explanation": "Two soluble salts with no reactive pair of ions — they simply mixed.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Two salts mixed."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-cuso4-acetone",
+      "reactants": {
+        "into": "cuso4",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#9ab9d4",
+      "explanation": "The blue powder does not dissolve in acetone and does not react with it.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Blue powder in acetone."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-kmno4-nacl",
+      "reactants": {
+        "into": "kmno4",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#b390c2",
+      "explanation": "Sodium chloride does not reduce permanganate — the salt and the crystals simply mixed.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Salt mixed with permanganate."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-ethanol-nacl",
+      "reactants": {
+        "into": "ethanol",
+        "added": "nacl"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#f0f2ec",
+      "explanation": "Salt does not dissolve in ethanol — the crystals sink and nothing reacts.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Crystals in alcohol."
+      },
+      "effects": []
+    },
+    {
+      "id": "mix-ethanol-acetone",
+      "reactants": {
+        "into": "ethanol",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#e2f0ea",
+      "explanation": "Both are flammable organic solvents — they mix completely without reacting.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Mixed organic solvents."
+      },
+      "effects": []
+    },
+    {
+      "id": "inert-nacl-acetone",
+      "reactants": {
+        "into": "nacl",
+        "added": "acetone"
+      },
+      "ordered": false,
+      "danger": false,
+      "inert": true,
+      "title": "No reaction",
+      "mixColor": "#f0f2ec",
+      "explanation": "Salt is insoluble in acetone — the crystals just sink to the bottom.",
+      "result": {
+        "chemicalId": "mixture",
+        "note": "Crystals in acetone."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-water",
+      "reactants": {
+        "into": "water",
+        "added": "water"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More water",
+      "explanation": "The flask now holds more of the same liquid — no reaction, just extra volume.",
+      "result": {
+        "chemicalId": "water",
+        "note": "Volume increased."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-hcl",
+      "reactants": {
+        "into": "hcl",
+        "added": "hcl"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More acid",
+      "explanation": "More hydrochloric acid was added — the acid simply got stronger in volume, no reaction.",
+      "result": {
+        "chemicalId": "hcl",
+        "note": "Volume increased."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-naoh",
+      "reactants": {
+        "into": "naoh",
+        "added": "naoh"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More base",
+      "explanation": "More sodium hydroxide was added — the base just got a bigger volume, no reaction.",
+      "result": {
+        "chemicalId": "naoh",
+        "note": "Volume increased."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-h2so4",
+      "reactants": {
+        "into": "h2so4",
+        "added": "h2so4"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More acid",
+      "explanation": "More sulfuric acid was added — the acid just got a bigger volume, no reaction.",
+      "result": {
+        "chemicalId": "h2so4",
+        "note": "Volume increased."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-cuso4",
+      "reactants": {
+        "into": "cuso4",
+        "added": "cuso4"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More crystals",
+      "explanation": "More copper sulfate was added — the pile of blue crystals simply grew, no reaction.",
+      "result": {
+        "chemicalId": "cuso4",
+        "note": "Heap grew."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-kmno4",
+      "reactants": {
+        "into": "kmno4",
+        "added": "kmno4"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More crystals",
+      "explanation": "More permanganate was added — the pile of purple crystals simply grew, no reaction.",
+      "result": {
+        "chemicalId": "kmno4",
+        "note": "Heap grew."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-ethanol",
+      "reactants": {
+        "into": "ethanol",
+        "added": "ethanol"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More ethanol",
+      "explanation": "The flask now holds more of the same alcohol — no reaction, just extra volume.",
+      "result": {
+        "chemicalId": "ethanol",
+        "note": "Volume increased."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-nacl",
+      "reactants": {
+        "into": "nacl",
+        "added": "nacl"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More salt",
+      "explanation": "More salt was added — the pile of white crystals simply grew, no reaction.",
+      "result": {
+        "chemicalId": "nacl",
+        "note": "Heap grew."
+      },
+      "effects": []
+    },
+    {
+      "id": "self-acetone",
+      "reactants": {
+        "into": "acetone",
+        "added": "acetone"
+      },
+      "ordered": true,
+      "danger": false,
+      "self": true,
+      "title": "More acetone",
+      "explanation": "The flask now holds more of the same solvent — no reaction, just extra volume.",
+      "result": {
+        "chemicalId": "acetone",
+        "note": "Volume increased."
+      },
+      "effects": []
+    }
+  ]
+}

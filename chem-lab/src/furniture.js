@@ -6,20 +6,33 @@
 // to a Group, then place/rotate the WHOLE group once. Children follow along.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { ZONES } from './zones.js';
+import { quality } from './quality.js';
 
 const loader = new GLTFLoader();
 
 // ---------- shared materials (create once, reuse everywhere) ----------
-const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x3a4750, roughness: 0.8 });
-const worktopMat = new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: 0.3, metalness: 0.1 });
+const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x6b7a87, roughness: 0.8 });
+const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.4, metalness: 0.1 });
 const woodMat    = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness: 0.8 });
-// "Glass": see-through by lowering opacity. (Real refraction glass exists —
-// MeshPhysicalMaterial.transmission — but this is cheaper and looks fine here.)
-const glassMat = new THREE.MeshStandardMaterial({
-  color: 0xdfefff,
+// "Glass": MeshPhysicalMaterial.transmission is REAL refraction — it renders
+// the scene behind the glass through the material (IOR 1.5 = borosilicate).
+// The old opacity-only MeshStandardMaterial looked like frosted plastic.
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0xe8f4ff,
+  metalness: 0,
+  roughness: 0.05,
+  // PERF (Phase 5a): real transmission = a second full-scene render per frame
+  // into a transmission buffer. On LOW it's turned off (blurry tint instead) —
+  // the extra scene pass is quietly skipped, saving the biggest baseline cost.
+  transmission: quality.level === 'high' ? 1 : 0,
+  thickness: 0.04,
+  ior: 1.5,
+  clearcoat: 1,
   transparent: true,
-  opacity: 0.35,
-  roughness: 0.1
+  opacity: 1,
+  side: THREE.DoubleSide,
+  depthWrite: false
 });
 
 // ---------- GLB loader (moved from main.js) ----------
@@ -70,12 +83,12 @@ export function loadModel(scene, interactableObjects, url, position, desiredHeig
 function createBench(x, z, rotationY) {
   const bench = new THREE.Group();
 
-  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.85, 0.6), cabinetMat);
-  cabinet.position.y = 0.425;               // half its height -> sits on floor
+  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.95, 0.6), cabinetMat);
+  cabinet.position.y = 0.475;               // half its height -> sits on floor
   bench.add(cabinet);
 
   const worktop = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.05, 0.7), worktopMat);
-  worktop.position.y = 0.875;               // 0.85 cabinet + half of 0.05
+  worktop.position.y = 0.975;               // 0.95 cabinet + half of 0.05 = 1.0 m worktop
   bench.add(worktop);
 
   bench.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
@@ -142,43 +155,100 @@ function createTestTubeRack() {
 }
 
 // A paper label texture for a chemical bottle — same canvas-texture trick
-// as the periodic table tiles, just smaller.
+// as the periodic table tiles, just smaller. Dark navy + white text so the
+// formula stays readable from across the room (and matches the poster board).
 function createLabelTexture(text) {
   const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 96;
+  canvas.width = 256;
+  canvas.height = 192;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#f5f0e6';                // paper
-  ctx.fillRect(0, 0, 128, 96);
-  ctx.strokeStyle = '#8a2020';              // red border, like real reagent labels
-  ctx.lineWidth = 6;
-  ctx.strokeRect(4, 4, 120, 88);
+  ctx.fillStyle = '#ffffff';                // high-contrast white background
+  ctx.fillRect(0, 0, 256, 192);
+  ctx.strokeStyle = '#000000';              // bold black border
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, 246, 182);
 
-  ctx.fillStyle = '#222222';
+  ctx.fillStyle = '#000000';                // solid black text
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 30px Arial';
-  ctx.fillText(text, 64, 48, 110);          // maxWidth squeezes long names
+  ctx.font = 'bold 72px Arial';
+  ctx.fillText(text, 128, 96, 230);
 
-  return new THREE.CanvasTexture(canvas);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  return texture;
+}
+
+// A hanging station sign: dark board + white text, hung above each workflow
+// station so the three-step lab flow is readable from across the room.
+function createStationSign(scene, text, position, rotationY) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 96;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#22303c';
+  ctx.fillRect(0, 0, 512, 96);
+  ctx.strokeStyle = '#9fc5e8';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(4, 4, 504, 88);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 42px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 48, 500);
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.6, 0.3),
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(canvas) })
+  );
+  sign.position.set(position.x, position.y, position.z);
+  sign.rotation.y = rotationY;
+  scene.add(sign);
+}
+
+// A grainy canvas texture for powder chemicals: base color + speckles of
+// slightly lighter/darker shade, so the bottle reads "crystals", not liquid.
+function makePowderTexture(baseColor) {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = baseColor;
+  g.fillRect(0, 0, 128, 128);
+  const col = new THREE.Color(baseColor);
+  for (let i = 0; i < 2000; i++) {
+    const k = 0.75 + Math.random() * 0.5;          // ±25% lightness per grain
+    g.fillStyle = `rgb(${Math.min(255, col.r * 255 * k) | 0},${Math.min(255, col.g * 255 * k) | 0},${Math.min(255, col.b * 255 * k) | 0})`;
+    g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random(), 1 + Math.random());
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 2);
+  return t;
 }
 
 // A reagent bottle: cylinder body + neck + cap + paper label.
-// labelAngle = which way the label faces (radians around Y).
-function createBottle(liquidColor, labelText, labelAngle) {
+// chem = the full chemical object (color, state); labelAngle = label facing.
+// Powder chemicals (state 'powder') get a matte granular body — salts are
+// crystals in a jar, not glossy liquid.
+function createBottle(chem, labelText, labelAngle) {
   const bottle = new THREE.Group();
+  const liquidColor = chem.color;
+  const isPowder = chem.state === 'powder';
 
   const body = new THREE.Mesh(
     new THREE.CylinderGeometry(0.045, 0.045, 0.16, 20),
-    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
+    isPowder
+      ? new THREE.MeshStandardMaterial({ map: makePowderTexture(liquidColor), roughness: 0.95 })
+      : new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
   );
   body.position.y = 0.08;
   bottle.add(body);
 
   const neck = new THREE.Mesh(
     new THREE.CylinderGeometry(0.018, 0.03, 0.04, 20),
-    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.35 })
+    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: isPowder ? 0.95 : 0.35 })
   );
   neck.position.y = 0.18;
   bottle.add(neck);
@@ -203,7 +273,12 @@ function createBottle(liquidColor, labelText, labelAngle) {
 }
 
 // Two wall shelves with a row of labeled chemical bottles each.
-function createShelves(scene, interactableObjects) {
+//
+// PHASE 1 REFACTOR: the chemical list used to be hard-coded right here. Now it
+// arrives as data (from server/data/chemicals.json via chemistry/registry.js).
+// Same visuals, different SOURCE — that one change is what lets a teacher add a
+// chemical without a programmer (book Ch 4).
+function createShelves(scene, interactableObjects, chemicals) {
   const shelves = new THREE.Group();
   const boardMat = new THREE.MeshStandardMaterial({ color: 0xb0a58f, roughness: 0.8 });
 
@@ -216,19 +291,29 @@ function createShelves(scene, interactableObjects) {
     shelves.add(board);
   }
 
-  // Bottles: name + liquid color. Labels face +x (into the room).
-  const chemicals = [
-    ['HCl',     0xf0e68c], ['NaOH',    0xf5f5f5], ['H₂SO₄', 0xf7e8b0], ['CuSO₄', 0x2e86c1],
-    ['KMnO₄', 0x6c3483], ['Ethanol', 0xd5f5e3], ['NaCl',    0xffffff], ['Acetone', 0xd6eaf8]
-  ];
   const labelAngle = Math.PI / 2;           // face +x = into the room
+  const PER_BOARD = 5;                      // wraps to the upper board after 5
 
-  chemicals.forEach(([name, color], i) => {
-    const shelfY = i < 4 ? 1.415 : 1.765;   // first 4 on lower board, rest on top
-    const zPos = -1.9 + (i % 4) * 0.6;
-    const bottle = createBottle(color, name, labelAngle);
+  chemicals.forEach((chem, i) => {
+    const shelfY = i < PER_BOARD ? 1.415 : 1.765;
+    const zPos = -1.9 + (i % PER_BOARD) * 0.5;
+
+    // The label shows the short formula; the full name lives in userData.
+    const bottle = createBottle(chem, chem.formula, labelAngle);
     bottle.position.set(-6.85, shelfY, zPos);
+
+    // The identity card the hand system reads (book Ch 2.1 pattern #2).
+    // homePosition is where Q sends the bottle back to.
+    bottle.userData = {
+      chemicalId: chem.id,
+      isBottle: true,
+      name: chem.name,
+      description: chem.description,
+      homePosition: bottle.position.clone()
+    };
+
     shelves.add(bottle);
+    interactableObjects.push(bottle);       // so the crosshair can find it
   });
 
   shelves.userData = {
@@ -240,10 +325,10 @@ function createShelves(scene, interactableObjects) {
 }
 
 // ---------- put it all together ----------
-export function createFurniture(scene, interactableObjects, colliders) {
-  const TOP = 0.9;   // bench worktop height in meters
+export function createFurniture(scene, interactableObjects, colliders, shelfChemicals) {
+  const TOP = 1.0;   // bench worktop height in meters
 
-  createShelves(scene, interactableObjects);
+  createShelves(scene, interactableObjects, shelfChemicals);
 
   // Island bench in the middle of the room — the main workstation
   const islandBench = createBench(0, -1.5, 0);
@@ -264,6 +349,22 @@ export function createFurniture(scene, interactableObjects, colliders) {
   scene.add(wallBench);
   interactableObjects.push(wallBench);
   colliders.push(new THREE.Box3().setFromObject(wallBench));
+
+  // PPE station by the door: gloves + mask boxes live on this table, and the
+  // 'ppe' zone gates where they can be put on/taken off.
+  const ppeBench = createBench(ZONES.ppe.x, ZONES.ppe.z, 0);
+  ppeBench.userData = {
+    name: 'PPE Station',
+    description: 'Personal protective equipment: nitrile gloves and face masks. Put both on HERE before handling hazardous chemicals, and take them off here before leaving.'
+  };
+  scene.add(ppeBench);
+  interactableObjects.push(ppeBench);
+  colliders.push(new THREE.Box3().setFromObject(ppeBench));
+
+  // Station signs — the workflow is readable from anywhere in the room.
+  createStationSign(scene, 'PPE STATION', new THREE.Vector3(ZONES.ppe.x, 2.3, ZONES.ppe.z), Math.PI);
+  createStationSign(scene, 'CHEMICAL STORAGE', new THREE.Vector3(-6.85, 2.35, -1), Math.PI / 2);
+  createStationSign(scene, 'REACTION BENCH', new THREE.Vector3(0, 2.3, -1.5), 0);
 
   // Glassware ON the island bench (positions in world coords, y = worktop)
   const flask1 = createFlask(0x2ecc71);           // green liquid
@@ -316,4 +417,36 @@ export function createFurniture(scene, interactableObjects, colliders) {
   );
   bracket.position.set(6.97, 1.3, 2);
   scene.add(bracket);
+
+  // "Walk-up spots": where a proximity info card should float, and what it
+  // says. main.js hands these to interactions.addProximityPanel().
+  // Anchors sit ~0.5 m above/beside their object, at comfortable reading height.
+  return {
+    proximitySpots: [
+      {
+        position: new THREE.Vector3(0, 1.7, -1.5),
+        title: 'Lab Bench',
+        description: islandBench.userData.description,
+        radius: 2.5
+      },
+      {
+        position: new THREE.Vector3(6.3, 1.7, 2),
+        title: 'Fire Extinguisher',
+        description: 'A fire extinguisher puts out small fires by spraying a pressurized agent. In a chemistry lab it hangs near the door, ready for burner or chemical fires.',
+        radius: 2.5
+      },
+      {
+        position: new THREE.Vector3(-6.2, 1.9, -1),
+        title: 'Chemical Shelf',
+        description: 'Reagent bottles used in experiments: acids like HCl and H2SO4, bases like NaOH, and colorful salts like CuSO4 and KMnO4. Always read the label before use!',
+        radius: 2.5
+      },
+      {
+        position: new THREE.Vector3(ZONES.ppe.x, 1.7, ZONES.ppe.z),
+        title: 'PPE Station',
+        description: 'Personal protective equipment: nitrile gloves and face masks. Put both on here before handling hazardous chemicals.',
+        radius: 2.2
+      }
+    ]
+  };
 }

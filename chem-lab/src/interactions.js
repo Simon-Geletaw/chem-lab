@@ -30,19 +30,20 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   return y + lineHeight;                    // where the NEXT block may start
 }
 
-// The floating info card texture: dark rounded panel, title, atomic number,
-// wrapped description. Same canvas-texture trick as the element tiles.
-function createElementCardTexture(name, atomicNumber, description) {
+// The floating info card texture: dark rounded panel, title, optional badge
+// (e.g. '#26' for iron), wrapped description. Used by BOTH the element
+// pop-out cards and the walk-up proximity cards.
+function createCardTexture(title, description, badge) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
-  canvas.height = 340;
+  canvas.height = 420;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = 'rgba(20, 30, 40, 0.92)';
+  ctx.fillStyle = 'rgba(24, 34, 48, 0.94)';
   ctx.beginPath();
-  ctx.roundRect(4, 4, 504, 332, 18);
+  ctx.roundRect(4, 4, 504, 412, 18);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.strokeStyle = 'rgba(159, 182, 212, 0.55)';
   ctx.lineWidth = 3;
   ctx.stroke();
 
@@ -50,14 +51,16 @@ function createElementCardTexture(name, atomicNumber, description) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.font = 'bold 36px Arial';
-  ctx.fillText(name, 28, 26, 380);
+  ctx.fillText(title, 28, 26, 380);
 
-  ctx.textAlign = 'right';                  // atomic number badge, top-right
-  ctx.fillStyle = '#9fc5e8';
-  ctx.fillText('#' + atomicNumber, 484, 26);
+  if (badge) {
+    ctx.textAlign = 'right';                // badge, top-right corner
+    ctx.fillStyle = '#9fc5e8';
+    ctx.fillText(badge, 484, 26);
+  }
 
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#e8eef2';
+  ctx.fillStyle = '#c9d8ea';
   ctx.font = '26px Arial';
   wrapText(ctx, description, 28, 92, 456, 36);
 
@@ -78,6 +81,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   });
 
   // --- tile pop-out state ---
+  let pickingEnabled = true;                // the tour sets this false while driving
   let selectedTile = null;                  // the tile currently popped out
   const returningTiles = new Set();         // tiles flying back home
   let card = null;                          // the floating info card mesh
@@ -94,9 +98,9 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     const { name, atomicNumber, description, homePosition } = tile.userData;
 
     card = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.9, 0.6),
+      new THREE.PlaneGeometry(0.9, 0.74),
       new THREE.MeshBasicMaterial({        // Basic = readable in any lighting
-        map: createElementCardTexture(name, atomicNumber, description),
+        map: createCardTexture(name, description, '#' + atomicNumber),
         transparent: true,
         opacity: 0,                        // fades in inside update()
         depthWrite: false                  // avoids flicker with the glass/tiles
@@ -107,8 +111,8 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     const side = homePosition.x > 2 ? -0.85 : 0.85;
     card.position.set(
       THREE.MathUtils.clamp(homePosition.x + side, -6.3, 6.3),
-      THREE.MathUtils.clamp(homePosition.y, 0.6, 2.9),
-      -4.4
+      THREE.MathUtils.clamp(homePosition.y, 0.75, 2.35),
+      -4.3
     );
     scene.add(card);
   }
@@ -127,9 +131,34 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     }
   }
 
+  // --- proximity panels: walk close -> card fades in, walk away -> fades out ---
+  const proximityPanels = [];
+
+  function addProximityPanel({ position, title, description, radius = 2.5 }) {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.9, 0.68),
+      new THREE.MeshBasicMaterial({
+        map: createCardTexture(title, description),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false
+      })
+    );
+    mesh.position.copy(position);
+    mesh.visible = false;
+    scene.add(mesh);
+
+    const panel = { mesh, radius, forced: false };  // 'forced' = the tour can pin it on
+    proximityPanels.push(panel);
+    return panel;
+  }
+
   window.addEventListener('click', (event) => {
-    // Ignore clicks on UI elements (start overlay, info panel...)
-    if (event.target.closest('#start-overlay') || event.target.closest('#info-panel')) return;
+    if (!pickingEnabled) return;      // the tour turns picking off while it drives
+    // Ignore clicks on UI elements (start overlay, info panel, mobile D-pad...)
+    if (event.target.closest('#start-overlay') ||
+        event.target.closest('#info-panel') ||
+        event.target.closest('#mobile-controls')) return;
 
     if (controls.isLocked) {
       raycaster.setFromCamera(CENTER, camera);          // crosshair aim
@@ -159,10 +188,23 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   });
 
   return {
+    addProximityPanel,
+    panels: proximityPanels,
+    setPicking(v) { pickingEnabled = v; if (!v) deselect(); },
+
     update(delta) {
       // The easing idiom: each frame move a FRACTION of the remaining distance.
       // Fast at first, slows near the target = smooth without a tween library.
       const t = Math.min(1, delta * 8);
+
+      // Proximity cards: fade by distance, always turn to face the player.
+      for (const panel of proximityPanels) {
+        const near = camera.position.distanceTo(panel.mesh.position) < panel.radius;
+        const target = (panel.forced || near) ? 1 : 0;
+        panel.mesh.material.opacity += (target - panel.mesh.material.opacity) * Math.min(1, delta * 6);
+        panel.mesh.visible = panel.mesh.material.opacity > 0.01;
+        if (panel.mesh.visible) panel.mesh.lookAt(camera.position);  // billboard
+      }
 
       if (selectedTile) {
         const target = selectedTile.userData.homePosition.clone().add(POP_OFFSET);

@@ -2,6 +2,8 @@
 // Pattern: an "init function" that receives what it needs (the scene),
 // builds its part of the world, and returns anything others might need.
 import * as THREE from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { quality } from './quality.js';
 
 function createFloorTexture() {
   const canvas = document.createElement('canvas');
@@ -9,15 +11,32 @@ function createFloorTexture() {
   canvas.height = 512;
   const context = canvas.getContext('2d');
 
-  context.fillStyle = '#d9d9d2'; // Gray color for the floor
+  // Soft vinyl lab tile: warm light gray with a SUBTLE checker (real lab
+  // linoleum, not a chessboard), thin grout lines and faint speckle.
+  context.fillStyle = '#d8d6cd';
   context.fillRect(0, 0, 512, 512);
-  context.fillStyle = '#bdbdb4';               // darker tile color
+  context.fillStyle = '#cfccc2';
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
-      if ((row + col) % 2 === 0) {         // every other square, like a chessboard
+      if ((row + col) % 2 === 0) {         // every other square, very low contrast
         context.fillRect(col * 64, row * 64, 64, 64);
       }
     }
+  }
+
+  context.strokeStyle = 'rgba(130, 128, 118, 0.4)';   // grout lines
+  context.lineWidth = 2;
+  for (let i = 0; i <= 8; i++) {
+    context.beginPath(); context.moveTo(i * 64, 0); context.lineTo(i * 64, 512); context.stroke();
+    context.beginPath(); context.moveTo(0, i * 64); context.lineTo(512, i * 64); context.stroke();
+  }
+
+  // Speckle: kills the flatness of a solid fill (real vinyl is never uniform).
+  for (let i = 0; i < 900; i++) {
+    context.fillStyle = Math.random() > 0.5
+      ? 'rgba(255, 255, 255, 0.05)'
+      : 'rgba(90, 90, 85, 0.06)';
+    context.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -31,22 +50,35 @@ function createFloorTexture() {
 
 export function createRoom(scene) {
   // --- Lighting ---
-  // Ambient lowered to 0.3 so the ceiling fixtures below visibly matter.
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+  // Pure room lighting — no sun. Real fluorescent tubes are RECTANGULAR area
+  // lights, so each ceiling fixture is a RectAreaLight (soft, directional,
+  // realistic) instead of a point bulb. Everything is turned DOWN: the room
+  // reads dim, corners fall off into shadow, work surfaces sit in cool pools.
+  const ambientLight = new THREE.AmbientLight(0xc8d4da, 0.10);   // cool fill, barely there
   scene.add(ambientLight);
 
-  const fillLight = new THREE.HemisphereLight(0xffffff, 0x777788, 0.5);
+  const fillLight = new THREE.HemisphereLight(0xdde6ea, 0x8f8a80, 0.22); // cool ceiling / warm floor bounce
   scene.add(fillLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.position.set(10, 5, 0);  // "sun" outside the RIGHT wall = light through the windows
+  // Shadow-caster ONLY: the sunlight is gone. This light sits at the ceiling
+  // at ~0.12 intensity — it contributes almost nothing to brightness and
+  // exists solely to cast the soft contact shadows that keep furniture
+  // grounded on the floor (RectAreaLights cannot cast shadows).
+  const dirLight = new THREE.DirectionalLight(0xdfe8ec, 0.12);
+  dirLight.position.set(0, 6, 0);    // overhead, not through the windows
   dirLight.castShadow = true;
+  dirLight.shadow.radius = 6;           // PCFSoft penumbra — soft edges, real light
+  // Explicit shadow map size (default is only 512² and blocky; 1024² is the
+  // sweet spot — sharper contact shadows for one extra ~4 MB texture).
+  dirLight.shadow.mapSize.set(1024, 1024);
   // Shadow camera = the invisible box shadows are computed inside.
   // Smaller box over the same shadow map = SHARPER shadows.
   dirLight.shadow.camera.left = -8;
   dirLight.shadow.camera.right = 8;
   dirLight.shadow.camera.top = 8;
   dirLight.shadow.camera.bottom = -8;
+  dirLight.shadow.bias = -0.0001;       // kill shadow acne
+  dirLight.shadow.normalBias = 0.02;
   scene.add(dirLight);
 
   // --- Geometry ---
@@ -63,7 +95,7 @@ export function createRoom(scene) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.9, metalness: 0.0 });
+  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xe7eae8, roughness: 0.9, metalness: 0.0 });
 
   // Back wall
   const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMaterial);
@@ -95,32 +127,100 @@ export function createRoom(scene) {
   // Ceiling — rotated +90° around X so it faces DOWN into the room
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(14, 10),
-    new THREE.MeshStandardMaterial({ color: 0xf5f5f0, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.9 })
   );
   ceiling.position.set(0, 3.5, 0);
   ceiling.rotation.x = Math.PI / 2;
   scene.add(ceiling);
 
-  // --- Door (on the front wall, decorative) ---
+  // --- Door (on the front wall, steel lab door) ---
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(0.9, 2.1, 0.05),
-    new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.7 })
+    new THREE.MeshStandardMaterial({ color: 0x59636d, roughness: 0.6, metalness: 0.3 })
   );
   door.position.set(3, 1.05, 4.97);
   scene.add(door);
 
   const handle = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 12, 12),
-    new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.8 })
+    new THREE.MeshStandardMaterial({ color: 0x2b3035, roughness: 0.3, metalness: 0.9 })
   );
   handle.position.set(2.65, 1.05, 4.92);
   scene.add(handle);
 
+  // --- Safety accents: green EXIT sign + yellow/black hazard stripe at the
+  // wall bases — the visual language of a real, properly run lab.
+  function createExitTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1f7a3c';
+    ctx.fillRect(0, 0, 128, 64);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, 120, 56);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('EXIT', 64, 32);
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  const exitSign = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.5, 0.25),
+    new THREE.MeshStandardMaterial({
+      map: createExitTexture(),
+      emissive: 0x2ea860,
+      emissiveIntensity: 1.6       // a real EXIT sign is a lit lightbox — blooms at high quality
+    })
+  );
+  exitSign.position.set(3, 2.55, 4.97);
+  exitSign.rotation.y = Math.PI;            // front wall faces into the room
+  scene.add(exitSign);
+
+  // Diagonal yellow/black hazard stripes; 4 stripes per canvas, one canvas
+  // covers 0.5 m, so repeat = 2x the wall width.
+  function createHazardStripe(width) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#e0b81f';
+    ctx.fillRect(0, 0, 128, 32);
+    ctx.fillStyle = '#1b1b1b';
+    for (let x = 0; x < 128; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 32);
+      ctx.lineTo(x + 16, 0);
+      ctx.lineTo(x + 32, 0);
+      ctx.lineTo(x + 16, 32);
+      ctx.closePath();
+      ctx.fill();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.repeat.set(width * 2, 1);
+    return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8 });
+  }
+
+  const backStripe = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.14), createHazardStripe(14));
+  backStripe.position.set(0, 0.07, -4.99);
+  scene.add(backStripe);
+
+  for (const [x, rotY] of [[-6.99, Math.PI / 2], [6.99, -Math.PI / 2]]) {
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(10, 0.14), createHazardStripe(10));
+    stripe.position.set(x, 0.07, 0);
+    stripe.rotation.y = rotY;
+    scene.add(stripe);
+  }
+
   // --- Windows (on the right wall) ---
   // Trick: MeshBasicMaterial IGNORES lighting — it is always full-bright.
-  // A light-blue always-bright plane reads as "daylight outside".
+  // A dimmer blue always-bright plane reads as "late-afternoon outside".
   const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
-  const skyMat = new THREE.MeshBasicMaterial({ color: 0xbfe3ff });
+  const skyMat = new THREE.MeshBasicMaterial({ color: 0xa9c8e2 });
 
   for (const zPos of [-2.5, 0]) {
     // glass pane: 1.5 m wide (along z), 1.2 m tall, centered at y=1.7
@@ -143,23 +243,32 @@ export function createRoom(scene) {
 
   // --- Ceiling light fixtures ---
   // 'emissive' makes the panel GLOW, but glowing materials cast NO light in
-  // three.js — so each fixture also carries a real PointLight.
+  // three.js — so each fixture also carries a real light.
   const fixtureMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0xffffff,
     emissiveIntensity: 1.5
   });
+  // Real fluorescent tube = an area light the size of the fixture. Soft and
+  // directional (downward), which is exactly how a tube lights a room.
+  RectAreaLightUniformsLib.init();
   for (const zPos of [-2.5, 0, 2.5]) {
     const fixture = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.3), fixtureMat);
     fixture.position.set(0, 3.47, zPos);
     scene.add(fixture);
 
-    // (color, intensity, distance it reaches, decay) — physical units in r185,
-    // so tune the intensity number by eye in the browser.
-    const bulb = new THREE.PointLight(0xffffff, 12, 8, 1.8);
-    bulb.position.set(0, 3.3, zPos);
-    bulb.castShadow = false;   // only dirLight casts shadows = fast + sufficient
-    scene.add(bulb);
+    if (quality.level === 'high') {
+      const tube = new THREE.RectAreaLight(0xe9f4f6, 3.2, 1.2, 0.3);  // cool 4000 K tube
+      tube.position.set(0, 3.42, zPos);
+      tube.lookAt(0, 0, zPos);          // faces straight down into the room
+      scene.add(tube);
+    } else {
+      // LOW preset: area lights cost too much — a dim point bulb instead.
+      const bulb = new THREE.PointLight(0xe9f4f6, 2.6, 9, 2.0);
+      bulb.position.set(0, 3.25, zPos);
+      bulb.castShadow = false;
+      scene.add(bulb);
+    }
   }
 
   return { dirLight, ambientLight };

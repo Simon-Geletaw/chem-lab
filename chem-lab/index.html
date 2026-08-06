@@ -4,17 +4,35 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>chem-lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <title>Chemistry Lab</title>
   </head>
   <body>
     <div id="start-overlay">
       <div id="start-card">
-        <h1>Chemistry Lab</h1>
-        <p>Click anywhere to enter</p>
-        <p class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor</p>
+        <h1 id="start-title">Chemistry Lab</h1>
+        <p id="overlay-enter">Click anywhere to enter the lab</p>
+        <p id="overlay-keys" class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor &nbsp;•&nbsp; <b>R</b> empty flask</p>
+        <div id="overlay-buttons">
+          <button id="enter-btn">Enter Lab</button>
+          <button id="tour-btn">&#9654; Start Guided Tour</button>
+          <button id="reset-flask-btn">&#8635; Reset Flask</button>
+          <button id="controls-btn">&#9432; Controls &amp; Safety</button>
+        </div>
+        <p id="overlay-status"></p>
       </div>
     </div>
     <div id="crosshair"></div>
+    <div id="action-hint"></div>
+    <button id="tour-skip">Skip Tour &#10005;</button>
+    <div id="mobile-controls">
+      <button id="btn-up" class="dpad">&#9650;</button>
+      <button id="btn-left" class="dpad">&#9664;</button>
+      <button id="btn-down" class="dpad">&#9660;</button>
+      <button id="btn-right" class="dpad">&#9654;</button>
+    </div>
     <div id="info-panel">
       <button id="info-close">✕</button>
       <h2 id="info-title"></h2>
@@ -23,60 +41,297 @@
     <script type="module" src="/src/main.js"></script>
 
     <style>
+      /* ===== Chem Lab UI · Deep Blue Glass + Sky (brand #054b89) ===== */
       #start-overlay {
         position: fixed;
-        inset: 0;                       /* shorthand: top/right/bottom/left = 0 */
-        display: flex;                  /* center the card both ways */
+        inset: 0;
+        display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(10, 18, 26, 0.75);
-        z-index: 20;                    /* above the canvas AND the info panel */
+        background: rgba(2, 9, 20, 0.75);
+        z-index: 20;
         cursor: pointer;
-        font-family: system-ui, sans-serif;
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
         color: #fff;
         text-align: center;
       }
-      #start-card h1 { margin: 0 0 8px; font-size: 42px; letter-spacing: 2px; }
-      #start-card p  { margin: 4px 0; font-size: 18px; opacity: 0.9; }
-      #start-card .keys { font-size: 14px; opacity: 0.65; margin-top: 14px; }
+      #start-card {
+        position: relative;
+        padding: 40px 52px;
+        border-radius: 20px;
+        background: rgba(4, 16, 34, 0.92);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        backdrop-filter: blur(20px) saturate(140%);
+        border: 1px solid rgba(77, 163, 255, 0.25);
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.4),
+          0 28px 80px rgba(0, 0, 0, 0.65),
+          0 0 60px rgba(77, 163, 255, 0.06);
+      }
+      #start-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 15%;
+        right: 15%;
+        height: 2px;
+        border-radius: 2px;
+        background: #4da3ff;            /* flat brand accent, no gradient */
+        opacity: 0.85;
+      }
+      #start-card h1 {
+        margin: 0 0 12px;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 46px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: #eef5fd;
+        text-shadow: 0 0 30px rgba(77, 163, 255, 0.25);
+      }
+      #start-card p {
+        margin: 4px 0;
+        font-size: 16px;
+        font-weight: 500;
+        color: #b9cbe2;
+      }
+      #start-card .keys {
+        font-size: 14px;
+        color: #8299b2;
+        margin-top: 18px;
+        letter-spacing: 0.3px;
+      }
+      #start-card .keys b {
+        color: #eaf4ff;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: rgba(77, 163, 255, 0.10);
+        border: 1px solid rgba(77, 163, 255, 0.30);
+        font-family: 'Inter', sans-serif;
+      }
 
       #crosshair {
-        display: none;                  /* only shown while pointer is locked */
+        display: none;
         position: fixed;
         top: 50%;
         left: 50%;
-        width: 6px;
-        height: 6px;
-        margin: -3px 0 0 -3px;          /* center the dot exactly */
+        width: 8px;
+        height: 8px;
+        margin: -4px 0 0 -4px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.85);
-        box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+        background: #ffffff;
+        box-shadow:
+          0 0 0 2px rgba(77, 163, 255, 0.55),
+          0 0 10px rgba(77, 163, 255, 0.7);
         z-index: 15;
-        pointer-events: none;           /* clicks pass straight through it */
+        pointer-events: none;
+      }
+      #action-hint {
+        display: none;
+        position: fixed;
+        top: 56%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 18px;
+        border-radius: 10px;
+        background: rgba(4, 16, 34, 0.88);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+        color: #eaf4ff;
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        z-index: 15;
+        pointer-events: none;
       }
 
+      #mobile-controls {
+        display: none;
+        position: fixed;
+        left: 18px;
+        bottom: 18px;
+        z-index: 15;
+        grid-template-columns: repeat(3, 64px);
+        grid-template-rows: repeat(2, 64px);
+        gap: 8px;
+      }
+      #btn-up    { grid-column: 2; grid-row: 1; }
+      #btn-left  { grid-column: 1; grid-row: 2; }
+      #btn-down  { grid-column: 2; grid-row: 2; }
+      #btn-right { grid-column: 3; grid-row: 2; }
+      .dpad {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        background: rgba(4, 16, 34, 0.88);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        color: #eaf4ff;
+        font-size: 22px;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .dpad:active {
+        background: #054b89;            /* flat brand fill */
+        color: #eaf4ff;
+      }
+
+      #overlay-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 26px;
+      }
+      #overlay-buttons button {
+        padding: 13px 32px;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.12s ease, box-shadow 0.18s ease, background 0.18s ease,
+          border-color 0.18s ease, filter 0.18s ease;
+      }
+      #overlay-buttons button:hover { transform: translateY(-2px); }
+      #overlay-buttons button:active { transform: translateY(1px); }
+      #overlay-buttons button:focus-visible {
+        outline: 2px solid #4da3ff;
+        outline-offset: 3px;
+      }
+      #enter-btn {
+        background: #054b89;            /* flat brand fill, no gradient */
+        color: #eaf4ff;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      }
+      #enter-btn:hover {
+        background: #0a63ad;
+        color: #f4fffb;
+        box-shadow: 0 0 24px rgba(77, 163, 255, 0.30), 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      #enter-btn:active { background: #043a68; }
+      #tour-btn {
+        background: transparent;
+        color: #eaf4ff;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+      }
+      #tour-btn:hover {
+        background: rgba(77, 163, 255, 0.14);
+        color: #ffffff;
+        border-color: rgba(77, 163, 255, 0.65);
+      }
+      #reset-flask-btn {
+        background: rgba(255, 107, 122, 0.10);
+        color: #ffd7dc;
+        border: 1px solid rgba(255, 107, 122, 0.45);
+      }
+      #reset-flask-btn:hover {
+        background: rgba(255, 107, 122, 0.28);
+        color: #ffffff;
+        border-color: rgba(255, 107, 122, 0.85);
+      }
+      #controls-btn {
+        background: transparent;
+        color: #eaf4ff;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+      }
+      #controls-btn:hover {
+        background: rgba(77, 163, 255, 0.14);
+        color: #ffffff;
+        border-color: rgba(77, 163, 255, 0.65);
+      }
+      #overlay-status {
+        margin: 16px 0 0;
+        min-height: 20px;
+        font-size: 14px;
+        color: #4da3ff;
+      }
+
+      #tour-skip {
+        display: none;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 15;
+        padding: 10px 18px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #eaf4ff;
+        background: rgba(4, 16, 34, 0.88);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: 'Inter', system-ui, sans-serif;
+      }
+      #tour-skip:hover { border-color: rgba(77, 163, 255, 0.7); background: rgba(77, 163, 255, 0.10); }
+
       #info-panel {
-        display: none;                 /* hidden until something is clicked */
-        position: fixed;               /* floats over the 3D canvas */
+        display: none;
+        position: fixed;
         top: 20px;
         right: 20px;
-        width: 300px;
-        padding: 16px 20px;
-        background: rgba(20, 30, 40, 0.88);
-        color: #fff;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        font-family: system-ui, sans-serif;
-        z-index: 10;                   /* draw on top of the canvas */
+        width: 320px;
+        padding: 20px 24px;
+        background: rgba(4, 16, 34, 0.90);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        backdrop-filter: blur(20px) saturate(140%);
+        color: #eef5fd;
+        border-radius: 14px;
+        border: 1px solid rgba(77, 163, 255, 0.25);
+        box-shadow:
+          0 24px 70px rgba(0, 0, 0, 0.6),
+          0 0 50px rgba(77, 163, 255, 0.05);
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        z-index: 10;
       }
-      #info-panel h2  { margin: 0 0 8px; font-size: 20px; }
-      #info-panel p   { margin: 0; font-size: 14px; line-height: 1.5; }
+      #info-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 16px;
+        right: 16px;
+        height: 2px;
+        border-radius: 2px;
+        background: #4da3ff;            /* flat brand accent */
+        opacity: 0.75;
+      }
+      #info-panel h2 {
+        margin: 0 0 10px;
+        font-size: 19px;
+        font-weight: 600;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        color: #eef5fd;
+        padding-right: 22px;
+      }
+      #info-panel p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.65;
+        color: #b9cbe2;
+      }
       #info-close {
         position: absolute;
-        top: 8px; right: 10px;
-        background: none; border: none;
-        color: #fff; font-size: 16px; cursor: pointer;
+        top: 12px;
+        right: 14px;
+        background: none;
+        border: none;
+        color: #8299b2;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 6px;
+        line-height: 1;
       }
+      #info-close:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
     </style>
   </body>
 </html>
