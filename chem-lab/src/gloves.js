@@ -158,6 +158,27 @@ export function createGloves(scene, camera, interactableObjects) {
   const sway = new THREE.Group();
   camera.add(sway);
 
+  // --- HAND LIGHTING LAYER (room-independent) ------------------------------
+  // The hands live on their OWN render layer. The room lights (layer 0) are
+  // told nothing about this layer, so however bright or dim the room gets, the
+  // hands never change. Two lights parented to the camera light them the same
+  // way from every angle: a hemisphere for even fill + a soft key from above-
+  // front for shape. Tune HAND_FILL / HAND_KEY if the gloves look too flat or
+  // too bright — nothing else in the room is affected.
+  const HAND_LAYER = 1;
+  const HAND_FILL = 1.15;   // even ambient wrap on the hands
+  const HAND_KEY = 1.35;    // front-above highlight that gives the fingers form
+  camera.layers.enable(HAND_LAYER);   // so the camera actually DRAWS layer-1 meshes
+
+  const handFill = new THREE.HemisphereLight(0xffffff, 0xbfc6cf, HAND_FILL);
+  handFill.layers.set(HAND_LAYER);
+  camera.add(handFill);
+
+  const handKey = new THREE.PointLight(0xfff6ec, HAND_KEY, 3, 1.5);
+  handKey.position.set(0.15, 0.35, -0.15);   // just above & in front of the lens
+  handKey.layers.set(HAND_LAYER);
+  camera.add(handKey);
+
   // A rig = outer Group (what hand.js moves) -> orient fix -> roll -> [mirror?] model.
   //
   // CRITICAL (measured, not assumed): hand_model.glb is a LEFT hand — palm
@@ -292,6 +313,13 @@ export function createGloves(scene, camera, interactableObjects) {
       });
       entry.skinMeshes = skinMeshes;
       entry.nailMeshes = nailMeshes;
+
+      // T7: put every hand mesh onto the dedicated lighting layer. The room
+      // lights (layer 0) never see them, so dimming the room has zero effect
+      // on hand visibility — they stay clear and readable in any environment.
+      shown.traverse((n) => {
+        if (n.isMesh || n.isSkinnedMesh) n.layers.set(HAND_LAYER);
+      });
 
       // Calibrate the grip (T5): compute the palm ANCHOR (model units) — the
       // bottle base sits below the knuckle line, one bottle radius outside
@@ -473,9 +501,10 @@ export function createGloves(scene, camera, interactableObjects) {
     return burnMats;
   }
   const _burnColor = new THREE.Color();
-  const BURN_RED = new THREE.Color(1.0, 0.42, 0.32);
-  const BURN_DARK = new THREE.Color(0.55, 0.25, 0.2);
+  const _burnMid = new THREE.Color();     // the chemical's own burn hue (per-frame set)
+  const _burnDark = new THREE.Color();    // charred version for deep burns
   const SKIN_WHITE = new THREE.Color(1, 1, 1);
+  const DEFAULT_BURN = '#ff5a3c';
 
   return {
     get on() { return on; },
@@ -486,11 +515,15 @@ export function createGloves(scene, camera, interactableObjects) {
     // 'relaxed' | 'grip' — eased by update(), never snapped.
     setRightPose(name) { right.pose = name; },
 
-    // T6: level 0 = healthy, 0.5 = angry red, 1 = chemical burn. smoking=true
-    // while the acid is actively eating (wisps rise from the palm).
-    setBurn(level, smoking) {
-      if (level < 0.5) _burnColor.copy(SKIN_WHITE).lerp(BURN_RED, level * 2);
-      else _burnColor.copy(BURN_RED).lerp(BURN_DARK, (level - 0.5) * 2);
+    // T6: level 0 = healthy, 1 = deep chemical burn. `colorHex` is the burning
+    // chemical's own burnColor (from chemicals.json) so acids redden, oxidisers
+    // stain purple, etc. smoking=true raises smoke wisps while it is actively
+    // eating skin. White skin → chemical hue → charred, as the level climbs.
+    setBurn(level, smoking, colorHex) {
+      _burnMid.set(colorHex || DEFAULT_BURN);
+      _burnDark.copy(_burnMid).multiplyScalar(0.45);
+      if (level < 0.5) _burnColor.copy(SKIN_WHITE).lerp(_burnMid, level * 2);
+      else _burnColor.copy(_burnMid).lerp(_burnDark, (level - 0.5) * 2);
       for (const m of collectBurnMats()) m.color.copy(_burnColor);
       wisps.visible = smoking && level > 0.05;
     },

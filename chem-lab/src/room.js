@@ -2,6 +2,8 @@
 // Pattern: an "init function" that receives what it needs (the scene),
 // builds its part of the world, and returns anything others might need.
 import * as THREE from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { quality } from './quality.js';
 
 function createFloorTexture() {
   const canvas = document.createElement('canvas');
@@ -48,17 +50,24 @@ function createFloorTexture() {
 
 export function createRoom(scene) {
   // --- Lighting ---
-  // Warm daylight through the right-wall windows + warm fluorescent ceiling
-  // fixtures. The tints matter: pure white light on pale walls reads flat.
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+  // Pure room lighting — no sun. Real fluorescent tubes are RECTANGULAR area
+  // lights, so each ceiling fixture is a RectAreaLight (soft, directional,
+  // realistic) instead of a point bulb. Everything is turned DOWN: the room
+  // reads dim, corners fall off into shadow, work surfaces sit in cool pools.
+  const ambientLight = new THREE.AmbientLight(0xc8d4da, 0.10);   // cool fill, barely there
   scene.add(ambientLight);
 
-  const fillLight = new THREE.HemisphereLight(0xfff4e6, 0x8d9299, 0.5);
+  const fillLight = new THREE.HemisphereLight(0xdde6ea, 0x8f8a80, 0.22); // cool ceiling / warm floor bounce
   scene.add(fillLight);
 
-  const dirLight = new THREE.DirectionalLight(0xfff2dc, 1.2);
-  dirLight.position.set(10, 5, 0);  // "sun" outside the RIGHT wall = light through the windows
+  // Shadow-caster ONLY: the sunlight is gone. This light sits at the ceiling
+  // at ~0.12 intensity — it contributes almost nothing to brightness and
+  // exists solely to cast the soft contact shadows that keep furniture
+  // grounded on the floor (RectAreaLights cannot cast shadows).
+  const dirLight = new THREE.DirectionalLight(0xdfe8ec, 0.12);
+  dirLight.position.set(0, 6, 0);    // overhead, not through the windows
   dirLight.castShadow = true;
+  dirLight.shadow.radius = 6;           // PCFSoft penumbra — soft edges, real light
   // Explicit shadow map size (default is only 512² and blocky; 1024² is the
   // sweet spot — sharper contact shadows for one extra ~4 MB texture).
   dirLight.shadow.mapSize.set(1024, 1024);
@@ -68,6 +77,8 @@ export function createRoom(scene) {
   dirLight.shadow.camera.right = 8;
   dirLight.shadow.camera.top = 8;
   dirLight.shadow.camera.bottom = -8;
+  dirLight.shadow.bias = -0.0001;       // kill shadow acne
+  dirLight.shadow.normalBias = 0.02;
   scene.add(dirLight);
 
   // --- Geometry ---
@@ -161,8 +172,8 @@ export function createRoom(scene) {
     new THREE.PlaneGeometry(0.5, 0.25),
     new THREE.MeshStandardMaterial({
       map: createExitTexture(),
-      emissive: 0x1f7a3c,
-      emissiveIntensity: 0.35
+      emissive: 0x2ea860,
+      emissiveIntensity: 1.6       // a real EXIT sign is a lit lightbox — blooms at high quality
     })
   );
   exitSign.position.set(3, 2.55, 4.97);
@@ -207,9 +218,9 @@ export function createRoom(scene) {
 
   // --- Windows (on the right wall) ---
   // Trick: MeshBasicMaterial IGNORES lighting — it is always full-bright.
-  // A light-blue always-bright plane reads as "daylight outside".
+  // A dimmer blue always-bright plane reads as "late-afternoon outside".
   const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
-  const skyMat = new THREE.MeshBasicMaterial({ color: 0xbfe3ff });
+  const skyMat = new THREE.MeshBasicMaterial({ color: 0xa9c8e2 });
 
   for (const zPos of [-2.5, 0]) {
     // glass pane: 1.5 m wide (along z), 1.2 m tall, centered at y=1.7
@@ -232,23 +243,32 @@ export function createRoom(scene) {
 
   // --- Ceiling light fixtures ---
   // 'emissive' makes the panel GLOW, but glowing materials cast NO light in
-  // three.js — so each fixture also carries a real PointLight.
+  // three.js — so each fixture also carries a real light.
   const fixtureMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     emissive: 0xffffff,
     emissiveIntensity: 1.5
   });
+  // Real fluorescent tube = an area light the size of the fixture. Soft and
+  // directional (downward), which is exactly how a tube lights a room.
+  RectAreaLightUniformsLib.init();
   for (const zPos of [-2.5, 0, 2.5]) {
     const fixture = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.3), fixtureMat);
     fixture.position.set(0, 3.47, zPos);
     scene.add(fixture);
 
-    // (color, intensity, distance it reaches, decay) — physical units in r185,
-    // so tune the intensity number by eye in the browser.
-    const bulb = new THREE.PointLight(0xfff3e2, 11, 8, 1.8);   // warm fluorescent
-    bulb.position.set(0, 3.3, zPos);
-    bulb.castShadow = false;   // only dirLight casts shadows = fast + sufficient
-    scene.add(bulb);
+    if (quality.level === 'high') {
+      const tube = new THREE.RectAreaLight(0xe9f4f6, 3.2, 1.2, 0.3);  // cool 4000 K tube
+      tube.position.set(0, 3.42, zPos);
+      tube.lookAt(0, 0, zPos);          // faces straight down into the room
+      scene.add(tube);
+    } else {
+      // LOW preset: area lights cost too much — a dim point bulb instead.
+      const bulb = new THREE.PointLight(0xe9f4f6, 2.6, 9, 2.0);
+      bulb.position.set(0, 3.25, zPos);
+      bulb.castShadow = false;
+      scene.add(bulb);
+    }
   }
 
   return { dirLight, ambientLight };

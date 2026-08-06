@@ -59,6 +59,15 @@ function validate(d) {
     if (!/^#[0-9a-fA-F]{6}$/.test(c.color)) {
       throw new Error(`Chemical "${c.id}" has a bad color "${c.color}" — use #rrggbb`);
     }
+    // T6 optional burn fields: how fast bare skin burns and what colour it
+    // turns. Both optional; if present they must be well-formed (a data typo
+    // here would silently disable a chemical's burn, so fail loudly instead).
+    if (c.burnRate !== undefined && !(typeof c.burnRate === 'number' && c.burnRate > 0)) {
+      throw new Error(`Chemical "${c.id}" has a bad burnRate "${c.burnRate}" — use a positive number`);
+    }
+    if (c.burnColor !== undefined && !/^#[0-9a-fA-F]{6}$/.test(c.burnColor)) {
+      throw new Error(`Chemical "${c.id}" has a bad burnColor "${c.burnColor}" — use #rrggbb`);
+    }
     ids.add(c.id);
   }
 

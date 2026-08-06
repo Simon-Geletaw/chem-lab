@@ -20,3 +20,20 @@ export function inZone(name, camera) {
   const dz = camera.position.z - z.z;
   return dx * dx + dz * dz <= z.radius * z.radius;
 }
+
+// Is the camera AIMED at the named zone? Pass the flattened (x,z) world aim
+// and the player's feet position as plain objects so this file stays free of
+// Three.js (same architecture rule that keeps inZone pure). The check is a
+// simple horizontal (XZ) dot product: the forward aim vs. the direction from
+// the feet to the zone center. `toleranceDeg` is how far off the straight-on
+// axis still counts as "facing that way" (e.g. 50 = within ±50°).
+export function facingZone(name, pos, forward, toleranceDeg) {
+  const z = ZONES[name];
+  if (!z) return false;
+  const dzx = z.x - pos.x;
+  const dzz = z.z - pos.z;
+  const len = Math.hypot(dzx, dzz);
+  if (len < 1e-6) return false;                    // standing dead-on the center: safe
+  const dot = (dzx / len) * forward.x + (dzz / len) * forward.z;
+  return dot >= Math.cos(toleranceDeg * Math.PI / 180);
+}

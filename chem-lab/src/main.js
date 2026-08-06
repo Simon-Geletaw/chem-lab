@@ -14,6 +14,7 @@ import { createBeaker } from './beaker.js';
 import { createEffectRunner, initEffectPools, prewarmEffects } from './effects/index.js';
 import { createWelcomeCard } from './ui/welcomeCard.js';
 import { createWarningCard } from './ui/warningCard.js';
+import { createBurnCard } from './ui/burnCard.js';
 import { createPourDialog } from './ui/pourDialog.js';
 import { createHUD } from './ui/hud.js';
 import { createGloves } from './gloves.js';
@@ -135,6 +136,30 @@ const mask = createMask(scene, camera, interactableObjects);
 const trashBin = createTrashBin(scene, interactableObjects);
 const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner);
 
+// T6 burn game-over: the FIRST bare-handed hazardous contact triggers a
+// dramatic burn reveal (slow-mo + charring in real time), then a blocking
+// "Restart Experiment" card. Clicking it resets the whole lab and resumes fresh
+// at the entrance. hand.onBurn fires the reveal; the card's onRestart runs the reset.
+const burnCard = createBurnCard(player, hand, () => {
+    hand.resolveBurn();                    // gripped/fallen bottle -> shelf, hand cleared
+    player.enabled = true;                 // re-enable walking (was off during the reveal)
+    interactions.setPicking(true);         // re-enable clicks (tiles, panels)
+    if (gloves.on) hud.setGloves(gloves.toggle());   // strip PPE + HUD
+    if (mask.on) hud.setMask(mask.toggle());
+    beaker.reset();                        // empty the flask
+    effectRunner.clear();                  // kill leftover fire/smoke/flash
+    camera.position.set(0, 1.6, 4);        // fresh entrance…
+    camera.quaternion.identity();          // …facing into the room
+    player.endModal();                     // modal=false + re-enter (pointer lock)
+});
+hand.onBurn = (chem) => {
+    interactions.setPicking(false);        // no clicks while viewing the reveal
+    // burnCard runs the whole 5-beat sequence on real-time clocks:
+    // char-while-held (2s) → bottle tumbles forward (0.8s) → burned hand
+    // visible (3s) → Restart card. It calls hand.dropBottle/applyDropProgress.
+    burnCard.start(chem);
+};
+
 // Temporary Phase 3 test hook — call beaker.receive('h2so4') in the console.
 window.beaker = beaker;
 
@@ -159,6 +184,11 @@ let lastLevel = quality.level;
 function animate() {
   requestAnimationFrame(animate);
   const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
+  // T6 burn reveal: the whole world runs in slow-motion (hand.timeScale) while
+  // the player watches the hand char — the charring itself uses its own
+  // wall-clock in burnCard, so it still completes in ~3 real seconds.
+  const ts = hand.timeScale;
+  const worldDelta = delta * ts;
   if (quality.level !== lastLevel) {
     lastLevel = quality.level;
     if (composer) {
@@ -166,14 +196,14 @@ function animate() {
       composer = null;
     }
   }
-  player.update(delta);               // walking (does nothing while the tour runs)
-  hand.update(delta);                 // carry/return animation + hover hints
-  gloves.update(delta);               // hands easing in/out of view (F5)
-  beaker.update(delta);               // billboard the content label
-  effectRunner.update(delta);         // animate live effects, dispose finished ones
-  tour.update(delta);                 // tour camera (does nothing while idle)
-  interactions.update(delta);
-  trashBin.update(delta);             // lid swing + flying PPE props
+  player.update(worldDelta);               // walking (does nothing while the tour runs)
+  hand.update(worldDelta);                 // carry/return animation + hover hints
+  gloves.update(worldDelta);               // hands easing in/out of view (F5)
+  beaker.update(worldDelta);               // billboard the content label
+  effectRunner.update(worldDelta);         // animate live effects, dispose finished ones
+  tour.update(worldDelta);                 // tour camera (does nothing while idle)
+  interactions.update(worldDelta);
+  trashBin.update(worldDelta);             // lid swing + flying PPE props
   if (composer) composer.render();
   else renderer.render(scene, camera);
   fpsMeter.tick(delta);

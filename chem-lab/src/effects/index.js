@@ -87,6 +87,15 @@ export function createEffectRunner(scene, getExtras) {
     // The beaker leaves REACTING when this goes false (replaces the P5 timer).
     get busy() {
       return live.length > 0;
+    },
+
+    // "Restart experiment" (T6 burn game-over): instantly dispose every live
+    // effect so nothing (fire, smoke, flash…) survives into the fresh run.
+    clear() {
+      for (let i = live.length - 1; i >= 0; i--) {
+        live[i].dispose();
+      }
+      live.length = 0;
     }
   };
 }

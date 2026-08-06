@@ -13,7 +13,8 @@
 import * as THREE from 'three';
 import { getChemical } from './chemistry/registry.js';
 import { RIGHT_REST, RIGHT_POUR, LEFT_REST, LEFT_SUPPORT, GRIP_POS } from './gloves.js';
-import { inZone } from './zones.js';
+import { inZone, facingZone } from './zones.js';
+import { playAlarm } from './audio/alarm.js';
 
 // --- F2: auto chemical info card -----------------------------------------
 // Aiming the crosshair at a bottle fills the top-right #info-panel with its
@@ -39,10 +40,12 @@ function flaskInfoHTML(info) {
     }
     const rows = info.list.map((e) => {
         const c = getChemical(e.chemicalId);
-        return `&middot; ${e.ml} ml ${esc(c.name)} (${esc(c.formula)})`;
+        const unit = c.state === 'powder' ? 'g' : 'ml';   // powders pour by weight
+        return `&middot; ${e.ml} ${unit} ${esc(c.name)} (${esc(c.formula)})`;
     }).join('<br>');
     const chem = getChemical(info.currentId);
-    return `<b>Contents: ${info.totalMl} / ${info.capacity} ml</b><br>${rows}` +
+    const unit = info.isPowder ? 'g' : 'ml';
+    return `<b>Contents: ${info.totalMl} ${unit} / ${info.capacity} ${unit}</b><br>${rows}` +
         `<br><b>Temp:</b> ${info.temp}&deg;C<br><br>${esc(chem.description)}`;
 }
 
@@ -84,18 +87,38 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin) {
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
-    // T6: bare-handed hazard burn. `heldIsHazardBare` latches at pickup (a
-    // hazardous bottle grabbed without gloves); `burnLevel` ramps 0→1 while it
-    // is true and eases back to 0 once the bottle leaves the hand. update()
-    // pushes both into gloves.setBurn() so the right hand reddens and smokes.
-    let heldIsHazardBare = false;
+    // T6: bare-handed hazard burn. The damage ACCUMULATES across pickups and
+    // does NOT heal when the bottle goes back — only nitrile gloves let the
+    // skin recover. `burnChem` holds the currently-gripped hazardous chemical
+    // (its burnRate/burnColor drive the ramp), or null when the hand is safe.
+    // Pouring accelerates the burn (fresh chemical runs over the skin).
+    let burnChem = null;
     let burnLevel = 0;
-    const BURN_RAMP = 0.22;   // ~4.5 s bare contact to a full chemical burn
-    const BURN_HEAL = 0.6;    // fades out in <2 s once released
+    // T6 game-over: FIRST contact with ANY hazardous chemical bare-handed, no
+    // matter how brief, triggers the burn reveal -> restart flow (burnCard owns
+    // the reveal; onBurn is wired by main.js). Once set, the player can no
+    // longer move/pour/return — they only see the burn, then the Restart card.
+    let burnOut = false;
+    let onBurn = null;               // callback(chem) fired once on the fatal contact
+    // T6 dropped-bottle reveal: when the hand is burned the gripped bottle is
+    // flung free and tumbles to the floor (dropBottle), where it lies on its
+    // side, visible, until the player restarts. resolveBurn puts it back.
+    let dropAnim = null;
+    // Survives the drop animation: once the tumble finishes (applyDropProgress
+    // nulls dropAnim), this keeps the fallen bottle so resolveBurn can still
+    // return it to the shelf on restart. Without it, the reference is lost and
+    // the bottle would lie on the floor forever after the experiment restarts.
+    let droppedBottle = null;
+    const POUR_BURN_BOOST = 2.5;   // pouring eats skin 2.5× faster than holding
+    const BURN_HEAL = 0.18;        // gloved recovery: full → healed in ~5.5 s
+    // The glove reminder card nags at most this many times per session, then
+    // trusts the player to have learned it (user: "warn each pickup, cap 3").
+    let gloveWarnings = 0;
+    const GLOVE_WARN_CAP = 3;
 
     // Zone-gate helper: a blocked E-action names the station instead of doing
     // nothing — the lab workflow is a sequence (PPE -> storage -> reaction).
@@ -178,11 +201,35 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     const _mid = new THREE.Vector3();           //  churn the garbage collector)
     const _rimOffset = new THREE.Vector3(0, beaker.rimY, 0);   // flask base -> rim height
     const _ppeFrom = new THREE.Vector3();   // where a discarded glove/mask leaves the body
+    const _returnDir = new THREE.Vector3(); // shelf-facing check reuses one vector
 
     const raycaster = new THREE.Raycaster();
     const CENTER = new THREE.Vector2(0, 0);   // crosshair = exact screen center
 
     const hint = document.getElementById('action-hint');
+
+    // MASK SAFETY: pouring a hazardous chemical without a mask releases fumes.
+    // The hazard text says WHAT the player is breathing in, so the alarm teaches
+    // instead of just scolding. Fires on every unmasked hazardous pour — the
+    // same set of chemicals that burns bare hands (T6).
+    const hazardBreath = {
+        corrosive: 'corrosive fumes can burn your airways',
+        toxic: 'toxic vapors are dangerous to breathe',
+        flammable: 'flammable vapors are being released',
+        oxidizer: 'oxidizer dust is toxic to inhale'
+    };
+    function maskAlarm(chem, mouthWorld) {
+        const breath = hazardBreath[chem.hazard] || 'hazardous fumes are being released';
+        warningCard.show({
+            title: 'MASK ALARM — no mask!',
+            text: `You poured ${chem.name} without a mask on: ${breath}. Walk to the PPE station by the door and put one on before handling hazardous chemicals.`
+        }, 'alarm');
+        effectRunner.play([
+            { type: 'fumes', color: chem.color, intensity: 1, duration: 3 }
+        ], mouthWorld);
+        playAlarm(5);
+        hud.flashMask(true);
+    }
 
     // Aim the crosshair and return the nearest object within maxDistance whose
     // userData carries `flag` (climbing parents — the interactions.js pattern).
@@ -216,6 +263,7 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     }
 
     window.addEventListener('keydown', (event) => {
+        if (burnOut) return;   // game-over: block every E/Q interaction during the burn reveal
         if (event.code === 'KeyE' && state === 'EMPTY') {
             // F5: the glove box toggles gloves — but only empty-handed, so the
             // ray checks it BEFORE bottles (they never overlap anyway).
@@ -278,17 +326,21 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     return;
                 }
                 // T6 pickup gate: hazardous chemicals no longer BLOCK the grab —
-                // bare skin can grab them, but it starts to BURN. The warning is
-                // assembled from registry data (no hardcoded names) and the burn
-                // ramps in update() until the bottle is put back or gloved hands
-                // take over. Water / hazard-none is safe.
+                // bare skin can grab them, but it BURNS (and keeps burning after
+                // you put it back). Each chemical has its own burnRate/burnColor
+                // from chemicals.json. The reminder card nags up to 3 times, then
+                // trusts the player. Water / hazard-none is safe.
                 const chem = getChemical(bottle.userData.chemicalId);
-                heldIsHazardBare = !!(chem && chem.hazard !== 'none' && !gloves.on);
-                if (heldIsHazardBare) {
-                    warningCard.show({
-                        title: 'No gloves — your skin is burning!',
-                        text: `${chem.name} is ${chem.hazard}. Bare skin reacts with it. Press Q to put it back, or glove up at the PPE station first.`
-                    }, 'danger');
+                burnChem = (chem && chem.hazard !== 'none' && !gloves.on && chem.burnRate)
+                    ? chem : null;
+                // T6 game-over (harsh rule): the FIRST bare-handed contact with a
+                // burnable hazardous chemical is a fatal burn — the old 'glove up
+                // to heal' path is gone. Fire onBurn once so main.js starts the
+                // burn reveal, then the Restart-experiment flow. The bottle STILL
+                // gets attached below, so it stays gripped through the reveal.
+                if (burnChem) {
+                    burnOut = true;
+                    if (onBurn) onBurn(chem);
                 }
                 // Capture the full home transform in the bottle's OWN parent
                 // space (the shelf group) before re-parenting it.
@@ -332,6 +384,7 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     chem: getChemical(heldBottle.userData.chemicalId),
                     totalMl: info.totalMl,
                     capacity: info.capacity,
+                    flaskPowder: info.isPowder,
                     onChoose(ml) {
                         pourMl = ml;
                         holdDuration = 0.4 + (ml / 100) * 0.8;   // 25→0.6s, 100→1.2s
@@ -358,31 +411,148 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
         }
 
         if (event.code === 'KeyQ' && state === 'HOLDING') {
+            // Return gate: a chemical goes back ONLY at the shelf, and only if
+            // the player is standing in the shelf zone AND facing it (within
+            // ±50° of the straight-on axis). Otherwise Q is silently ignored —
+            // the bottle stays in hand, no card, no animation, no state change.
+            camera.getWorldDirection(_returnDir);          // includes looking up/down
+            const fwd = { x: _returnDir.x, z: _returnDir.z };
+            if (!inZone('shelf', camera) ||
+                !facingZone('shelf', { x: camera.position.x, z: camera.position.z }, fwd, 50)) {
+                return;
+            }
             if (homeTransform) homeTransform.parent.attach(heldBottle);  // back to its shelf
             else scene.attach(heldBottle);
             gloves.setRightPose('relaxed');  // fingers open as the bottle leaves
-            heldIsHazardBare = false;        // T6: contact ends → the skin heals
+            burnChem = null;                 // T6: ramp stops, but the burn STAYS (heals only when gloved)
             state = 'RETURNING';            // update() flies it home, then releases it
         }
     });
+
+    // --- dropped-bottle reveal (the burned hand flings the grip free) --------
+    // Ease curves: the fall accelerates (gravity), the tip lags (weight), the
+    // little roll eases both ends — reads as a physical tumble, not a lerp.
+    const easeInCubic = (x) => x * x * x;
+    const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+    const easeInOut = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+    const DROP_FLOOR_Y = 0.03;   // the bottle rests ~3 cm off the floor (on its side)
+
+    // Called when the char ramp completes: free the bottle from the hand so it
+    // can tumble forward to the floor (applyDropProgress animates it).
+    function dropBottle() {
+        if (!heldBottle) return;
+        scene.attach(heldBottle);                       // stop following the camera
+        droppedBottle = heldBottle;                     // keep the ref for resolveBurn
+        dropAnim = {
+            obj: heldBottle,
+            startPos: heldBottle.position.clone(),
+            startRot: heldBottle.rotation.clone()
+        };
+        gloves.setRightPose('relaxed');                 // the fingers opened — it slipped
+        heldBottle = null;
+        state = 'EMPTY';                                // nothing carried anymore
+    }
+
+    // Advance the tumble purely from progress f (0..1) — burnCard drives f on a
+    // real-time clock so the roll's pace doesn't depend on slow-motion. The
+    // bottle pitches off FORWARD (away from the player: -z) and comes to rest on
+    // its side a short distance ahead, exactly as authored.
+    function applyDropProgress(f) {
+        const a = dropAnim;
+        if (!a) return;
+        const p = Math.min(1, Math.max(0, f));
+        const o = a.obj;
+        o.position.y = a.startPos.y
+            + (DROP_FLOOR_Y - a.startPos.y) * easeInCubic(p);   // gravity fall
+        o.position.z = a.startPos.z - 0.5 * easeInOut(p);        // roll FORWARD away
+        o.position.x = a.startPos.x + 0.08 * easeInOut(p);
+        // Tip over (+y rolls forward so the cap points ahead) + a splash of yaw.
+        o.rotation.set(
+            a.startRot.x + (Math.PI / 2) * easeOut(p),
+            a.startRot.y + 0.5 * easeInOut(p),
+            a.startRot.z
+        );
+        if (p >= 1) dropAnim = null;                  // planted on the floor
+    }
 
     return {
         get state() { return state; },
         get heldBottle() { return heldBottle; },
         aimAt,                              // Phase 4 (pouring) reuses this
 
+        // T6 burn game-over API (wired by main.js):
+        get burnOut() { return burnOut; },          // is the reveal running?
+        get timeScale() { return burnOut ? 0.35 : 1; }, // slow-motion during the reveal
+        set onBurn(cb) { onBurn = cb; },            // fired once on first fatal contact
+        dropBottle,                                 // fling the grip free at the burn
+        applyDropProgress,                          // burnCard drives the forward tumble
+        // burnCard drives the charring 0→1 in real time during the reveal. It
+        // uses the gripped chemical's own burnColor, so acids redden, oxidisers
+        // purple — the exact same tint setBurn already renders.
+        applyBurn(level) {
+            burnLevel = level;
+            gloves.setBurn(level, true, burnChem && burnChem.burnColor);
+        },
+        // "Restart experiment" (on the Restart button click): snap the STILL
+        // gripped bottle back to its shelf slot, clear every hand-local burn
+        // var, and reset the skin to healthy. Non-hand state (gloves, mask,
+        // flask, effects, camera) is reset by main.js.
+        resolveBurn() {
+            // A dropped (fallen) bottle OR a still-gripped one — either way it
+            // goes back to its shelf slot. droppedBottle survives the tumble
+            // (dropAnim is nulled when it lands), so the fallen bottle is found.
+            const obj = heldBottle || droppedBottle;
+            if (obj && homeTransform) {
+                homeTransform.parent.attach(obj);        // back to its shelf
+                obj.position.copy(homeTransform.position);
+                obj.rotation.copy(homeTransform.rotation);
+            } else if (obj) {
+                scene.attach(obj);
+            }
+            dropAnim = null;
+            droppedBottle = null;
+            heldBottle = null;
+            homeTransform = null;
+            gloves.setRightPose('relaxed');   // fingers open as it leaves
+            burnChem = null;
+            burnLevel = 0;
+            burnOut = false;
+            gloveWarnings = 0;                // fresh run gets the full 3-reminder budget
+            gloves.setBurn(0, false);
+            state = 'EMPTY';
+        },
+
         update(delta) {
             const t = Math.min(1, delta * 8);   // the easing idiom (book Ch 2.1 #4)
+            // T6 game-over reveal: freeze normal hand behaviour. The char ramp
+            // (applyBurn) and the drop (applyDropProgress) are driven by burnCard
+            // on real-time clocks, so their pacing is exact even though the world
+            // runs in slow-motion. Here we only ease the still-gripped bottle into
+            // the palm while it chars (before the drop flings it free).
+            if (burnOut) {
+                if (state === 'HOLDING' && heldBottle) {
+                    heldBottle.position.lerp(GRIP_POS, t);
+                    heldBottle.rotation.x += (0 - heldBottle.rotation.x) * t;
+                    heldBottle.rotation.y += (0 - heldBottle.rotation.y) * t;
+                    heldBottle.rotation.z += (0 - heldBottle.rotation.z) * t;
+                }
+                return;
+            }
 
-            // T6: the burn ramps while a hazardous bottle is held bare-handed
-            // (any carry state), and heals once it is released. gloves.setBurn()
-            // tints the right hand and raises smoke wisps while it is climbing.
-            const burning = heldIsHazardBare &&
-                (state === 'HOLDING' || state === 'CHOOSING' || state === 'POURING');
-            burnLevel = burning
-                ? Math.min(1, burnLevel + delta * BURN_RAMP)
-                : Math.max(0, burnLevel - delta * BURN_HEAL);
-            gloves.setBurn(burnLevel, burning);
+            // T6: bare-handed burn. While a hazardous bottle is gripped bare,
+            // the burn climbs at the chemical's own burnRate — FASTER while
+            // pouring (fresh chemical runs over the skin). It does NOT fall
+            // when the bottle is put back; the ONLY recovery is gloves. The
+            // chemical's burnColor tints the skin (acids red, oxidiser purple…).
+            const carrying = state === 'HOLDING' || state === 'CHOOSING' || state === 'POURING';
+            const burning = !!burnChem && carrying;
+            if (burning) {
+                const boost = state === 'POURING' ? POUR_BURN_BOOST : 1;
+                burnLevel = Math.min(1, burnLevel + delta * burnChem.burnRate * boost);
+            } else if (gloves.on) {
+                burnLevel = Math.max(0, burnLevel - delta * BURN_HEAL);
+            }
+            gloves.setBurn(burnLevel, burning, burnChem && burnChem.burnColor);
 
             if (state === 'HOLDING' || state === 'CHOOSING') {
                 // Coords are RIG-space now (the bottle is a child of the right
@@ -445,7 +615,20 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     // (Without the flag this fires ~36 times = 36 pours. Book Ch 15.1.)
                     if (!delivered) {
                         delivered = true;
-                        beaker.receive(heldBottle.userData.chemicalId, pourMl);
+                        const result = beaker.receive(heldBottle.userData.chemicalId, pourMl);
+                        // MASK ALARM: the pour landed and the chemical is
+                        // hazardous — no mask on means fumes at the flask mouth,
+                        // a red pulsing banner and a two-tone siren. Repeats on
+                        // every unmasked pour (rejected pours pour nothing, so
+                        // they never alarm).
+                        if (result.ok) {
+                            const poured = getChemical(heldBottle.userData.chemicalId);
+                            if (!mask.on && poured.hazard && poured.hazard !== 'none') {
+                                const mouth = beaker.group.position.clone();
+                                mouth.y += beaker.rimY;
+                                maskAlarm(poured, mouth);
+                            }
+                        }
                     }
 
                     // Micro-adjustments: nobody holds a pour statue-still. The
@@ -533,12 +716,21 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             } else if (state === 'HOLDING') {
                 const overBeaker = aimAt('isBeaker', 2);
                 const overGloveBox = overBeaker ? null : aimAt('gloveBox', 2.5);
-                hint.textContent = overBeaker
-                    ? `[E] Pour ${heldBottle.userData.name}`
-                    : overGloveBox
-                        ? 'Put the bottle down first'      // F5: no gloving-up mid-carry
-                        : `[Q] Put back ${heldBottle.userData.name}`;
-                hint.style.display = 'block';
+                // The [Q] return notice only appears near the chemical shelf —
+                // exactly where Q actually works (near + facing). Away from the
+                // shelf the hint directs the player there instead.
+                let showHint = false;
+                if (overBeaker) {
+                    hint.textContent = `[E] Pour ${heldBottle.userData.name}`;
+                    showHint = true;
+                } else if (overGloveBox) {
+                    hint.textContent = 'Set the bottle down first';  // F5: no gloving-up mid-carry
+                    showHint = true;
+                } else if (inZone('shelf', camera)) {
+                    hint.textContent = `[Q] Put back ${heldBottle.userData.name}`;
+                    showHint = true;
+                }
+                hint.style.display = showHint ? 'block' : 'none';
                 // Over the flask: show ITS panel (contents) right as the pour is
                 // prepared; elsewhere the stale bottle sheet fades out.
                 showAimInfo(overBeaker, beaker);
