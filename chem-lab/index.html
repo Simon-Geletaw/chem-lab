@@ -10,6 +10,23 @@
     <title>Chemistry Lab</title>
   </head>
   <body>
+    <div id="loading-screen" role="status" aria-live="polite">
+      <div id="loading-card">
+        <svg id="loading-logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <rect x="18" y="8" width="12" height="4" rx="2" fill="#0a63ad"/>
+          <rect x="20" y="10" width="8" height="10" fill="#054b89"/>
+          <path d="M20 20 L15 36 a9 9 0 0 0 18 0 L28 20 Z" fill="#054b89"/>
+          <path d="M16.5 36 a7.5 7.5 0 0 0 15 0 Z" fill="#4da3ff"/>
+          <circle cx="21.5" cy="38.5" r="1.5" fill="#eaf4ff"/>
+          <circle cx="27" cy="37.5" r="1" fill="#eaf4ff"/>
+        </svg>
+        <h1 id="loading-title">Chemistry Lab</h1>
+        <p id="loading-status">Loading&hellip;</p>
+        <div id="loading-track"><div id="loading-bar"></div></div>
+        <p id="loading-pct">0%</p>
+        <button id="loading-reload" hidden>Reload</button>
+      </div>
+    </div>
     <div id="start-overlay">
       <div id="start-card">
         <h1 id="start-title">Chemistry Lab</h1>
@@ -42,6 +59,123 @@
 
     <style>
       /* ===== Chem Lab UI · Deep Blue Glass + Sky (brand #054b89) ===== */
+
+      /* --- startup loading screen: static markup, paints before any JS --- */
+      #loading-screen {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 40;                   /* top of everything while booting */
+        align-items: center;
+        justify-content: center;
+        background: rgba(2, 9, 20, 0.82);
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        transition: opacity 0.45s ease;
+      }
+      #loading-card {
+        position: relative;
+        width: min(420px, calc(100vw - 40px));
+        padding: 36px 44px;
+        border-radius: 18px;
+        text-align: center;
+        background: rgba(4, 16, 34, 0.92);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        backdrop-filter: blur(20px) saturate(140%);
+        border: 1px solid rgba(77, 163, 255, 0.25);
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.4),
+          0 28px 80px rgba(0, 0, 0, 0.65),
+          0 0 60px rgba(77, 163, 255, 0.06);
+        color: #eef5fd;
+      }
+      #loading-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 15%;
+        right: 15%;
+        height: 2px;
+        border-radius: 2px;
+        background: #4da3ff;
+        opacity: 0.85;
+      }
+      #loading-logo {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 14px;
+        filter: drop-shadow(0 0 14px rgba(77, 163, 255, 0.35));
+      }
+      #loading-title {
+        margin: 0 0 10px;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: #eef5fd;
+      }
+      #loading-status {
+        margin: 0 0 16px;
+        min-height: 20px;
+        font-size: 14px;
+        color: #b9cbe2;
+      }
+      #loading-track {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(77, 163, 255, 0.14);
+        overflow: hidden;
+      }
+      #loading-bar {
+        position: relative;
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: #4da3ff;
+        box-shadow: 0 0 12px rgba(77, 163, 255, 0.6);
+        transition: width 0.35s ease;
+        overflow: hidden;
+      }
+      #loading-bar::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+        transform: translateX(-100%);
+        animation: load-shimmer 1.2s ease infinite;
+      }
+      @keyframes load-shimmer { to { transform: translateX(100%); } }
+      #loading-pct {
+        margin: 10px 0 0;
+        font-size: 13px;
+        color: #8299b2;
+        font-variant-numeric: tabular-nums;
+      }
+      #loading-reload {
+        margin-top: 18px;
+        padding: 10px 26px;
+        border-radius: 10px;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        background: #054b89;
+        color: #eaf4ff;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease, box-shadow 0.15s ease;
+      }
+      #loading-reload:hover { background: #0a63ad; box-shadow: 0 0 18px rgba(77, 163, 255, 0.3); }
+      #loading-reload:focus-visible { outline: 2px solid #4da3ff; outline-offset: 2px; }
+
+      /* driven by loader.js: fade-out on done, error card on failure */
+      #loading-screen.done { opacity: 0; pointer-events: none; }
+      #loading-screen.error #loading-track,
+      #loading-screen.error #loading-pct { display: none; }
+      #loading-screen.error #loading-status { color: #ff6b7a; }
+      @media (prefers-reduced-motion: reduce) {
+        #loading-screen, #loading-bar { transition: none; }
+        #loading-bar::after { animation: none; }
+      }
+
       #start-overlay {
         position: fixed;
         inset: 0;
