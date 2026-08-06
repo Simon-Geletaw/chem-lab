@@ -4,16 +4,19 @@
 // import Three.js. This folder is pure logic — plain objects and strings — so
 // you can test it in the browser console without walking around the 3D lab.
 //
-// Phase 1: the data is imported straight from the JSON file.
+// Phase 1: the data is imported straight from the JSON file — statically, so
+// Vite bundles it into the main chunk and there is NO network round-trip at
+// startup (the old dynamic import added a code-split fetch before the lab
+// could begin building).
 // Phase 10: ONE line below changes to fetch('/api/data') and nothing else moves.
 // That is the whole reason this module exists instead of importing JSON directly
 // wherever it is needed.
+import rawData from '../../server/data/chemicals.json';
 
 let data = null;
 
 export async function loadChemistry() {
-  // Vite can import JSON as an ES module; `.default` is the parsed object.
-  data = (await import('../../server/data/chemicals.json')).default;
+  data = rawData;
   validate(data);
   // Physical state drives rendering: 'liquid' (default) or 'powder'.
   for (const c of data.chemicals) c.state = c.state ?? 'liquid';
