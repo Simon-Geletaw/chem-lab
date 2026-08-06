@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ZONES } from './zones.js';
+import { quality } from './quality.js';
 
 const loader = new GLTFLoader();
 
@@ -21,7 +22,10 @@ const glassMat = new THREE.MeshPhysicalMaterial({
   color: 0xe8f4ff,
   metalness: 0,
   roughness: 0.05,
-  transmission: 1,
+  // PERF (Phase 5a): real transmission = a second full-scene render per frame
+  // into a transmission buffer. On LOW it's turned off (blurry tint instead) —
+  // the extra scene pass is quietly skipped, saving the biggest baseline cost.
+  transmission: quality.level === 'high' ? 1 : 0,
   thickness: 0.04,
   ior: 1.5,
   clearcoat: 1,

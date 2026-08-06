@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { getChemical, getData } from './chemistry/registry.js';
 import { findReaction, defaultMix } from './chemistry/reactionEngine.js';
+import { quality } from './quality.js';
 
 const getReactions = () => getData().reactions;
 
@@ -43,7 +44,9 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     color: 0xe8f4ff,
     metalness: 0,
     roughness: 0.05,
-    transmission: 0.9,
+    // PERF (Phase 5a): see furniture.js — real transmission costs an extra
+    // full-scene pass per frame, so it's disabled on LOW quality.
+    transmission: quality.level === 'high' ? 0.9 : 0,
     thickness: 0.02,
     ior: 1.5,
     clearcoat: 1,
@@ -219,9 +222,12 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
   //   currentId— the single chemical the flask "is" (drives rules + label)
   //   totalMl  — drives the liquid height via mlToY
   //   temp     — °C; constant 25 until F6 (burner/ice bath) animates it
-  const contents = { list: [], currentId: null, totalMl: 0, temp: 25 };
-  let pendingResult = null;           // what the flask becomes once effects finish
-  let warningTimer = null;            // delayed reaction warning (shows after the effects start)
+  // displayName: the label line 1 when the contents are a reaction mixture —
+  // never "Unknown Mixture": a settled reaction names its real product.
+  const contents = { list: [], currentId: null, totalMl: 0, temp: 25, displayName: null };
+  let pendingRule = null;              // the rule whose effects are still playing
+  let warningTimer = null;             // delayed reaction warning (shows after the effects start)
+  let lastShownTemp = 25;              // throttles label redraws while the liquid cools
 
   function setLabel(line1, line2) {
     if (label.material.map) label.material.map.dispose();   // old texture -> GPU leak otherwise
@@ -230,12 +236,15 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
   }
 
   function refreshLabel() {
+    lastShownTemp = Math.round(contents.temp);
     if (!contents.currentId) {
       setLabel('Reaction Flask', 'empty');
       return;
     }
     const chem = getChemical(contents.currentId);
-    setLabel(chem.name, `${chem.formula} · ${contents.totalMl} ml · ${Math.round(contents.temp)}°C`);
+    const line1 = contents.displayName || chem.name;   // never "Unknown Mixture"
+    const unit = heapOnly ? 'g' : 'ml';                // powder heaps weigh grams, liquids measure ml
+    setLabel(line1, `${chem.formula} · ${contents.totalMl} ${unit} · ${Math.round(contents.temp)}°C`);
   }
 
   // Contents visuals follow totalMl. ONE function for both physical states:
@@ -255,8 +264,45 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     }
   }
 
-  // Full clear (R key / pause-menu reset) or post-reaction settle both land here.
-  function setContents(id) {
+  // One message builder for EVERY rule kind: reactions settling in update(),
+  // dissolutions and inert mixes handled inline in receive(). The equation
+  // chip prefers the teacher's hand-written `equation` (real products like
+  // "2NaOH + H2SO4 → Na2SO4 + 2H2O") and only auto-builds from formulas when
+  // the rule didn't bother (products match the flask contents then).
+  function resultMsg(rule) {
+    const into = getChemical(rule.reactants.into);
+    const added = getChemical(rule.reactants.added);
+    const product = getChemical(rule.result.chemicalId);
+    return {
+      title: rule.title || rule.warning?.title || product.name,
+      equation: rule.equation || `${into.formula} + ${added.formula} \u2192 ${product.formula}`,
+      tempAfter: rule.tempAfter,
+      text: rule.explanation || rule.result.note || product.description
+    };
+  }
+
+  // The rich result toast, fired when a reaction settles. Popup is
+  // non-blocking — the lab keeps running. Danger reactions skip this: their
+  // blocking red card (2.5 s in) already carries title + explanation, and a
+  // toast behind it would just double up.
+  function showResult(rule) {
+    if (rule.danger) return;
+    warningCard.show(resultMsg(rule), 'info');
+  }
+
+  // When a real reaction has no single clean product (an oxidation residue, a
+  // burnt mess...), its result is the 'mixture' chemical. The flask label must
+  // never read "Unknown Mixture": prefer the teacher's short product name from
+  // result.name, then the result note, then the two reactant names.
+  function productLabel(rule) {
+    if (rule.result.chemicalId !== 'mixture') return null;
+    if (rule.result.name) return rule.result.name;
+    const note = (rule.result.note || '').trim().replace(/\.$/, '');
+    if (note) return note.charAt(0).toUpperCase() + note.slice(1);
+    return `${getChemical(rule.reactants.into).name} + ${getChemical(rule.reactants.added).name}`;
+  }
+
+  function setContents(id, tempAfter, displayName) {
     if (!id) {                        // emptied
       clearTimeout(warningTimer);      // no queued card after a reset
       state = 'EMPTY';
@@ -264,6 +310,8 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
       contents.currentId = null;
       contents.totalMl = 0;
       heapOnly = false;
+      contents.temp = 25;              // an empty flask is back at room temperature
+      contents.displayName = null;
       syncContents();
       refreshLabel();
       return;
@@ -272,7 +320,9 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     const chem = getChemical(id);
     state = 'HAS_CONTENTS';
     contents.currentId = id;
+    contents.displayName = displayName ?? null;
     contents.list = [{ chemicalId: id, ml: contents.totalMl }];
+    if (tempAfter !== undefined) contents.temp = tempAfter;   // exo/endothermic outcome
     heapOnly = chem.state === 'powder';   // a solid product stays a heap
     liquid.material.color.set(chem.color);   // .set mutates in place — no new material
     syncContents();
@@ -288,9 +338,10 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
   }
 
   function warnFull() {
+    const unit = heapOnly ? 'g' : 'ml';
     warningCard.show({
       title: 'The flask is full',
-      text: `It holds ${CAPACITY} ml at most and already contains ${contents.totalMl} ml. Press R to empty it and start over.`
+      text: `It holds ${CAPACITY} ${unit} at most and already contains ${contents.totalMl} ${unit}. Press R to empty it and start over.`
     }, 'info');
   }
 
@@ -323,14 +374,67 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     // or a real reaction, which the rule below decides).
     heapOnly = heapOnly && getChemical(addedId).state === 'powder';
 
+    if (addedId === contents.currentId) {
+      // Same chemical into itself (HCl into HCl): that's just MORE of the
+      // same thing, not a reaction. The volume rises, nothing else changes.
+      syncContents();
+      refreshLabel();
+      return { ok: true };
+    }
+
     if (!rule) {
-      // No rule: they just mix. Average the colors, contents become 'mixture' —
-      // but the pour-by-pour breakdown survives for the side panel.
+      // No rule: they just mix. The flask KEEPS the first chemical's identity
+      // (a mix of unreactive liquids is still mostly the first liquid) and the
+      // blended color tints the liquid — so the label never reads "Unknown
+      // Mixture" and later pours keep finding the right reactions. The pour-by-
+      // pour breakdown survives for the side panel; the toast says WHAT mixed.
+      const aName = getChemical(contents.currentId).name;
+      const bName = getChemical(addedId).name;
       const mix = defaultMix(getChemical(contents.currentId).color, getChemical(addedId).color);
-      contents.currentId = mix.result.chemicalId;
       liquid.material.color.set(mix.mixedColor);   // override the generic gray
       syncContents();
       refreshLabel();
+      warningCard.show({
+        title: 'No reaction',
+        text: `${aName} and ${bName} have no known reaction — they simply mixed.`
+      }, 'info');
+      return { ok: true };
+    }
+
+    if (rule.inert) {
+      // An inert pair (two acids, two salts, salt in alcohol...): a rule
+      // EXISTS so the toast can say WHY nothing happens, and no new substance
+      // forms. The flask KEEPS the first chemical's identity — same reason as
+      // above: inert liquids simply dilute each other, later pours still find
+      // the right reactions, and the label never reads "Unknown Mixture".
+      // The curated mixColor tints the liquid so the mix still reads visually.
+      liquid.material.color.set(rule.mixColor || getChemical(contents.currentId).color);
+      syncContents();
+      refreshLabel();
+      warningCard.show({
+        title: rule.title,
+        text: rule.explanation
+      }, 'info');
+      return { ok: true };
+    }
+
+    if (rule.dissolve) {
+      // Dissolution (salt/crystal into liquid): no reaction, but the solid
+      // genuinely disappears into the liquid and keeps its identity — the
+      // product IS the dissolved chemical (CuSO4 in water stays CuSO4), so
+      // later pours (NaOH → precipitate) still chain correctly. heapOnly is
+      // forced off so the powder never re-heaps.
+      const chem = getChemical(rule.result.chemicalId);
+      const mouth = group.position.clone();
+      mouth.y += RIM_Y;
+      effectRunner.play(rule.effects, mouth);      // gentle bubbles as it dissolves
+      contents.currentId = rule.result.chemicalId;
+      heapOnly = false;                            // dissolved — powder never re-heaps
+      if (rule.tempAfter !== undefined) contents.temp = rule.tempAfter;
+      liquid.material.color.set(chem.color);
+      syncContents();
+      refreshLabel();
+      warningCard.show(resultMsg(rule), 'info');
       return { ok: true };
     }
 
@@ -338,7 +442,7 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
     // data straight from the teacher's JSON — to the runner, which turns them
     // into particles, lights and shakes. The flask never knows how.
     state = 'REACTING';
-    pendingResult = rule.result.chemicalId;
+    pendingRule = rule;
     syncContents();                        // the poured volume is in — liquid rises now
     refreshLabel();
 
@@ -388,6 +492,7 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
         totalMl: contents.totalMl,
         temp: Math.round(contents.temp),
         currentId: contents.currentId,
+        isPowder: heapOnly,             // powder heap -> grams, liquid -> ml
         list: contents.list.map((e) => ({ ...e }))
       };
     },
@@ -407,7 +512,23 @@ export function createBeaker(scene, interactableObjects, camera, effectRunner, w
       // While REACTING, wait for every effect to finish, then settle into the
       // product (Ch 6.4 step 10). runner.busy replaces the Phase 5 timer.
       if (state === 'REACTING' && !effectRunner.busy) {
-        setContents(pendingResult);   // sets state = HAS_CONTENTS too
+        const rule = pendingRule;
+        setContents(rule.result.chemicalId, rule.tempAfter, productLabel(rule));   // sets state = HAS_CONTENTS too
+        showResult(rule);               // announce the product, temp and explanation
+        pendingRule = null;
+      }
+
+      // Exothermic/endothermic afterglow: the liquid slowly cools (or warms)
+      // back to room temperature. The floating label only redraws when the
+      // displayed degree actually changes, so cooling costs almost nothing.
+      if (state === 'HAS_CONTENTS' && contents.temp !== 25) {
+        contents.temp += (25 - contents.temp) * Math.min(1, delta * 0.04);
+        if (Math.abs(contents.temp - 25) < 0.5) contents.temp = 25;
+        const shown = Math.round(contents.temp);
+        if (shown !== lastShownTemp) {
+          lastShownTemp = shown;
+          refreshLabel();
+        }
       }
     }
   };

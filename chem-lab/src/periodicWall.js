@@ -110,7 +110,10 @@ export function createPeriodicWall(scene, interactableObjects) {
     const color = categoryColors[getCategory(atomicNumber)];
 
     const texture = createElementTexture(element, atomicNumber, color);
-    const material = new THREE.MeshStandardMaterial({ map: texture });
+    // PERF (Phase 5c): a printed poster reads fine UNLIT. MeshBasicMaterial
+    // skips per-pixel light shading — 118 tiles no longer pay the RectAreaLight
+    // cost every frame (the board's lighting comes from the canvas itself).
+    const material = new THREE.MeshBasicMaterial({ map: texture });
     const tile = new THREE.Mesh(
       new THREE.BoxGeometry(0.28 * S, 0.28 * S, 0.02 * S),
       material
@@ -147,7 +150,7 @@ export function createPeriodicWall(scene, interactableObjects) {
   // Title strip
   const title = new THREE.Mesh(
     new THREE.PlaneGeometry(3 * S, 0.375 * S),   // same 8:1 ratio as the 1024x128 canvas
-    new THREE.MeshStandardMaterial({ map: createTitleTexture() })
+    new THREE.MeshBasicMaterial({ map: createTitleTexture() })   // PERF 5c: unlit, like the tiles
   );
   title.position.set(0, 2.75, -4.97);
   scene.add(title);
