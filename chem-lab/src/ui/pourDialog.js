@@ -8,7 +8,7 @@
 // player.beginModal()/endModal() — the dialog itself never touches the lock.
 // Every close path (choose, cancel, Esc) funnels through ONE close() so the
 // modal state can never leak.
-import { theme } from './theme.js';
+import { theme, glassPanel, primaryButton } from './theme.js';
 
 export function createPourDialog() {
     const root = document.createElement('div');
@@ -42,16 +42,14 @@ export function createPourDialog() {
         z-index: 26;                    /* above warning card (18) and pause overlay (20) */
         align-items: center;
         justify-content: center;
-        background: rgba(10, 18, 26, 0.45);
+        background: ${theme.overlayBg};
         font-family: ${theme.font};
       }
       #pour-box {
         width: min(360px, calc(100vw - 40px));
-        padding: 26px 32px;
-        border-radius: ${theme.panelRadius};
-        background: ${theme.panelBg};
-        border: ${theme.panelBorder};
-        box-shadow: 0 16px 60px rgba(0, 0, 0, 0.45);
+        padding: 28px 32px;
+        border-radius: 16px;
+        ${glassPanel()}
         text-align: center;
         color: ${theme.title};
         animation: pour-in 0.15s ease-out;
@@ -74,22 +72,28 @@ export function createPourDialog() {
         padding: 11px 0;
         font-size: 15px;
         font-weight: 600;
-        color: #fff;
-        background: ${theme.accent};
-        border: 0;
-        border-radius: 9px;
+        border-radius: 10px;
         cursor: pointer;
         font-family: inherit;
+        ${primaryButton()}
       }
-      #pour-presets button:hover:not(:disabled) { background: #4d84c9; }
+      #pour-presets button:hover:not(:disabled) {
+        background: ${theme.brandHover};
+        box-shadow: 0 0 18px rgba(77, 163, 255, 0.25);
+      }
+      #pour-presets button:active:not(:disabled) { background: ${theme.brandActive}; transform: translateY(1px); }
       #pour-presets button:disabled {
-        background: rgba(63, 109, 179, 0.25);
-        color: rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(240, 250, 246, 0.3);
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: none;
         cursor: not-allowed;
       }
-      #pour-custom-btn { background: rgba(63, 109, 179, 0.35) !important;
-        border: 1px solid rgba(159, 182, 212, 0.5) !important; }
-      #pour-custom-btn:hover:not(:disabled) { background: rgba(63, 109, 179, 0.55) !important; }
+      #pour-custom-btn { background: ${theme.accentSoft} !important;
+        color: ${theme.title} !important;
+        box-shadow: none !important;
+        border: 1px solid ${theme.accentBorder} !important; }
+      #pour-custom-btn:hover:not(:disabled) { background: rgba(77, 163, 255, 0.22) !important; }
       #pour-custom-row {
         display: none;
         gap: 8px;
@@ -102,12 +106,13 @@ export function createPourDialog() {
         padding: 9px 10px;
         font-size: 15px;
         font-family: inherit;
-        color: #fff;
-        background: rgba(10, 18, 26, 0.6);
-        border: 1px solid rgba(159, 182, 212, 0.45);
+        color: ${theme.title};
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 8px;
         text-align: center;
       }
+      #pour-custom-input:focus { border-color: ${theme.accentBorder}; }
       #pour-custom-input.bad {
         border-color: ${theme.danger};
         animation: pour-shake 0.2s;
@@ -120,27 +125,26 @@ export function createPourDialog() {
         padding: 9px 20px;
         font-size: 14px;
         font-weight: 600;
-        color: #fff;
-        background: ${theme.accent};
-        border: 0;
         border-radius: 8px;
         cursor: pointer;
         font-family: inherit;
+        ${primaryButton()}
       }
-      #pour-custom-go:hover { background: #4d84c9; }
+      #pour-custom-go:hover { background: ${theme.brandHover}; box-shadow: 0 0 18px rgba(77, 163, 255, 0.25); }
       #pour-cancel {
         padding: 9px 26px;
         font-size: 14px;
         color: ${theme.body};
         background: transparent;
-        border: 1px solid rgba(159, 182, 212, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.14);
         border-radius: 8px;
         cursor: pointer;
         font-family: inherit;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
       }
-      #pour-cancel:hover { color: #fff; border-color: #fff; }
+      #pour-cancel:hover { color: ${theme.title}; border-color: ${theme.accentBorder}; background: ${theme.accentSoft}; }
       #pour-dialog button:focus-visible, #pour-custom-input:focus-visible {
-        outline: 2px solid #9fc5e8;
+        outline: 2px solid ${theme.accent};
         outline-offset: 2px;
       }`;
     document.head.appendChild(style);
@@ -152,6 +156,7 @@ export function createPourDialog() {
     const customBtn = root.querySelector('#pour-custom-btn');
     const customRow = root.querySelector('#pour-custom-row');
     const customInput = root.querySelector('#pour-custom-input');
+    const customUnit = root.querySelector('#pour-custom-unit');
     const customGo = root.querySelector('#pour-custom-go');
     const cancelBtn = root.querySelector('#pour-cancel');
 
@@ -183,7 +188,7 @@ export function createPourDialog() {
         customRow.style.display = 'flex';
         customInput.value = '';
         customInput.max = session.remaining;
-        customInput.placeholder = `1\u2013${session.remaining}`;
+        customInput.placeholder = `1\u2013${session.remaining} ${session.unit}`;
         customInput.focus();
     });
 
@@ -212,15 +217,22 @@ export function createPourDialog() {
     return {
         get isOpen() { return !!session; },
 
-        // chem: { name, formula } · totalMl/capacity from beaker.getInfo()
-        open({ chem, totalMl, capacity, onChoose, onCancel }) {
-            session = { remaining: capacity - totalMl, onChoose, onCancel };
+        // chem: { name, formula, state } · totalMl/capacity from beaker.getInfo()
+        // Powders pour by WEIGHT: presets, unit label and placeholder switch to
+        // grams for powder bottles; the capacity line uses the flask's own unit.
+        open({ chem, totalMl, capacity, flaskPowder = false, onChoose, onCancel }) {
+            const unit = chem.state === 'powder' ? 'g' : 'ml';
+            const flaskUnit = flaskPowder ? 'g' : 'ml';
+            session = { remaining: capacity - totalMl, unit, onChoose, onCancel };
             title.textContent = `Pour ${chem.name} (${chem.formula})`;
-            capLine.textContent = `Flask: ${totalMl} / ${capacity} ml`;
+            capLine.textContent = `Flask: ${totalMl} ${flaskUnit} / ${capacity} ${flaskUnit}`;
+            customUnit.textContent = unit;
             for (const b of presets) {
-                const over = Number(b.dataset.ml) > session.remaining;
+                const amount = Number(b.dataset.ml);
+                b.textContent = `${amount} ${unit}`;
+                const over = amount > session.remaining;
                 b.disabled = over;
-                b.title = over ? 'exceeds flask capacity' : '';
+                b.title = over ? `exceeds flask ${flaskUnit} capacity` : '';
             }
             root.style.display = 'flex';
         }

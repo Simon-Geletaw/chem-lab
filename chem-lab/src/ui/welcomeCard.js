@@ -8,7 +8,7 @@
 // DESIGN: deliberately the SAME visual language as the pause menu (#start-card)
 // — same panel tokens, title scale, button style and backdrop gradient — so the
 // two screens read as one system.
-import { theme } from './theme.js';
+import { theme, glassPanel, primaryButton } from './theme.js';
 
 export function createWelcomeCard(onStart) {
     const root = document.createElement('div');
@@ -17,12 +17,12 @@ export function createWelcomeCard(onStart) {
       <div id="welcome-box" role="dialog" aria-labelledby="welcome-title">
         <h1 id="welcome-title">Controls &amp; Safety</h1>
         <div id="welcome-keys">
-          <div class="key-row"><b class="key">W A S D</b><span>move</span></div>
-          <div class="key-row"><b class="key">Mouse</b><span>look</span></div>
-          <div class="key-row"><b class="key">E</b><span>interact &middot; gloves/mask &middot; pick &middot; pour</span></div>
-          <div class="key-row"><b class="key">Q</b><span>put back</span></div>
-          <div class="key-row"><b class="key">R</b><span>reset flask</span></div>
-          <div class="key-row"><b class="key">Esc</b><span>release mouse</span></div>
+          <div class="key-row"><b class="key">W A S D</b><span>Walk</span></div>
+          <div class="key-row"><b class="key">Mouse</b><span>Look around</span></div>
+          <div class="key-row"><b class="key">E</b><span>Interact &middot; gloves/mask &middot; pick up &middot; pour</span></div>
+          <div class="key-row"><b class="key">Q</b><span>Put bottle back</span></div>
+          <div class="key-row"><b class="key">R</b><span>Reset flask</span></div>
+          <div class="key-row"><b class="key">Esc</b><span>Release mouse</span></div>
         </div>
         <p id="welcome-flow">
           <b>Lab workflow:</b> 1&rarr; PPE station by the door &mdash; put on gloves
@@ -47,20 +47,14 @@ export function createWelcomeCard(onStart) {
         z-index: 30;                     /* above the start overlay (z-20) */
         align-items: center;
         justify-content: center;
-        background: linear-gradient(
-          rgba(10, 18, 26, 0.6),
-          rgba(10, 18, 26, 0.15) 45%,
-          rgba(10, 18, 26, 0.6)
-        );                              /* same backdrop as the pause menu */
+        background: ${theme.overlayBg};
         font-family: ${theme.font};
       }
       #welcome-box {
         width: min(560px, calc(100vw - 40px));
         padding: 36px 48px;
         border-radius: 16px;
-        background: rgba(24, 34, 48, 0.85);
-        border: 1px solid rgba(159, 182, 212, 0.35);
-        box-shadow: 0 16px 60px rgba(0, 0, 0, 0.45);
+        ${glassPanel()}
         text-align: center;
         color: ${theme.title};
         animation: welcome-in 0.2s ease-out;
@@ -74,10 +68,11 @@ export function createWelcomeCard(onStart) {
       }
       #welcome-box h1 {
         margin: 0 0 22px;
-        font-size: 40px;
+        font-size: 42px;
         font-weight: 600;
-        letter-spacing: 2px;
-        color: #ffffff;
+        font-family: ${theme.heading};
+        letter-spacing: 0.5px;
+        color: ${theme.title};
       }
       #welcome-keys {
         display: grid;
@@ -97,9 +92,9 @@ export function createWelcomeCard(onStart) {
         flex: 0 0 92px;                  /* fixed keycap width = labels align */
         padding: 5px 0;
         border-radius: 7px;
-        border: 1px solid rgba(159, 182, 212, 0.45);
-        background: rgba(63, 109, 179, 0.28);
-        color: #ffffff;
+        border: 1px solid ${theme.accentBorder};
+        background: ${theme.accentSoft};
+        color: ${theme.title};
         font-weight: 600;
         font-size: 13px;
         letter-spacing: 0.5px;
@@ -107,7 +102,7 @@ export function createWelcomeCard(onStart) {
       }
       .key-row span {
         font-size: 15px;
-        color: #c9d8ea;
+        color: ${theme.body};
         line-height: 1.4;
       }
       #welcome-safety {
@@ -116,11 +111,11 @@ export function createWelcomeCard(onStart) {
         margin: 0 0 24px;
         padding: 14px 18px;
         border-radius: 10px;
-        border: 1px solid rgba(214, 48, 49, 0.4);
-        background: rgba(214, 48, 49, 0.12);
+        border: 1px solid ${theme.dangerBorder};
+        background: ${theme.dangerSoft};
         font-size: 14px;
         line-height: 1.65;
-        color: #c9d8ea;
+        color: ${theme.body};
         text-align: left;
         align-items: flex-start;
       }
@@ -129,31 +124,33 @@ export function createWelcomeCard(onStart) {
         margin: 0 0 14px;
         padding: 12px 18px;
         border-radius: 10px;
-        border: 1px solid rgba(63, 109, 179, 0.45);
-        background: rgba(63, 109, 179, 0.14);
+        border: 1px solid ${theme.accentBorder};
+        background: ${theme.accentSoft};
         font-size: 14px;
         line-height: 1.65;
-        color: #c9d8ea;
+        color: ${theme.body};
         text-align: left;
       }
       #welcome-start {
         width: 100%;                     /* full-width primary action, like the pause menu */
-        padding: 12px 30px;
+        padding: 13px 30px;
         box-sizing: border-box;
         font-size: 15px;
         font-weight: 600;
         letter-spacing: 0.4px;
-        color: #fff;
-        background: ${theme.accent};
-        border: 0;
+        ${primaryButton()}
         border-radius: 10px;
         cursor: pointer;
         font-family: inherit;
       }
-      #welcome-start:hover { background: #4d84c9; }
-      #welcome-start:focus-visible,
-      #welcome-start:active {
-        outline: 2px solid #9fc5e8;
+      #welcome-start:hover {
+        transform: translateY(-2px);
+        background: ${theme.brandHover};
+        box-shadow: 0 0 24px rgba(77, 163, 255, 0.30), 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      #welcome-start:active { transform: translateY(1px); background: ${theme.brandActive}; }
+      #welcome-start:focus-visible {
+        outline: 2px solid ${theme.accent};
         outline-offset: 2px;
       }`;
     document.head.appendChild(style);
