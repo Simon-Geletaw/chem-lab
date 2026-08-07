@@ -1,3 +1,5 @@
 .vercel
 .env*
 *.md
+opencode.jsonc
+agent-tasks
