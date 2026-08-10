@@ -29,9 +29,12 @@ export function createLoader() {
   function done() {
     set(100, 'Ready!');
     screen.classList.add('done');
-    // After the fade, hand the screen over to the start overlay (pause menu).
+    // After the fade, hand the screen over to the start overlay (pause menu),
+    // then detach the loading screen entirely so the browser can reclaim its
+    // nodes and any backing memory — it is never needed again.
     setTimeout(() => {
       screen.style.display = 'none';
+      if (screen.parentNode) screen.parentNode.removeChild(screen);
       const overlay = document.getElementById('start-overlay');
       if (overlay) overlay.style.display = 'flex';
     }, 500);

@@ -12,8 +12,27 @@ export const quality = {
   level: 'high',        // 'high' | 'low'
   particleScale: 1,     // multiplies every effect's particle count
   effectLights: true,   // fire/flash may add real light to the room
-  pixelRatioCap: 1.5    // never render more pixels than this × screen
+  pixelRatioCap: 1.5,   // never render more pixels than this × screen
+
+  // --- render budget (memory/perf): the single biggest hidden cost is the
+  // framebuffer, which scales with WINDOW SIZE × PIXEL RATIO, not with the
+  // number of objects. On a big or high-DPI screen that one buffer can dwarf
+  // everything else in the scene. We cap it explicitly so a 4K monitor does
+  // not balloon memory, while a normal screen looks unchanged.
+  maxRenderPixels: 2073600,   // ≈ 1920×1080 (a 1440p screen → ~1.0 ratio, 4K → below it)
+  maxBloomWidth: 1280         // bloom is blur — it never needs more than this wide
 };
+
+// effectivePixelRatio() — the pixel ratio the renderer should run at so that
+//   (width·ratio) × (height·ratio) ≤ maxRenderPixels,
+// while never exceeding the device DPR or the quality pixelRatioCap.
+// Used by main.js before the WebGLRenderer is created.
+export function effectivePixelRatio() {
+  const w = window.innerWidth || 1;
+  const h = window.innerHeight || 1;
+  const byArea = Math.sqrt(quality.maxRenderPixels / (w * h));
+  return Math.min(window.devicePixelRatio || 1, quality.pixelRatioCap, byArea);
+}
 
 function applyLowPreset() {
   quality.level = 'low';

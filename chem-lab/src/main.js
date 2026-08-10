@@ -22,7 +22,7 @@ import { createGloves } from './gloves.js';
 import { createMask } from './mask.js';
 import { createTrashBin } from './trashBin.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
-import { quality, createFpsMeter, createQualityMonitor } from './quality.js';
+import { quality, effectivePixelRatio, createFpsMeter, createQualityMonitor } from './quality.js';
 import { initLightPool } from './effects/lightPool.js';
 
 // Startup: the loading screen (static markup in index.html) is already painted.
@@ -67,8 +67,9 @@ async function boot() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   // PERF: cap the render resolution. Without this call Three renders at the
   // screen's FULL devicePixelRatio (2-3× on laptops) — the single biggest
-  // hidden cost in the app. 1.5× is visually identical at this art style.
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatioCap));
+  // hidden cost in the app. We also clamp to a fixed pixel budget
+  // (maxRenderPixels) so huge / high-DPI screens can't balloon memory.
+  renderer.setPixelRatio(effectivePixelRatio());
   renderer.shadowMap.enabled = quality.level !== 'low';   // LOW preset skips shadows entirely
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;       // soft penumbra = lights sit in the floor
   // ACES filmic tone mapping: without it, bright primaries clip to ugly flat
@@ -88,7 +89,13 @@ async function boot() {
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
     const bloom = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2),
+      // Bloom is a blur — it never needs full render resolution. Cap the target
+      // width (preserving aspect) so a big screen doesn't allocate oversized
+      // bloom buffers alongside the already-capped main framebuffer.
+      new THREE.Vector2(
+        Math.min(window.innerWidth, quality.maxBloomWidth) / 2,
+        (Math.min(window.innerWidth, quality.maxBloomWidth) * (window.innerHeight / window.innerWidth)) / 2
+      ),
       0.12, 0.5, 0.95      // strength, radius, threshold — only true lights glow, text stays sharp
     );
     composer.addPass(bloom);
