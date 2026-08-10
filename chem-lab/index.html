@@ -16,12 +16,19 @@
     <div id="loading-screen" role="status" aria-live="polite">
       <div id="loading-card">
         <svg id="loading-logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-          <rect x="18" y="8" width="12" height="4" rx="2" fill="#0a63ad"/>
-          <rect x="20" y="10" width="8" height="10" fill="#054b89"/>
-          <path d="M20 20 L15 36 a9 9 0 0 0 18 0 L28 20 Z" fill="#054b89"/>
-          <path d="M16.5 36 a7.5 7.5 0 0 0 15 0 Z" fill="#4da3ff"/>
-          <circle cx="21.5" cy="38.5" r="1.5" fill="#eaf4ff"/>
-          <circle cx="27" cy="37.5" r="1" fill="#eaf4ff"/>
+          <g id="flask-group">
+            <rect x="18" y="8" width="12" height="4" rx="2" fill="#0a63ad"/>
+            <rect x="20" y="10" width="8" height="10" fill="#054b89"/>
+            <path d="M20 20 L15 36 a9 9 0 0 0 18 0 L28 20 Z" fill="#054b89"/>
+            <!-- the reaction liquid: fills the bulb as loading progresses (CSS var
+                 --liquid driven from loader.js), sloshes + rises bubbles -->
+            <g id="flask-liquid-wrap">
+              <ellipse id="flask-liquid" cx="24" cy="37" rx="8.2" ry="5.6" fill="#4da3ff"/>
+              <circle class="flask-bubble" cx="21.6" cy="36"  r="1.1" fill="#eaf4ff"/>
+              <circle class="flask-bubble" cx="26.2" cy="37.6" r="0.9" fill="#eaf4ff"/>
+              <circle class="flask-bubble" cx="24.4" cy="34.6" r="0.7" fill="#eaf4ff"/>
+            </g>
+          </g>
         </svg>
         <h1 id="loading-title">Chemistry Lab</h1>
         <p id="loading-status">Loading&hellip;</p>
@@ -103,10 +110,41 @@
         opacity: 0.85;
       }
       #loading-logo {
-        width: 64px;
-        height: 64px;
+        width: 72px;
+        height: 72px;
         margin: 0 auto 14px;
-        filter: drop-shadow(0 0 14px rgba(77, 163, 255, 0.35));
+        filter: drop-shadow(0 0 16px rgba(77, 163, 255, 0.5));
+        transform-origin: 50% 55%;
+        animation: flask-bob 3s ease-in-out infinite;
+      }
+      /* the reaction inside the flask: liquid fills via the --liquid CSS var
+         (set from loader.js as the bar advances), sloshes, and bubbles rise. */
+      #flask-liquid-wrap {
+        transform-origin: 24px 42px;
+        transform: scaleY(var(--liquid, 0.4));
+        transition: transform 0.4s ease;
+      }
+      #flask-liquid {
+        transform-origin: 24px 38px;
+        animation: flask-slosh 2.4s ease-in-out infinite;
+      }
+      .flask-bubble {
+        animation: bubble-rise 2.2s ease-in infinite;
+      }
+      .flask-bubble:nth-of-type(2) { animation-delay: 0.7s; }
+      .flask-bubble:nth-of-type(3) { animation-delay: 1.3s; }
+      @keyframes flask-bob {
+        0%, 100% { transform: translateY(0); }
+        50%      { transform: translateY(-3px); }
+      }
+      @keyframes flask-slosh {
+        0%, 100% { transform: skewX(0); }
+        50%      { transform: skewX(-7deg); }
+      }
+      @keyframes bubble-rise {
+        0%   { transform: translateY(0); opacity: 0; }
+        20%  { opacity: 0.95; }
+        100% { transform: translateY(-9px); opacity: 0; }
       }
       #loading-title {
         margin: 0 0 10px;
@@ -115,6 +153,11 @@
         font-weight: 600;
         letter-spacing: 0.5px;
         color: #eef5fd;
+        animation: title-in 0.6s ease both;
+      }
+      @keyframes title-in {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: none; }
       }
       #loading-status {
         margin: 0 0 16px;
@@ -175,8 +218,8 @@
       #loading-screen.error #loading-pct { display: none; }
       #loading-screen.error #loading-status { color: #ff6b7a; }
       @media (prefers-reduced-motion: reduce) {
-        #loading-screen, #loading-bar { transition: none; }
-        #loading-bar::after { animation: none; }
+        #loading-screen, #loading-bar, #flask-liquid-wrap { transition: none; }
+        #loading-bar::after, #loading-logo, #flask-liquid, .flask-bubble, #loading-title { animation: none; }
       }
 
       #start-overlay {

@@ -14,12 +14,16 @@ export function createLoader() {
   const reloadBtn = document.getElementById('loading-reload');
 
   let shown = 0;
+  const liquid = document.getElementById('flask-liquid-wrap');
 
   function set(percent, message) {
     shown = Math.max(shown, Math.min(100, percent));
     if (bar) bar.style.width = `${shown}%`;
     if (pct) pct.textContent = `${Math.round(shown)}%`;
     if (status && message) status.textContent = message;
+    // The flask "reaction": liquid starts at a quarter-full and fills toward the
+    // top as the bar advances (a pure CSS var + transform, no animation cost).
+    if (liquid) liquid.style.setProperty('--liquid', String(0.25 + 0.75 * shown / 100));
   }
 
   function done() {
