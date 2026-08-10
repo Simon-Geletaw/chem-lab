@@ -19,10 +19,11 @@ const DOOR_HEIGHT = 2.1;     // same height as the exit door
 const HOVER_REACH = 6.0;     // how far away the aim hint still shows
 const CENTER = new THREE.Vector2(0, 0);
 
-// --- sign texture: a lit lightbox — dark panel, accent header, numbered
-// badge, big bold label, subtitle. Same canvas-texture + emissive lightbox
-// recipe as the EXIT sign in room.js, so the text reads in the dim lab and
-// blooms on the HIGH preset.
+// --- sign texture: a lit lightbox in the EXACT style of the EXIT sign in
+// room.js — solid accent background, white border, big white bold text (plus
+// a smaller subtitle line and a badge number). Same canvas-texture +
+// emissive lightbox recipe, so the label reads like the exit's and blooms
+// on the HIGH preset.
 function createSignTexture(entry, index) {
   const W = 1024, H = 320;
   const canvas = document.createElement('canvas');
@@ -31,33 +32,25 @@ function createSignTexture(entry, index) {
   const ctx = canvas.getContext('2d');
   const font = (weight, px) => `${weight} ${px}px "Space Grotesk", Arial, sans-serif`;
 
-  ctx.fillStyle = '#131a22';
-  ctx.beginPath();
-  ctx.roundRect(6, 6, W - 12, H - 12, 26);
-  ctx.fill();
-  ctx.strokeStyle = entry.accent;
-  ctx.lineWidth = 8;
-  ctx.stroke();
+  ctx.fillStyle = entry.accent;                // solid accent plaque, like the EXIT green
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#ffffff';                  // white picture-frame border
+  ctx.lineWidth = 14;
+  ctx.strokeRect(10, 10, W - 20, H - 20);
 
-  ctx.fillStyle = entry.accent;                    // header band
-  ctx.fillRect(6, 6, W - 12, 78);
-  ctx.fillStyle = '#ffffff';                        // badge disc
-  ctx.beginPath();
-  ctx.arc(92, 45, 30, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = entry.accent;
-  ctx.font = font('700', 42);
-  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';                    // badge, top-right corner
+  ctx.font = font('700', 52);
+  ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
-  ctx.fillText(String(index + 1).padStart(2, '0'), 92, 47);
+  ctx.fillText('0' + (index + 1), W - 56, 52);
 
-  ctx.fillStyle = '#ffffff';                        // big bold label
-  ctx.font = font('700', 108);
-  ctx.fillText(entry.label.toUpperCase(), W / 2, 192);
+  ctx.textAlign = 'center';                     // big bold label
+  ctx.font = font('700', 112);
+  ctx.fillText(entry.label.toUpperCase(), W / 2, 168);
 
-  ctx.fillStyle = '#a8bdce';                        // subtitle
-  ctx.font = font('500', 44);
-  ctx.fillText(entry.subtitle, W / 2, 274);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';  // subtitle
+  ctx.font = font('500', 46);
+  ctx.fillText(entry.subtitle, W / 2, 256);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -125,12 +118,8 @@ export function createSimDoors(scene) {
     group.add(led);
     ledMats.push(ledMat);
 
-    // Lightbox sign above the door: dark box body + emissive face texture.
-    const body = new THREE.Mesh(new THREE.BoxGeometry(w + 0.04, 0.34, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x1a2129, roughness: 0.8 }));
-    body.position.set(0, 2.52, WALL_Z - 0.09);
-    group.add(body);
-
+    // Lightbox sign above the door — a flat emissive plaque, flush on the
+    // wall exactly like the EXIT sign (room.js), but accent-colored.
     const signTex = createSignTexture(entry, index);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.04, 0.30),
       new THREE.MeshStandardMaterial({
