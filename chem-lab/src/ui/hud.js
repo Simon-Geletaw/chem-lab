@@ -2,7 +2,7 @@
 //
 // F5 adds the first one: the gloves badge. Future features can add chips to
 // the same container so status never scatters across the screen.
-import { theme, glassPanel } from './theme.js';
+import { theme } from './theme.js';
 
 export function createHUD() {
     const root = document.createElement('div');
@@ -30,14 +30,21 @@ export function createHUD() {
         font-size: 13px;
         font-weight: 600;
         letter-spacing: 0.4px;
-        color: ${theme.onBrand};        /* near-white mint on the brand fill */
-        background: ${theme.brand};
-        border: 1px solid ${theme.accentBorder};
+        font-family: inherit;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      }
+      /* PPE status = unmistakable signal colour:
+         ON  → GREEN (worn = safe),      OFF → RED (not worn = danger). */
+      .hud-chip.on {
+        background: ${theme.safeSolid};
+        border: 1px solid ${theme.safeBorder};
+        color: #06210f;             /* dark text on the green fill */
       }
       .hud-chip.off {
-        ${glassPanel()}
-        color: ${theme.dim};            /* muted gray on frosted glass */
+        background: ${theme.dangerSolid};
+        border: 1px solid ${theme.dangerBorder};
+        color: #fff;
       }
       /* safety-violation flash: the offending chip pulses red */
       .hud-chip.alarm {
@@ -63,10 +70,12 @@ export function createHUD() {
     return {
         setGloves(on) {
             glovesChip.textContent = on ? 'Gloves: ON' : 'Gloves: OFF';
+            glovesChip.classList.toggle('on', on);
             glovesChip.classList.toggle('off', !on);
         },
         setMask(on) {
             maskChip.textContent = on ? 'Mask: ON' : 'Mask: OFF';
+            maskChip.classList.toggle('on', on);
             maskChip.classList.toggle('off', !on);
         },
         flashMask(on) {

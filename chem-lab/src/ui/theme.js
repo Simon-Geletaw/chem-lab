@@ -46,7 +46,15 @@ export const theme = {
     dangerBorder: 'rgba(255, 107, 122, 0.45)',
     ok: '#4da3ff',         // sky — correct-procedure / success (same as accent)
     warm: '#ffc36b',       // amber — "hot" temperature chips
-    cool: '#8fd0ff'        // light sky — "cool" temperature chips
+    cool: '#8fd0ff',       // light sky — "cool" temperature chips
+
+    // green — the "PPE worn / safe" state (e.g. the HUD gloves & mask chips).
+    // The room UI is blue by design; GREEN is reserved for the unmistakable
+    // "you are protected" signal, and RED (dangerSolid) is the "not protected".
+    safe: '#3ddc84',                    // bright green — safe state text/icon
+    safeSolid: '#2bb673',               // green fill for the ON chip (dark text rides on it)
+    safeSoft: 'rgba(61, 220, 132, 0.14)',
+    safeBorder: 'rgba(61, 220, 132, 0.45)'
 };
 
 // glassPanel() — the shared CSS block every frosted panel pastes in, so the
