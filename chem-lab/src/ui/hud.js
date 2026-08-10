@@ -9,7 +9,8 @@ export function createHUD() {
     root.id = 'hud';
     root.innerHTML = `
       <div id="hud-gloves" class="hud-chip off">Gloves: OFF</div>
-      <div id="hud-mask" class="hud-chip off">Mask: OFF</div>`;
+      <div id="hud-mask" class="hud-chip off">Mask: OFF</div>
+      <div id="hud-coat" class="hud-chip off">Coat: OFF</div>`;
     document.body.appendChild(root);
 
     const style = document.createElement('style');
@@ -62,6 +63,7 @@ export function createHUD() {
 
     const glovesChip = root.querySelector('#hud-gloves');
     const maskChip = root.querySelector('#hud-mask');
+    const coatChip = root.querySelector('#hud-coat');
 
     // flashMask(on): safety-alarm state — the mask chip pulses red for a few
     // seconds when a hazardous chemical is poured without a mask on.
@@ -77,6 +79,11 @@ export function createHUD() {
             maskChip.textContent = on ? 'Mask: ON' : 'Mask: OFF';
             maskChip.classList.toggle('on', on);
             maskChip.classList.toggle('off', !on);
+        },
+        setCoat(on) {
+            coatChip.textContent = on ? 'Coat: ON' : 'Coat: OFF';
+            coatChip.classList.toggle('on', on);
+            coatChip.classList.toggle('off', !on);
         },
         flashMask(on) {
             clearTimeout(flashTimer);

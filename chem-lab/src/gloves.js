@@ -511,6 +511,10 @@ export function createGloves(scene, camera, interactableObjects) {
     // hand.js animates these directly during pickup/pour choreography.
     rightRig: right.rig,
     leftRig: left.rig,
+    // The roll groups — the sleeve anchor for the lab coat (coat.js), same
+    // local frame the gloves' own cuffs use.
+    rightRoll: right.roll,
+    leftRoll: left.roll,
 
     // 'relaxed' | 'grip' — eased by update(), never snapped.
     setRightPose(name) { right.pose = name; },

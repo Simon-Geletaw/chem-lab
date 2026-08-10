@@ -88,7 +88,7 @@ export function createTrashBin(scene, interactableObjects) {
   group.userData = {
     trashBin: true,
     name: 'Biohazard Waste Bin',
-    description: 'Used gloves and masks go HERE, never back in the dispenser. Press E to throw away what you are wearing — gloves first, then the mask.'
+    description: 'Used gloves, masks and lab coats go HERE, never back on the rack or in the boxes. Press E to throw away what you are wearing — gloves first, then the mask, then the coat.'
   };
   scene.add(group);
   interactableObjects.push(group);
@@ -117,6 +117,20 @@ export function createTrashBin(scene, interactableObjects) {
     m.add(shell);
     return m;
   }
+  function makeCoatProp() {
+    const c = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xf3f4f6, roughness: 0.8, transparent: true
+    });
+    // A bundled white lab coat: three squashed fabric blobs tumbling together.
+    for (const [x, y, z, s] of [[0, 0, 0, 1], [0.03, 0.01, 0.02, 0.8], [-0.03, -0.01, -0.02, 0.7]]) {
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 9), mat);
+      blob.scale.set(s, s * 1.35, s);
+      blob.position.set(x, y, z);
+      c.add(blob);
+    }
+    return c;
+  }
 
   const mouthWorld = new THREE.Vector3();  // filled per-dispose (group may not move, but stay correct)
   const flights = [];                      // { obj, mats, start, peak, end, t }
@@ -127,10 +141,11 @@ export function createTrashBin(scene, interactableObjects) {
   return {
     group,
 
-    // Throw one used item into the bin. kind: 'gloves' | 'mask'.
-    // fromWorld: where the prop appears (the hand / the face).
+    // Throw one used item into the bin. kind: 'gloves' | 'mask' | 'coat'.
+    // fromWorld: where the prop appears (the hand / the face / the chest).
     dispose(kind, fromWorld) {
-      const obj = kind === 'gloves' ? makeGloveWad() : makeMaskProp();
+      const obj = kind === 'gloves' ? makeGloveWad()
+        : kind === 'coat' ? makeCoatProp() : makeMaskProp();
       obj.position.copy(fromWorld);
       scene.add(obj);
 

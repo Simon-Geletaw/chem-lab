@@ -8,7 +8,8 @@
 export const ZONES = {
   ppe:      { x: 5.2,   z: 3.6, radius: 1.8 },   // gloves + mask table, front-right corner by the door
   shelf:    { x: -6.55, z: -1,  radius: 1.8 },   // the left-wall chemical shelves
-  reaction: { x: 0,     z: -1.5, radius: 2.0 }   // island bench + reaction flask
+  reaction: { x: 0,     z: -1.5, radius: 2.0 },  // island bench + reaction flask
+  coat:     { x: 1.35,  z: 4.55, radius: 1.8 }   // coat rack beside the exit door
 };
 
 // Is the camera inside the named zone? Horizontal distance only — the eye

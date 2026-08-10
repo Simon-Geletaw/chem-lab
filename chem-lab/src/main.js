@@ -19,6 +19,7 @@ import { createPourDialog } from './ui/pourDialog.js';
 import { createHUD } from './ui/hud.js';
 import { createLoader, yieldToPaint } from './ui/loader.js';
 import { createGloves } from './gloves.js';
+import { createCoat } from './coat.js';
 import { createMask } from './mask.js';
 import { createTrashBin } from './trashBin.js';
 import { createSimDoors } from './simDoors.js';
@@ -174,9 +175,12 @@ async function boot() {
   const hud = createHUD();
   const gloves = createGloves(scene, camera, interactableObjects);
   const mask = createMask(scene, camera, interactableObjects);
+  // The lab coat: hangs on the rack beside the exit door, sleeves appear on
+  // the wrists when worn (needs the gloves' roll anchors, so it comes after).
+  const coat = createCoat(scene, camera, interactableObjects, hud, gloves);
   // The biohazard bin: the ONLY way used PPE comes off (dispensers only put ON).
   const trashBin = createTrashBin(scene, interactableObjects);
-  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors);
+  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat);
 
   // T6 burn game-over: the FIRST bare-handed hazardous contact triggers a
   // dramatic burn reveal (slow-mo + charring in real time), then a blocking
@@ -188,6 +192,7 @@ async function boot() {
       interactions.setPicking(true);         // re-enable clicks (tiles, panels)
       if (gloves.on) hud.setGloves(gloves.toggle());   // strip PPE + HUD
       if (mask.on) hud.setMask(mask.toggle());
+      if (coat.on) coat.remove();                      // chip + sleeves handled inside
       beaker.reset();                        // empty the flask
       effectRunner.clear();                  // kill leftover fire/smoke/flash
       camera.position.set(0, 1.6, 4);        // fresh entrance…

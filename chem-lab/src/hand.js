@@ -87,7 +87,7 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors) {
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
@@ -314,22 +314,44 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 return;
             }
 
-            // The biohazard bin: the ONLY way to take PPE off. One item per
-            // press, gloves first (they are the dirtier layer), then the mask.
+            // The lab coat: E at the hanging coat (rack beside the exit door)
+            // puts it on. The coat vanishes from the rack and the HUD chip
+            // goes green — the only way off is the biohazard bin.
+            const coatRack = aimAt('coat', 2.5);
+            if (coatRack) {
+                if (coat.on) {
+                    zoneHint('You are already wearing the lab coat.');
+                    return;
+                }
+                if (!inZone('coat', camera)) {
+                    zoneHint('The lab coat hangs on the rack by the exit door — walk over and put it on.');
+                    return;
+                }
+                coat.wear();
+                return;
+            }
+
+            // The biohazard bin: the ONLY way to take PPE off (dispensers only put ON).
+            // One item per press: gloves first, then the mask, then the coat.
             const tbin = aimAt('trashBin', 2.5);
             if (tbin) {
-                if (!gloves.on && !mask.on) {
+                if (!gloves.on && !mask.on && !coat.on) {
                     zoneHint('You are not wearing any PPE — nothing to throw away.');
                     return;
                 }
                 if (gloves.on) {
                     hud.setGloves(gloves.toggle());          // hands go bare on screen
                     trashBin.dispose('gloves', gloves.rightRig.getWorldPosition(_ppeFrom));
-                } else {
+                } else if (mask.on) {
                     hud.setMask(mask.toggle());
                     _ppeFrom.set(0, -0.2, -0.3);             // the mask leaves the face
                     camera.localToWorld(_ppeFrom);
                     trashBin.dispose('mask', _ppeFrom);
+                } else if (coat.on) {
+                    hud.setCoat(coat.remove());              // sleeves go + fresh coat returns to the rack
+                    _ppeFrom.set(0, -0.1, -0.55);            // the coat leaves from the chest
+                    camera.localToWorld(_ppeFrom);
+                    trashBin.dispose('coat', _ppeFrom);
                 }
                 return;
             }
@@ -341,12 +363,19 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     zoneHint('Chemicals are stored on the shelf along the left wall — pick them up there.');
                     return;
                 }
+                // Coat gate: hazardous chemicals are out of reach until the
+                // lab coat is on (the rack beside the exit door). Splash
+                // protection before gloves — the coat is the FIRST layer.
+                const chem = getChemical(bottle.userData.chemicalId);
+                if (chem && chem.hazard !== 'none' && !coat.on) {
+                    zoneHint('Splashes ruin clothes and skin — put on the white lab coat at the rack by the exit door before handling hazardous chemicals.');
+                    return;
+                }
                 // T6 pickup gate: hazardous chemicals no longer BLOCK the grab —
                 // bare skin can grab them, but it BURNS (and keeps burning after
                 // you put it back). Each chemical has its own burnRate/burnColor
                 // from chemicals.json. The reminder card nags up to 3 times, then
                 // trusts the player. Water / hazard-none is safe.
-                const chem = getChemical(bottle.userData.chemicalId);
                 burnChem = (chem && chem.hazard !== 'none' && !gloves.on && chem.burnRate)
                     ? chem : null;
                 // T6 game-over (harsh rule): the FIRST bare-handed contact with a
@@ -717,17 +746,19 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 const target = simDoor ? null : aimAt('isBottle', 2.5);
                 const gbox = target ? null : aimAt('gloveBox', 2.5);
                 const mbox = target || gbox ? null : aimAt('maskBox', 2.5);
-                const tbin = target || gbox || mbox ? null : aimAt('trashBin', 2.5);
+                const coatRack = target || gbox || mbox ? null : aimAt('coat', 2.5);
+                const tbin = target || gbox || mbox || coatRack ? null : aimAt('trashBin', 2.5);
                 if (simDoor) hint.textContent = `[E] Enter ${simDoor.label} simulation`;
                 else if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
                 else if (gbox) hint.textContent = gloves.on ? 'Used gloves go in the biohazard bin' : '[E] Put on gloves';
                 else if (mbox) hint.textContent = mask.on ? 'Used masks go in the biohazard bin' : '[E] Put on mask';
+                else if (coatRack) hint.textContent = coat.on ? 'Lab coat already on' : '[E] Put on lab coat';
                 else if (tbin) {
                     hint.textContent = gloves.on
                         ? '[E] Throw away gloves'
-                        : mask.on ? '[E] Throw away mask' : 'Nothing to throw away';
+                        : mask.on ? '[E] Throw away mask' : coat.on ? '[E] Throw away coat' : 'Nothing to throw away';
                 }
-                hint.style.display = (simDoor || target || gbox || mbox || tbin) ? 'block' : 'none';
+                hint.style.display = (simDoor || target || gbox || mbox || coatRack || tbin) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask
                 // shows its contents breakdown instead.
                 showAimInfo(target || aimAt('isBeaker', 2.5), beaker);

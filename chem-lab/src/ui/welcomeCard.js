@@ -25,8 +25,9 @@ export function createWelcomeCard(onStart) {
           <div class="key-row"><b class="key">Esc</b><span>Release mouse</span></div>
         </div>
         <p id="welcome-flow">
-          <b>Lab workflow:</b> 1&rarr; PPE station by the door &mdash; put on gloves
-          and mask &middot; 2&rarr; take a chemical from the storage shelf
+          <b>Lab workflow:</b> 0&rarr; coat rack by the exit door &mdash; put on
+          the lab coat &middot; 1&rarr; PPE station &mdash; gloves and mask
+          &middot; 2&rarr; take a chemical from the storage shelf
           &middot; 3&rarr; pour it into the flask on the island bench.
         </p>
         <p id="welcome-safety">
