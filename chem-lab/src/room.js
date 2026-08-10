@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { quality } from './quality.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
 
 function createFloorTexture() {
   const SIZE = 1024;   // higher-res canvas: tighter, crisper details
@@ -117,6 +119,27 @@ function createWallTexture() {
 // cornice. Slightly glossy so it catches light like fresh-painted molding.
 function createTrimMaterial() {
   return new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.5 });
+}
+
+// createSkyTexture() — the late-afternoon sky seen through the window glass.
+// A vertical gradient: deepest blue at the top, paling toward a bright misty
+// horizon. Same mood as the old scene background (0x9fbdd6) but with depth,
+// so the window reads as a real view outside rather than a flat fill.
+function createSkyTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0.0, '#2f5c8f');    // deep zenith blue
+  g.addColorStop(0.55, '#7fa8c9');   // mid sky
+  g.addColorStop(1.0, '#d9e7f1');    // pale, misty horizon
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 512);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
 }
 
 export function createRoom(scene) {
@@ -309,30 +332,63 @@ export function createRoom(scene) {
     scene.add(stripe);
   }
 
-  // --- Windows (on the right wall) ---
-  // Trick: MeshBasicMaterial IGNORES lighting — it is always full-bright.
-  // A dimmer blue always-bright plane reads as "late-afternoon outside".
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
-  const skyMat = new THREE.MeshBasicMaterial({ color: 0xa9c8e2 });
+  // --- Window (on the right wall) ---
+  // A real 3D window model (window.glb), flush-mounted into the wall: its inner
+  // frame face sits at the wall plane and the deep frame body passes through
+  // the zero-thickness wall to the outside. Waist-height — the sill rests at
+  // ~0.8 m, the top at ~2.3 m. Placed at z = +2.5 so it mirrors the AIT logo
+  // at z = -2.5: the two halves of the wall read balanced.
+  const windowGltf = new GLTFLoader();
+  windowGltf.load(
+    '/Models/window.glb',
+    (gltf) => {
+      const win = gltf.scene;
+      // 1.5 m tall (0.8..2.3 m). The model ships ~80 units tall, so the
+      // uniform scale is dimensionless height ratio.
+      const box0 = new THREE.Box3().setFromObject(win);
+      const s0 = box0.getSize(new THREE.Vector3());
+      win.scale.setScalar(1.5 / s0.y);
+      // Rotate FIRST, then measure: the oriented bounds are what we pin to.
+      // After +90° about Y the model's depth axis runs along room-x (through
+      // the wall) and its width along room-z (along the wall).
+      win.rotation.y = Math.PI / 2;
+      const box = new THREE.Box3().setFromObject(win);
+      win.position.set(
+        6.96 - box.min.x,                             // inner face flush with the wall
+        0.8 - box.min.y,                              // sill height
+        2.5 - box.getCenter(new THREE.Vector3()).z    // centered on the wall's right half
+      );
+      win.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+      scene.add(win);
+    },
+    undefined,
+    (err) => console.error('FAILED to load /Models/window.glb', err)
+  );
 
-  for (const zPos of [-2.5, 0]) {
-    // glass pane: 1.5 m wide (along z), 1.2 m tall, centered at y=1.7
-    const pane = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.2), skyMat);
-    pane.position.set(6.98, 1.7, zPos);
-    pane.rotation.y = -Math.PI / 2;
-    scene.add(pane);
+  // Sky visible through the glass: the room is fully enclosed (no holes in the
+  // walls), so the blue scene background never shows. This gradient sky plane
+  // lives OUTSIDE the wall behind the window — through the model's transparent
+  // glass panes it reads as late-afternoon sky. Sized ~4x the opening so its
+  // edges can never peek around the frame, and clear of the frame's outer end
+  // (x=6.96 + 1.24 m depth = 8.2, plane sits at 9).
+  const sky = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.5, 2.6),
+    new THREE.MeshBasicMaterial({ map: createSkyTexture(), color: 0xffffff })
+  );
+  sky.position.set(9, 1.55, 2.5);
+  sky.rotation.y = -Math.PI / 2;      // face INTO the room (-x)
+  scene.add(sky);
 
-    // frame: 2 horizontal + 2 vertical white bars around the pane
-    const top = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 1.62), frameMat);
-    top.position.set(6.96, 2.34, zPos);
-    const bottom = top.clone();
-    bottom.position.y = 1.06;
-    const left = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.36, 0.08), frameMat);
-    left.position.set(6.96, 1.7, zPos - 0.77);
-    const right = left.clone();
-    right.position.z = zPos + 0.77;
-    scene.add(top, bottom, left, right);
-  }
+  // AIT logo on the wall where the second window used to be (z = -2.5).
+  // The PNG is TRANSPARENT (no background), so it is drawn straight onto the
+  // wall - no frame behind it - and the wall paint shows through empty pixels.
+  const logoTex = new THREE.TextureLoader().load('/Logo/AIT%20logo%20.png');
+  logoTex.colorSpace = THREE.SRGBColorSpace;
+  const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true });
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.96), logoMat);
+  logo.position.set(6.94, 1.7, -2.5);
+  logo.rotation.y = -Math.PI / 2;        // face into the room
+  scene.add(logo);
 
   // --- Ceiling light fixtures ---
   // 'emissive' makes the panel GLOW, but glowing materials cast NO light in
