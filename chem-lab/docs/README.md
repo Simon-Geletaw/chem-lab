@@ -15,3 +15,4 @@ Each document follows the same structure so it is easy to scan:
 | Date | Doc | Area |
 |---|---|---|
 | 2026-08-10 | [Room wall painting — realism](2026-08-10-room-wall-painting-realism.md) | `src/room.js` |
+| 2026-08-10 | [Floor tiles — realism](2026-08-10-floor-tile-realism.md) | `src/room.js` |

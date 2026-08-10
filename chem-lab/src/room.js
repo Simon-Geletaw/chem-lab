@@ -6,43 +6,55 @@ import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUnifo
 import { quality } from './quality.js';
 
 function createFloorTexture() {
+  const SIZE = 1024;   // higher-res canvas: tighter, crisper details
+  const TILE = 128;    // px per tile  → 8×8 tiles per canvas, 0.5 m each
+  const GRID = SIZE / TILE;
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const context = canvas.getContext('2d');
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
 
-  // Soft vinyl lab tile: warm light gray with a SUBTLE checker (real lab
-  // linoleum, not a chessboard), thin grout lines and faint speckle.
-  context.fillStyle = '#d8d6cd';
-  context.fillRect(0, 0, 512, 512);
-  context.fillStyle = '#cfccc2';
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      if ((row + col) % 2 === 0) {         // every other square, very low contrast
-        context.fillRect(col * 64, row * 64, 64, 64);
+  // 1. Grout bed — the whole canvas starts as the seam color, then each tile is
+  //    drawn inset on top, so the grout lines are crisp and uniform width.
+  ctx.fillStyle = '#a6a398';
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  const HALF_GROUT = 5;  // px inset per tile edge → 10 px seams (real ~1 cm grout)
+
+  // 2. Individual ceramic tiles. No two tiles are the same shade: each gets a
+  //    random base-tone variation, then a soft diagonal bevel gradient (lighter
+  //    top-left → darker bottom-right) so every tile catches light like real
+  //    glazed ceramic, plus a faint internal speckle to break glassy flatness.
+  for (let row = 0; row < GRID; row++) {
+    for (let col = 0; col < GRID; col++) {
+      const v = 0.96 + Math.random() * 0.08;              // per-tile tone lottery
+      const r = Math.round(0xd9 * v);
+      const g = Math.round(0xd6 * v);
+      const b = Math.round(0xcc * v);
+      const x = col * TILE + HALF_GROUT;
+      const y = row * TILE + HALF_GROUT;
+      const w = TILE - HALF_GROUT * 2;
+
+      const bevel = ctx.createLinearGradient(x, y, x + w, y + w);
+      bevel.addColorStop(0,    `rgb(${r},${g},${b})`);
+      bevel.addColorStop(0.5,  `rgb(${Math.round(r * 0.98)},${Math.round(g * 0.98)},${Math.round(b * 0.98)})`);
+      bevel.addColorStop(1,    `rgb(${Math.round(r * 0.93)},${Math.round(g * 0.93)},${Math.round(b * 0.93)})`);
+      ctx.fillStyle = bevel;
+      ctx.fillRect(x, y, w, w);
+
+      for (let i = 0; i < 90; i++) {                      // faint speckle inside the tile
+        ctx.fillStyle = Math.random() > 0.5
+          ? 'rgba(255, 255, 255, 0.05)'
+          : 'rgba(90, 90, 85, 0.06)';
+        ctx.fillRect(x + Math.random() * w, y + Math.random() * w, 2, 2);
       }
     }
-  }
-
-  context.strokeStyle = 'rgba(130, 128, 118, 0.4)';   // grout lines
-  context.lineWidth = 2;
-  for (let i = 0; i <= 8; i++) {
-    context.beginPath(); context.moveTo(i * 64, 0); context.lineTo(i * 64, 512); context.stroke();
-    context.beginPath(); context.moveTo(0, i * 64); context.lineTo(512, i * 64); context.stroke();
-  }
-
-  // Speckle: kills the flatness of a solid fill (real vinyl is never uniform).
-  for (let i = 0; i < 900; i++) {
-    context.fillStyle = Math.random() > 0.5
-      ? 'rgba(255, 255, 255, 0.05)'
-      : 'rgba(90, 90, 85, 0.06)';
-    context.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;    // allow tiling horizontally
   texture.wrapT = THREE.RepeatWrapping;    // allow tiling vertically
-  // One canvas = 8x8 squares. One square = 0.5 m, so one canvas covers 4 m.
+  // One canvas = 8×8 tiles. One tile = 0.5 m, so one canvas covers 4 m.
   // Floor is 14 m x 10 m  ->  repeat 14/4 x 10/4
   texture.repeat.set(3.5, 2.5);
   return texture;
@@ -146,8 +158,8 @@ export function createRoom(scene) {
     new THREE.PlaneGeometry(14, 10),
     new THREE.MeshStandardMaterial({
       map: createFloorTexture(),
-      roughness: 0.7,
-      metalness: 0.1
+      roughness: 0.5,       // glazed ceramic: a touch of sheen, but not slippery
+      metalness: 0.05
     })
   );
   floor.rotation.x = -Math.PI / 2;
