@@ -74,7 +74,7 @@ export function createWarningCard(player) {
       padding: 28px 36px;
       border-radius: 18px;
       ${glassPanel()}
-      color: #fff;
+      color: ${theme.title};
       text-align: center;
       border-width: 2px;           /* the danger red paints a thicker rim below */
       font-family: ${theme.font};
@@ -282,7 +282,7 @@ export function createWarningCard(player) {
       border-radius: 6px;
       line-height: 1;
     }
-    #toast-close:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
+    #toast-close:hover { color: ${theme.title}; background: rgba(10, 43, 77, 0.12); }
     #toast-close:focus-visible { outline: 2px solid ${theme.accent}; outline-offset: 1px; }
 
     #toast-bar {

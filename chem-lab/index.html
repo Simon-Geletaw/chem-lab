@@ -78,7 +78,7 @@
         z-index: 40;                   /* top of everything while booting */
         align-items: center;
         justify-content: center;
-        background: rgba(2, 9, 20, 0.82);
+        background: linear-gradient(180deg, #eef6fd 0%, #cfe2f2 100%);
         font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
         transition: opacity 0.45s ease;
       }
@@ -88,15 +88,15 @@
         padding: 36px 44px;
         border-radius: 18px;
         text-align: center;
-        background: rgba(4, 16, 34, 0.92);
+        background: rgba(206, 225, 242, 0.94);
         -webkit-backdrop-filter: blur(20px) saturate(140%);
         backdrop-filter: blur(20px) saturate(140%);
-        border: 1px solid rgba(77, 163, 255, 0.25);
+        border: 1px solid rgba(10, 43, 77, 0.20);
         box-shadow:
           0 0 0 1px rgba(0, 0, 0, 0.4),
           0 28px 80px rgba(0, 0, 0, 0.65),
           0 0 60px rgba(77, 163, 255, 0.06);
-        color: #eef5fd;
+        color: #0a2b4d;
       }
       #loading-card::before {
         content: '';
@@ -152,7 +152,7 @@
         font-size: 28px;
         font-weight: 600;
         letter-spacing: 0.5px;
-        color: #eef5fd;
+        color: #0a2b4d;
         animation: title-in 0.6s ease both;
       }
       @keyframes title-in {
@@ -163,7 +163,7 @@
         margin: 0 0 16px;
         min-height: 20px;
         font-size: 14px;
-        color: #b9cbe2;
+        color: #1c3a5a;
       }
       #loading-track {
         height: 6px;
@@ -193,7 +193,7 @@
       #loading-pct {
         margin: 10px 0 0;
         font-size: 13px;
-        color: #8299b2;
+        color: #45607c;
         font-variant-numeric: tabular-nums;
       }
       #loading-reload {
@@ -228,21 +228,21 @@
         display: none;                  /* revealed by loader.done() once the lab is ready */
         align-items: center;
         justify-content: center;
-        background: rgba(2, 9, 20, 0.75);
+        background: rgba(214, 229, 243, 0.72);
         z-index: 20;
         cursor: pointer;
         font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
-        color: #fff;
+        color: #0a2b4d;
         text-align: center;
       }
       #start-card {
         position: relative;
         padding: 40px 52px;
         border-radius: 20px;
-        background: rgba(4, 16, 34, 0.92);
+        background: rgba(206, 225, 242, 0.94);
         -webkit-backdrop-filter: blur(20px) saturate(140%);
         backdrop-filter: blur(20px) saturate(140%);
-        border: 1px solid rgba(77, 163, 255, 0.25);
+        border: 1px solid rgba(10, 43, 77, 0.20);
         box-shadow:
           0 0 0 1px rgba(0, 0, 0, 0.4),
           0 28px 80px rgba(0, 0, 0, 0.65),
@@ -256,7 +256,7 @@
         right: 15%;
         height: 2px;
         border-radius: 2px;
-        background: #4da3ff;            /* flat brand accent, no gradient */
+        background: #4da3ff;            /* green brand accent, no gradient */
         opacity: 0.85;
       }
       #start-card h1 {
@@ -265,28 +265,28 @@
         font-size: 46px;
         font-weight: 600;
         letter-spacing: 0.5px;
-        color: #eef5fd;
-        text-shadow: 0 0 30px rgba(77, 163, 255, 0.25);
+        color: #0a2b4d;
+        text-shadow: 0 0 30px rgba(77, 163, 255, 0.28);
       }
       #start-card p {
         margin: 4px 0;
         font-size: 16px;
         font-weight: 500;
-        color: #b9cbe2;
+        color: #1c3a5a;
       }
       #start-card .keys {
         font-size: 14px;
-        color: #8299b2;
+        color: #45607c;
         margin-top: 18px;
         letter-spacing: 0.3px;
       }
       #start-card .keys b {
-        color: #eaf4ff;
+        color: #0a2b4d;
         font-weight: 600;
         padding: 2px 7px;
         border-radius: 5px;
-        background: rgba(77, 163, 255, 0.10);
-        border: 1px solid rgba(77, 163, 255, 0.30);
+        background: rgba(10, 43, 77, 0.08);
+        border: 1px solid rgba(10, 43, 77, 0.22);
         font-family: 'Inter', sans-serif;
       }
 
@@ -399,39 +399,39 @@
       #enter-btn:active { background: #043a68; }
       #tour-btn {
         background: transparent;
-        color: #eaf4ff;
-        border: 1px solid rgba(77, 163, 255, 0.35);
+        color: #0a2b4d;
+        border: 1px solid rgba(10, 43, 77, 0.30);
       }
       #tour-btn:hover {
-        background: rgba(77, 163, 255, 0.14);
-        color: #ffffff;
-        border-color: rgba(77, 163, 255, 0.65);
+        background: rgba(10, 43, 77, 0.10);
+        color: #0a2b4d;
+        border-color: rgba(10, 43, 77, 0.55);
       }
       #reset-flask-btn {
-        background: rgba(255, 107, 122, 0.10);
-        color: #ffd7dc;
-        border: 1px solid rgba(255, 107, 122, 0.45);
+        background: rgba(198, 40, 40, 0.08);
+        color: #8a1f2b;
+        border: 1px solid rgba(198, 40, 40, 0.45);
       }
       #reset-flask-btn:hover {
-        background: rgba(255, 107, 122, 0.28);
-        color: #ffffff;
-        border-color: rgba(255, 107, 122, 0.85);
+        background: rgba(198, 40, 40, 0.16);
+        color: #5c1018;
+        border-color: rgba(198, 40, 40, 0.85);
       }
       #controls-btn {
         background: transparent;
-        color: #eaf4ff;
-        border: 1px solid rgba(77, 163, 255, 0.35);
+        color: #0a2b4d;
+        border: 1px solid rgba(10, 43, 77, 0.30);
       }
       #controls-btn:hover {
-        background: rgba(77, 163, 255, 0.14);
-        color: #ffffff;
-        border-color: rgba(77, 163, 255, 0.65);
+        background: rgba(10, 43, 77, 0.10);
+        color: #0a2b4d;
+        border-color: rgba(10, 43, 77, 0.55);
       }
       #overlay-status {
         margin: 16px 0 0;
         min-height: 20px;
         font-size: 14px;
-        color: #4da3ff;
+        color: #0d4f8a;
       }
 
       #tour-skip {
@@ -466,7 +466,7 @@
         backdrop-filter: blur(20px) saturate(140%);
         color: #eef5fd;
         border-radius: 14px;
-        border: 1px solid rgba(77, 163, 255, 0.25);
+        border: 1px solid rgba(46, 125, 66, 0.32);
         box-shadow:
           0 24px 70px rgba(0, 0, 0, 0.6),
           0 0 50px rgba(77, 163, 255, 0.05);

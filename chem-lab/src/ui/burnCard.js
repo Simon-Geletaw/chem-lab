@@ -84,7 +84,7 @@ export function createBurnCard(player, hand, onRestart) {
     #burn-box.pop { opacity: 1; transform: none; pointer-events: auto; }
     /* The compact, lighter glass card — the scene shows all around it */
     #burn-panel {
-      background: rgba(4, 16, 34, 0.82);
+      background: rgba(206, 225, 242, 0.94);
       -webkit-backdrop-filter: blur(16px) saturate(135%);
       backdrop-filter: blur(16px) saturate(135%);
       border: 1px solid rgba(255, 107, 122, 0.35);

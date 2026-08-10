@@ -83,9 +83,9 @@ export function createPourDialog() {
       }
       #pour-presets button:active:not(:disabled) { background: ${theme.brandActive}; transform: translateY(1px); }
       #pour-presets button:disabled {
-        background: rgba(255, 255, 255, 0.05);
-        color: rgba(240, 250, 246, 0.3);
-        border-color: rgba(255, 255, 255, 0.08);
+        background: rgba(10, 43, 77, 0.05);
+        color: rgba(10, 43, 77, 0.35);
+        border-color: rgba(10, 43, 77, 0.12);
         box-shadow: none;
         cursor: not-allowed;
       }
@@ -107,8 +107,8 @@ export function createPourDialog() {
         font-size: 15px;
         font-family: inherit;
         color: ${theme.title};
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.55);
+        border: 1px solid rgba(10, 43, 77, 0.25);
         border-radius: 8px;
         text-align: center;
       }
@@ -136,7 +136,7 @@ export function createPourDialog() {
         font-size: 14px;
         color: ${theme.body};
         background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(10, 43, 77, 0.25);
         border-radius: 8px;
         cursor: pointer;
         font-family: inherit;
