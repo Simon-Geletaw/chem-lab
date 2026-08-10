@@ -21,6 +21,8 @@ import { createLoader, yieldToPaint } from './ui/loader.js';
 import { createGloves } from './gloves.js';
 import { createMask } from './mask.js';
 import { createTrashBin } from './trashBin.js';
+import { createSimDoors } from './simDoors.js';
+import { loadSimulations } from './simulations/registry.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 import { quality, effectivePixelRatio, createFpsMeter, createQualityMonitor } from './quality.js';
 import { initLightPool } from './effects/lightPool.js';
@@ -48,6 +50,10 @@ async function boot() {
   // bottles are generated from it. (Phase 10 swaps the data source to the
   // backend API — this line stays.)
   await loadChemistry();
+  await loadSimulations();
+  // The door sign textures draw with the brand font (Space Grotesk) — wait for
+  // it so canvas text doesn't fall back to Arial mid-boot.
+  if (document.fonts) await document.fonts.load('700 108px "Space Grotesk"');
   loader.set(15, 'Building the lab\u2026');
 
   // 1. Scene
@@ -105,6 +111,10 @@ async function boot() {
   // 4. Build the world (each module adds its own part to the scene)
   const interactableObjects = [];
   createRoom(scene);
+  // Simulation doors (Biology / Mathematics / Physics) on the front wall —
+  // position, labels, accent colors and E-triggers all come from
+  // server/data/simulations.json. Pressing E at a door routes to its sim.
+  const simDoors = createSimDoors(scene);
   // PERF: effect lights (fire/flash) come from a fixed 2-light pool created
   // once — reactions never allocate lights or trigger shader recompiles.
   initLightPool(scene);
@@ -166,7 +176,7 @@ async function boot() {
   const mask = createMask(scene, camera, interactableObjects);
   // The biohazard bin: the ONLY way used PPE comes off (dispensers only put ON).
   const trashBin = createTrashBin(scene, interactableObjects);
-  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner);
+  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors);
 
   // T6 burn game-over: the FIRST bare-handed hazardous contact triggers a
   // dramatic burn reveal (slow-mo + charring in real time), then a blocking
@@ -232,6 +242,7 @@ async function boot() {
     }
     player.update(worldDelta);               // walking (does nothing while the tour runs)
     hand.update(worldDelta);                 // carry/return animation + hover hints
+    simDoors.update(worldDelta, camera);     // LED status strips (pulse / flare on aim)
     gloves.update(worldDelta);               // hands easing in/out of view (F5)
     beaker.update(worldDelta);               // billboard the content label
     effectRunner.update(worldDelta);         // animate live effects, dispose finished ones

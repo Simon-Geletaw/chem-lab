@@ -53,6 +53,12 @@
     </div>
     <div id="crosshair"></div>
     <div id="action-hint"></div>
+    <div id="travel-overlay" hidden>
+      <div id="travel-card">
+        <div id="travel-spinner"></div>
+        <p id="travel-text">Opening simulation&hellip;</p>
+      </div>
+    </div>
     <button id="tour-skip">Skip Tour &#10005;</button>
     <div id="mobile-controls">
       <button id="btn-up" class="dpad">&#9650;</button>
@@ -327,6 +333,47 @@
         z-index: 15;
         pointer-events: none;
       }
+      /* Travel overlay: a quick "Opening <sim> simulation…" beat before a
+         simulation-door press routes to its destination (simDoors.js). */
+      #travel-overlay[hidden] { display: none; }
+      #travel-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 16, 34, 0.72);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+        backdrop-filter: blur(18px) saturate(140%);
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        z-index: 35;
+        pointer-events: none;
+      }
+      #travel-overlay.show { opacity: 1; }
+      #travel-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 30px;
+        border-radius: 14px;
+        background: rgba(206, 225, 242, 0.95);
+        border: 1px solid rgba(10, 43, 77, 0.25);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        color: #0a2b4d;
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        font-weight: 600;
+        font-size: 17px;
+      }
+      #travel-spinner {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 3px solid rgba(10, 43, 77, 0.2);
+        border-top-color: #0a63ad;
+        animation: travel-spin 0.8s linear infinite;
+      }
+      @keyframes travel-spin { to { transform: rotate(360deg); } }
 
       #mobile-controls {
         display: none;

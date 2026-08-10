@@ -1,0 +1,34 @@
+{
+  "simulations": [
+    {
+      "id": "biology",
+      "label": "Biology",
+      "subtitle": "Cells & ecosystems",
+      "accent": "#2e8b57",
+      "href": "",
+      "target": "_blank",
+      "door": { "x": -5.8, "z": 5.0, "width": 1.0 },
+      "trigger": { "radius": 1.3, "reach": 3.0 }
+    },
+    {
+      "id": "mathematics",
+      "label": "Mathematics",
+      "subtitle": "Geometry & algebra",
+      "accent": "#1f6fd6",
+      "href": "",
+      "target": "_blank",
+      "door": { "x": -4.0, "z": 5.0, "width": 1.0 },
+      "trigger": { "radius": 1.3, "reach": 3.0 }
+    },
+    {
+      "id": "physics",
+      "label": "Physics",
+      "subtitle": "Motion & energy",
+      "accent": "#b3541e",
+      "href": "",
+      "target": "_blank",
+      "door": { "x": -2.2, "z": 5.0, "width": 1.0 },
+      "trigger": { "radius": 1.3, "reach": 3.0 }
+    }
+  ]
+}

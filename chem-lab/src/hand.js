@@ -87,7 +87,7 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner) {
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
@@ -265,6 +265,22 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     window.addEventListener('keydown', (event) => {
         if (burnOut) return;   // game-over: block every E/Q interaction during the burn reveal
         if (event.code === 'KeyE' && state === 'EMPTY') {
+            // Simulation doors: E on a door (crosshair) routes to its sim —
+            // only when standing close enough, and only empty-handed.
+            const simDoor = simDoors.aim(camera);
+            if (simDoor) {
+                const verdict = simDoors.enter(simDoor, camera);
+                if (verdict === 'far') {
+                    zoneHint('Step closer to the door, then press E to enter.');
+                } else if (verdict === 'undep') {
+                    warningCard.show({
+                        title: `${simDoor.label} simulation`,
+                        text: 'This simulation has not been deployed yet — check back soon.'
+                    }, 'info');
+                }
+                return;
+            }
+
             // F5: the glove box toggles gloves — but only empty-handed, so the
             // ray checks it BEFORE bottles (they never overlap anyway).
             const gbox = aimAt('gloveBox', 2.5);
@@ -697,11 +713,13 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             // One ray per frame against a few dozen objects costs nothing.
             if (!hint) return;
             if (state === 'EMPTY') {
-                const target = aimAt('isBottle', 2.5);
+                const simDoor = simDoors.aim(camera);
+                const target = simDoor ? null : aimAt('isBottle', 2.5);
                 const gbox = target ? null : aimAt('gloveBox', 2.5);
                 const mbox = target || gbox ? null : aimAt('maskBox', 2.5);
                 const tbin = target || gbox || mbox ? null : aimAt('trashBin', 2.5);
-                if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
+                if (simDoor) hint.textContent = `[E] Enter ${simDoor.label} simulation`;
+                else if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
                 else if (gbox) hint.textContent = gloves.on ? 'Used gloves go in the biohazard bin' : '[E] Put on gloves';
                 else if (mbox) hint.textContent = mask.on ? 'Used masks go in the biohazard bin' : '[E] Put on mask';
                 else if (tbin) {
@@ -709,18 +727,22 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                         ? '[E] Throw away gloves'
                         : mask.on ? '[E] Throw away mask' : 'Nothing to throw away';
                 }
-                hint.style.display = (target || gbox || mbox || tbin) ? 'block' : 'none';
+                hint.style.display = (simDoor || target || gbox || mbox || tbin) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask
                 // shows its contents breakdown instead.
                 showAimInfo(target || aimAt('isBeaker', 2.5), beaker);
             } else if (state === 'HOLDING') {
-                const overBeaker = aimAt('isBeaker', 2);
+                const overDoor = simDoors.aim(camera);
+                const overBeaker = overDoor ? null : aimAt('isBeaker', 2);
                 const overGloveBox = overBeaker ? null : aimAt('gloveBox', 2.5);
                 // The [Q] return notice only appears near the chemical shelf —
                 // exactly where Q actually works (near + facing). Away from the
                 // shelf the hint directs the player there instead.
                 let showHint = false;
-                if (overBeaker) {
+                if (overDoor) {
+                    hint.textContent = 'Set the bottle down first';     // nothing is carried past a door
+                    showHint = true;
+                } else if (overBeaker) {
                     hint.textContent = `[E] Pour ${heldBottle.userData.name}`;
                     showHint = true;
                 } else if (overGloveBox) {
