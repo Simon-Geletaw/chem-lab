@@ -48,6 +48,65 @@ function createFloorTexture() {
   return texture;
 }
 
+// createWallTexture() — a REAL painted wall, not a flat color fill.
+// Classic painted laboratory treatment: a warm off-white upper paint with a
+// deeper blue-gray DADO / wainscot band from the floor up to ~1.05 m, a crisp
+// painted break line between the two, and a very subtle roller-grain mottle so
+// the surface never reads as a flat, artificial solid.
+//
+// UV contract: a PlaneGeometry maps v=0 (mesh bottom edge, at the floor here)
+// to the BOTTOM row of the canvas, so the wainscot band is drawn at the bottom
+// of the canvas. vertical repeat is clamped so the band lives at the floor no
+// matter how tall the wall is.
+function createWallTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Dado height ratio: 1.05 m wainscot over a 3.5 m wall.
+  const bandRatio = 1.05 / 3.5;
+  const bandPx = Math.round(512 * bandRatio);   // ~154 px from the bottom
+
+  const UPPER = '#e9ece9';      // warm off-white upper paint
+  const DADO  = '#9fb2bd';      // soft blue-gray lower band
+  const BREAK = '#7d8f9b';      // painted break line between the two
+
+  // Upper paint covers the whole canvas first...
+  ctx.fillStyle = UPPER;
+  ctx.fillRect(0, 0, 512, 512);
+  // ...then the dado band over the bottom slice (v=0 side).
+  ctx.fillStyle = DADO;
+  ctx.fillRect(0, 512 - bandPx, 512, bandPx);
+  // Crisp break line just above the band.
+  ctx.fillStyle = BREAK;
+  ctx.fillRect(0, 512 - bandPx - 3, 512, 3);
+
+  // Subtle roller-grain / mottle sprinkled over the whole wall — kills the
+  // flat-solid look of a solid fill (real paint is never perfectly uniform).
+  for (let i = 0; i < 1400; i++) {
+    ctx.globalAlpha = Math.random() * 0.06;
+    ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#222222';
+    const r = 0.6 + Math.random() * 1.6;
+    ctx.beginPath();
+    ctx.arc(Math.random() * 512, Math.random() * 512, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;   // grain can tile slightly horizontally
+  texture.wrapT = THREE.ClampToEdgeWrapping;  // band stays pinned to the floor
+  texture.repeat.set(2, 1);
+  return texture;
+}
+
+// createTrimMaterial() — the crisp white painted trim used for the ceiling
+// cornice. Slightly glossy so it catches light like fresh-painted molding.
+function createTrimMaterial() {
+  return new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.5 });
+}
+
 export function createRoom(scene) {
   // --- Lighting ---
   // Pure room lighting — no sun. Real fluorescent tubes are RECTANGULAR area
@@ -95,30 +154,37 @@ export function createRoom(scene) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xe7eae8, roughness: 0.9, metalness: 0.0 });
+  // Painted walls: each wall gets the two-tone painted texture (warm off-white
+  // upper, blue-gray dado band at the floor). A FRESH material + texture per wall
+  // keeps the grain independent so repeat never aliases across walls.
+  const paintMat = () => new THREE.MeshStandardMaterial({
+    map: createWallTexture(),
+    roughness: 0.9,
+    metalness: 0.0
+  });
 
   // Back wall
-  const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMaterial);
+  const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), paintMat());
   backwall.position.set(0, 1.75, -5);
   backwall.receiveShadow = true;
   scene.add(backwall);
 
   // Left wall — rotated +90° so its visible face points INTO the room
-  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMaterial);
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), paintMat());
   leftWall.position.set(-7, 1.75, 0);
   leftWall.rotation.y = Math.PI / 2;
   leftWall.receiveShadow = true;
   scene.add(leftWall);
 
   // Right wall — rotated −90°, same reason
-  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMaterial);
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), paintMat());
   rightWall.position.set(7, 1.75, 0);
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.receiveShadow = true;
   scene.add(rightWall);
 
   // Front wall — rotated 180° so its face points back INTO the room
-  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMaterial);
+  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), paintMat());
   frontWall.position.set(0, 1.75, 5);
   frontWall.rotation.y = Math.PI;
   frontWall.receiveShadow = true;
@@ -132,6 +198,21 @@ export function createRoom(scene) {
   ceiling.position.set(0, 3.5, 0);
   ceiling.rotation.x = Math.PI / 2;
   scene.add(ceiling);
+
+  // --- Ceiling cornice (trim) — crisp white molding all around where the walls
+  // meet the ceiling, so the room reads framed like a real painted room. Four
+  // runs: two long (front/back, along x) + two short (left/right, along z).
+  const trimMat = createTrimMaterial();
+  const corniceRun = (len, px, py, pz, rx, ry, rz) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.04), trimMat);
+    m.position.set(px, py, pz);
+    m.rotation.set(rx, ry, rz);
+    scene.add(m);
+  };
+  corniceRun(14.3, 0, 3.47, -4.99, 0, 0, 0);   // back
+  corniceRun(14.3, 0, 3.47, 4.99, 0, 0, 0);    // front
+  corniceRun(10.3, -7.01, 3.47, 0, 0, Math.PI / 2, 0);  // left
+  corniceRun(10.3, 7.01, 3.47, 0, 0, -Math.PI / 2, 0);  // right
 
   // --- Door (on the front wall, steel lab door) ---
   const door = new THREE.Mesh(

@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.md
 .vercel
+# but our engineering documentation (docs/) MUST be versioned - re-include it,
+# while keeping every other .md file ignored (this repo documents changes there).
+!docs/
+!docs/*.md
+!docs/**/*.md
