@@ -407,7 +407,13 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
   loadModel(scene, interactableObjects, '/Models/FireEx.glb', { x: 6.85, y: 1.0, z: 2 }, 0.55, 'Fire Extinguisher',
     'A fire extinguisher is a device used to put out small fires. It contains a pressurized agent that is sprayed onto the fire to extinguish it.',
     (model) => {
-      model.rotation.y = -Math.PI / 2;   // turn it to face into the room
+      // Facing fix: the printed label/instructions live on the model's local +X
+      // face and the top valve/"screw" sits on the local -Z side. The old
+      // rotation.y = -PI/2 turned both toward +x/+z (the wall and the back of
+      // the room), so users only saw the plain box side. rotation.y = PI/2 turns
+      // the valve/"screw" side straight toward -x (at the viewer walking up from
+      // the lab) while the label also faces into the room.
+      model.rotation.y = Math.PI / 2;   // valve/"screw" + label face the lab interior
     });
 
   // Red mounting backplate so the extinguisher reads as "wall-mounted"

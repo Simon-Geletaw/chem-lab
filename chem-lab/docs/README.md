@@ -23,3 +23,6 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-10 | [Render budget — memory optimization](2026-08-10-render-budget-memory-optimization.md) | `src/quality.js`, `src/main.js`, `src/ui/loader.js` |
 | 2026-08-11 | [Lab coat — procedural Three.js rewrite + placement by the entrance door](2026-08-11-lab-coat-procedural-rewrite.md) | `src/coat.js`, `public/draco/` |
 | 2026-08-11 | [Lab coat — non-blocking warning (no longer blocks the experiment)](2026-08-11-lab-coat-non-blocking-experiment.md) | `src/hand.js` |
+| 2026-08-11 | [Atomic-structure sticker — fills the open back-wall space left of the periodic table](2026-08-11-atomic-structure-sticker-left-wall.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
+| 2026-08-11 | [Atomic-structure sticker — fills the open back-wall space right of the periodic table](2026-08-11-sticker-right-of-periodic.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
+| 2026-08-11 | [Fire extinguisher — label text faces into the room (readable)](2026-08-11-fire-extinguisher-label-facing-fix.md) | `src/furniture.js` |
