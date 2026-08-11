@@ -20,7 +20,7 @@ import { createHUD } from './ui/hud.js';
 import { createLoader, yieldToPaint } from './ui/loader.js';
 import { createGloves } from './gloves.js';
 import { createCoat } from './coat.js';
-import{ createMask } from './mask.js';
+import { createMask } from './mask.js';
 import { createEyegoggles } from './eyegoggles.js';
 import { createTrashBin } from './trashBin.js';
 import { createSimDoors } from './simDoors.js';
@@ -120,11 +120,6 @@ async function boot() {
   // position, labels, accent colors and E-triggers all come from
   // server/data/simulations.json. Pressing E at a door routes to its sim.
   const simDoors = createSimDoors(scene);
-  // Experiment-cards table in the front-left corner (between the Biology door
-  // and the chemical shelf) — cards, images, safety text and destination URLs
-  // all come from server/data/experiments.json; the table auto-lengthens with
-  // the card count. Pressing E at a card opens its overlay (hand.js, Phase 2).
-  const expTable = createExperimentTable(scene, interactableObjects, player.colliders);
   // PERF: effect lights (fire/flash) come from a fixed 2-light pool created
   // once — reactions never allocate lights or trigger shader recompiles.
   initLightPool(scene);
@@ -141,6 +136,11 @@ async function boot() {
   createWallSticker(scene, '/sticker/sticker-2%20c2h205%20.png', 4.55, -4.98);
   createWallSticker(scene, '/sticker/sticker3%20chemistry%20.png', 0.425, 4.97, Math.PI);
   const player = createPlayer(camera);
+  // Experiment-cards table in the front-left corner (between the Biology door
+  // and the chemical shelf) — cards, images, safety text and destination URLs
+  // all come from server/data/experiments.json; the table auto-lengthens with
+  // the card count. Pressing E at a card opens its overlay (hand.js, Phase 2).
+  const expTable = createExperimentTable(scene, interactableObjects, player.colliders);
   // Furniture registers its bounding boxes in player.colliders so you bump into it
   const furniture = createFurniture(scene, interactableObjects, player.colliders, getShelfChemicals());
 
@@ -212,8 +212,8 @@ const goggles = createEyegoggles(scene, camera, interactableObjects, hud);
       interactions.setPicking(true);         // re-enable clicks (tiles, panels)
       if (gloves.on) hud.setGloves(gloves.toggle());   // strip PPE + HUD
       if (mask.on) hud.setMask(mask.toggle());
-            if (coat.on) coat.remove();                      // chip + sleeves handled inside
-      if (goggles.on) goggles.remove();                       // chip + overlay handled inside                      // chip + sleeves handled inside
+      if (coat.on) coat.remove();                      // chip + sleeves handled inside
+      if (goggles.on) goggles.remove();                 // chip + overlay handled inside
       beaker.reset();                        // empty the flask
       effectRunner.clear();                  // kill leftover fire/smoke/flash
       camera.position.set(0, 1.6, 4);        // fresh entrance…
