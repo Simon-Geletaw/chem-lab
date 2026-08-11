@@ -315,27 +315,30 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             }
 
             // The lab coat: E at the hanging coat (rack beside the exit door)
-            // puts it on. The coat vanishes from the rack and the HUD chip
-            // goes green — the only way off is the biohazard bin.
+            // toggles it — look UP at the hanger: E puts it on (the coat
+            // vanishes from the rack), E again takes it off (it hangs there
+            // again). The biohazard bin never touches the coat; used gloves
+            // and masks go DOWN into the bin.
             const coatRack = aimAt('coat', 2.5);
             if (coatRack) {
-                if (coat.on) {
-                    zoneHint('You are already wearing the lab coat.');
-                    return;
-                }
                 if (!inZone('coat', camera)) {
                     zoneHint('The lab coat hangs on the rack by the exit door — walk over and put it on.');
                     return;
                 }
-                coat.wear();
+                if (coat.on) {
+                    coat.remove();                  // sleeves go + coat back on the rack
+                } else {
+                    coat.wear();                    // coat vanishes from the rack
+                }
                 return;
             }
 
-            // The biohazard bin: the ONLY way to take PPE off (dispensers only put ON).
-            // One item per press: gloves first, then the mask, then the coat.
+            // The biohazard bin: the ONLY way to take OFF the gloves and the
+            // mask (dispensers only put ON) — the coat comes off at its rack.
+            // One item per press: gloves first, then the mask.
             const tbin = aimAt('trashBin', 2.5);
             if (tbin) {
-                if (!gloves.on && !mask.on && !coat.on) {
+                if (!gloves.on && !mask.on) {
                     zoneHint('You are not wearing any PPE — nothing to throw away.');
                     return;
                 }
@@ -347,11 +350,6 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     _ppeFrom.set(0, -0.2, -0.3);             // the mask leaves the face
                     camera.localToWorld(_ppeFrom);
                     trashBin.dispose('mask', _ppeFrom);
-                } else if (coat.on) {
-                    hud.setCoat(coat.remove());              // sleeves go + fresh coat returns to the rack
-                    _ppeFrom.set(0, -0.1, -0.55);            // the coat leaves from the chest
-                    camera.localToWorld(_ppeFrom);
-                    trashBin.dispose('coat', _ppeFrom);
                 }
                 return;
             }
@@ -363,13 +361,14 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     zoneHint('Chemicals are stored on the shelf along the left wall — pick them up there.');
                     return;
                 }
-                // Coat gate: hazardous chemicals are out of reach until the
-                // lab coat is on (the rack beside the exit door). Splash
-                // protection before gloves — the coat is the FIRST layer.
+                // Coat note (NON-BLOCKING): not wearing the lab coat never stops
+                // the experiment. It only reminds the player each time a
+                // hazardous chemical is grabbed without the coat on — the
+                // pickup and the reaction still proceed (nothing happens to
+                // block you). Splash risk is real, but the coat is optional.
                 const chem = getChemical(bottle.userData.chemicalId);
                 if (chem && chem.hazard !== 'none' && !coat.on) {
-                    zoneHint('Splashes ruin clothes and skin — put on the white lab coat at the rack by the exit door before handling hazardous chemicals.');
-                    return;
+                    zoneHint('You are not wearing the lab coat. It will NOT stop the experiment, but a splash could ruin your clothes and skin — the coat hangs on the rack by the door if you want it.');
                 }
                 // T6 pickup gate: hazardous chemicals no longer BLOCK the grab —
                 // bare skin can grab them, but it BURNS (and keeps burning after
@@ -752,11 +751,11 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 else if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
                 else if (gbox) hint.textContent = gloves.on ? 'Used gloves go in the biohazard bin' : '[E] Put on gloves';
                 else if (mbox) hint.textContent = mask.on ? 'Used masks go in the biohazard bin' : '[E] Put on mask';
-                else if (coatRack) hint.textContent = coat.on ? 'Lab coat already on' : '[E] Put on lab coat';
+                else if (coatRack) hint.textContent = coat.on ? '[E] Take off lab coat' : '[E] Put on lab coat';
                 else if (tbin) {
                     hint.textContent = gloves.on
                         ? '[E] Throw away gloves'
-                        : mask.on ? '[E] Throw away mask' : coat.on ? '[E] Throw away coat' : 'Nothing to throw away';
+                        : mask.on ? '[E] Throw away mask' : 'Nothing to throw away';
                 }
                 hint.style.display = (simDoor || target || gbox || mbox || coatRack || tbin) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask

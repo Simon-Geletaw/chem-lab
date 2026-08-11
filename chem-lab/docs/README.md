@@ -21,3 +21,5 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-10 | [Animated loading screen](2026-08-10-animated-loading-screen.md) | `index.html`, `src/ui/loader.js` |
 | 2026-08-10 | [Pale-blue glass theme](2026-08-10-pale-blue-glass-theme.md) | `src/ui/theme.js`, `index.html`, `src/ui/burnCard.js`, `src/ui/warningCard.js`, `src/ui/pourDialog.js` |
 | 2026-08-10 | [Render budget — memory optimization](2026-08-10-render-budget-memory-optimization.md) | `src/quality.js`, `src/main.js`, `src/ui/loader.js` |
+| 2026-08-11 | [Lab coat — procedural Three.js rewrite + placement by the entrance door](2026-08-11-lab-coat-procedural-rewrite.md) | `src/coat.js`, `public/draco/` |
+| 2026-08-11 | [Lab coat — non-blocking warning (no longer blocks the experiment)](2026-08-11-lab-coat-non-blocking-experiment.md) | `src/hand.js` |
