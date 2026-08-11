@@ -80,14 +80,17 @@ export function loadModel(scene, interactableObjects, url, position, desiredHeig
 
 // A lab bench: storage cabinet + thin black "epoxy resin" worktop.
 // Worktop surface ends up at y = 0.9 m (real lab bench height).
-function createBench(x, z, rotationY) {
+// length = the cabinet's long-side length in meters (worktop overhangs
+// 0.2 m); the experiment-cards table calls this with a data-derived length
+// so the table auto-lengthens with its card count.
+export function createBench(x, z, rotationY, length = 2.8) {
   const bench = new THREE.Group();
 
-  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.95, 0.6), cabinetMat);
+  const cabinet = new THREE.Mesh(new THREE.BoxGeometry(length, 0.95, 0.6), cabinetMat);
   cabinet.position.y = 0.475;               // half its height -> sits on floor
   bench.add(cabinet);
 
-  const worktop = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.05, 0.7), worktopMat);
+  const worktop = new THREE.Mesh(new THREE.BoxGeometry(length + 0.2, 0.05, 0.7), worktopMat);
   worktop.position.y = 0.975;               // 0.95 cabinet + half of 0.05 = 1.0 m worktop
   bench.add(worktop);
 
@@ -350,12 +353,12 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
   interactableObjects.push(wallBench);
   colliders.push(new THREE.Box3().setFromObject(wallBench));
 
-  // PPE station by the door: gloves + mask boxes live on this table, and the
-  // 'ppe' zone gates where they can be put on/taken off.
+    // PPE station by the door: gloves + mask + goggles dispensers live on this table,
+  // and the 'ppe' zone gates where they can be put on/taken off.
   const ppeBench = createBench(ZONES.ppe.x, ZONES.ppe.z, 0);
   ppeBench.userData = {
     name: 'PPE Station',
-    description: 'Personal protective equipment: nitrile gloves and face masks. Put both on HERE before handling hazardous chemicals, and take them off here before leaving.'
+        description: 'Personal protective equipment: nitrile gloves, face masks and safety goggles. Put them on HERE before handling hazardous chemicals, and take them off here before leaving.'
   };
   scene.add(ppeBench);
   interactableObjects.push(ppeBench);
@@ -450,7 +453,7 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
       {
         position: new THREE.Vector3(ZONES.ppe.x, 1.7, ZONES.ppe.z),
         title: 'PPE Station',
-        description: 'Personal protective equipment: nitrile gloves and face masks. Put both on here before handling hazardous chemicals.',
+                description: 'Personal protective equipment: nitrile gloves, face masks and safety goggles. Put them on here before handling hazardous chemicals.',
         radius: 2.2
       }
     ]

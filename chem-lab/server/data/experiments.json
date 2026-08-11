@@ -1,0 +1,40 @@
+{
+  "experiments": [
+    {
+      "id": "acid-base-titration",
+      "title": "Acid-Base Titration",
+      "subtitle": "Neutralization",
+      "description": "Add base from a burette into an acid flask drop by drop until the indicator changes colour, then read the burette to find the unknown concentration.",
+      "safety": ["Wear nitrile gloves", "Wear safety goggles", "Neutralize waste before rinsing"],
+      "image": "/cards/titration.png",
+      "accent": "#2e8b57",
+      "href": "",
+      "target": "_blank",
+      "trigger": { "radius": 1.3, "reach": 2.6 }
+    },
+    {
+      "id": "flame-test",
+      "title": "Flame Test",
+      "subtitle": "Metal cations",
+      "description": "Dip a clean wire into a salt solution and hold it in a Bunsen flame. The flame colour identifies the metal cation inside the salt.",
+      "safety": ["Wear safety goggles", "Tie back long hair", "Use tongs — the wire gets hot"],
+      "image": "/cards/flame-test.png",
+      "accent": "#b3541e",
+      "href": "",
+      "target": "_blank",
+      "trigger": { "radius": 1.3, "reach": 2.6 }
+    },
+    {
+      "id": "copper-sulfate-crystals",
+      "title": "Copper Sulfate Crystals",
+      "subtitle": "Hydrates & evaporation",
+      "description": "Dissolve copper sulfate in hot water, let the solution cool slowly and watch blue crystals form as the water evaporates.",
+      "safety": ["Wear nitrile gloves", "Wear safety goggles", "Wash hands after handling the salt"],
+      "image": "/cards/copper-sulfate.png",
+      "accent": "#1f6fd6",
+      "href": "",
+      "target": "_blank",
+      "trigger": { "radius": 1.3, "reach": 2.6 }
+    }
+  ]
+}
