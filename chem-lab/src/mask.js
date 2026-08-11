@@ -55,7 +55,10 @@ export function createMask(scene, camera, interactableObjects) {
   label.position.set(0, 0.035, 0.061);       // 1 mm off the front face
   box.add(label);
 
-  box.position.set(ZONES.ppe.x - 0.25, 1.0, ZONES.ppe.z);
+  // Clear of the glove box (which is rotated too): at 0.5 m center spacing the
+  // rotated corners leave a ~0.25 m gap, so the NITRILE GLOVES label stays
+  // readable from the door.
+  box.position.set(ZONES.ppe.x - 0.5, 1.0, ZONES.ppe.z);
   box.rotation.y = 0.25;
   box.userData = {
     maskBox: true,
