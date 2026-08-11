@@ -4,7 +4,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createRoom } from './room.js';
-import { createPeriodicWall } from './periodicWall.js';
+import { createPeriodicWall, createWallSticker } from './periodicWall.js';
 import { createPlayer } from './player.js';
 import { createFurniture } from './furniture.js';
 import { createInteractions } from './interactions.js';
@@ -123,6 +123,14 @@ async function boot() {
   // below compiles their shaders so even the first reaction never stalls.
   initEffectPools(scene);
   createPeriodicWall(scene, interactableObjects);
+  // Atomic-structure stickers on the open wall space around the lab: two on
+  // the back wall flanking the periodic table, one on the front wall between
+  // the Physics sim door and the exit door (decorative canvases, load with
+  // the other wall art). Note: the PNG filenames contain spaces — encoded as
+  // %20 in the URLs, same pattern as the AIT logo (/Logo/AIT%20logo%20.png).
+  createWallSticker(scene, '/sticker/sticker-1-atomic-structure-1.png', -4.55, -4.98);
+  createWallSticker(scene, '/sticker/sticker-2%20c2h205%20.png', 4.55, -4.98);
+  createWallSticker(scene, '/sticker/sticker3%20chemistry%20.png', 0.425, 4.97, Math.PI);
   const player = createPlayer(camera);
   // Furniture registers its bounding boxes in player.colliders so you bump into it
   const furniture = createFurniture(scene, interactableObjects, player.colliders, getShelfChemicals());

@@ -95,6 +95,38 @@ function createTitleTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
+// createWallSticker() — hangs one of the atomic-structure stickers
+// (public/sticker/*.png) on an open wall band in the room. The periodic
+// table sits centered on the BACK wall (x=0, edges ≈ ±2.1), so both free
+// bands x -7..-2.1 and x +2.1..+7 are empty wall — stickers 1 and 2 are
+// centered in those bands (±4.55). Sticker 3 hangs on the FRONT wall's
+// free band between the Physics sim door (x=-1.7) and the exit door
+// (x=2.55), centered at x=0.425. Decorative only (no interaction). Plain
+// canvas, no frame: the PNGs are transparent, so the painted wall shows
+// through their empty pixels, same treatment as the AIT logo on the right
+// wall. Unlit like the poster tiles (the image carries its own lighting) —
+// no per-pixel light cost.
+// Params: scene, url (texture path, spaces %20-encoded), x (center along
+// the wall), z (wall plane depth; +4.97 front / -4.98 back), rotY (0 for
+// the back wall, Math.PI for the front wall so the plane faces the room).
+export function createWallSticker(scene, url, x, z, rotY = 0) {
+  const texture = new THREE.TextureLoader().load(url);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  const sticker = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.8, 1.2),   // 1.5:1 canvas, matches the 1536x1024 PNGs
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true })
+  );
+
+  // y = 1.7: same eye-height center as the AIT logo; the 1.1 m bottom edge
+  // sits just above the 1.05 m wainscot break line. Each x center leaves
+  // ~1.55 m breathing room to its neighbours (poster edge / wall corner /
+  // door frames).
+  sticker.position.set(x, 1.7, z);
+  sticker.rotation.y = rotY;
+  scene.add(sticker);
+}
+
 export function createPeriodicWall(scene, interactableObjects) {
   const elementsGroup = new THREE.Group();
   const tiles = [];

@@ -25,4 +25,5 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-11 | [Lab coat — non-blocking warning (no longer blocks the experiment)](2026-08-11-lab-coat-non-blocking-experiment.md) | `src/hand.js` |
 | 2026-08-11 | [Atomic-structure sticker — fills the open back-wall space left of the periodic table](2026-08-11-atomic-structure-sticker-left-wall.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
 | 2026-08-11 | [Atomic-structure sticker — fills the open back-wall space right of the periodic table](2026-08-11-sticker-right-of-periodic.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
+| 2026-08-11 | [Chemistry sticker — front wall, between the Biology and the exit door](2026-08-11-sticker-front-wall-chemistry.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
 | 2026-08-11 | [Fire extinguisher — label text faces into the room (readable)](2026-08-11-fire-extinguisher-label-facing-fix.md) | `src/furniture.js` |
