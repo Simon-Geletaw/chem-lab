@@ -46,168 +46,222 @@ function createLabelTexture() {
   return texture;
 }
 
+function roundedRectShape(width, height, radius) {
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const r = Math.min(radius, halfWidth, halfHeight);
+  const shape = new THREE.Shape();
+
+  shape.moveTo(-halfWidth + r, -halfHeight);
+  shape.lineTo(halfWidth - r, -halfHeight);
+  shape.quadraticCurveTo(halfWidth, -halfHeight, halfWidth, -halfHeight + r);
+  shape.lineTo(halfWidth, halfHeight - r);
+  shape.quadraticCurveTo(halfWidth, halfHeight, halfWidth - r, halfHeight);
+  shape.lineTo(-halfWidth + r, halfHeight);
+  shape.quadraticCurveTo(-halfWidth, halfHeight, -halfWidth, halfHeight - r);
+  shape.lineTo(-halfWidth, -halfHeight + r);
+  shape.quadraticCurveTo(-halfWidth, -halfHeight, -halfWidth + r, -halfHeight);
+  return shape;
+}
+
+function roundedFrameShape(width, height, radius, thickness) {
+  const shape = roundedRectShape(width, height, radius);
+  shape.holes.push(roundedRectShape(
+    width - thickness * 2,
+    height - thickness * 2,
+    Math.max(radius - thickness, 0.002),
+  ));
+  return shape;
+}
+
 function createPhysicalGoggles() {
   const goggles = new THREE.Group();
-  goggles.name = 'Chemical splash goggles';
+  goggles.name = 'Clear indirect-vent chemical splash goggles';
 
-  const gasketMat = new THREE.MeshStandardMaterial({
-    color: 0x162832,
-    roughness: 0.48,
-    metalness: 0.05,
-  });
-  const lensMat = new THREE.MeshPhysicalMaterial({
-    color: 0xbde7f4,
-    roughness: 0.08,
+  // The reference form is a single, wide clear lens with a flexible blue body,
+  // shaped nose bridge, upper indirect vents, and a separate elastic headband.
+  const flexibleFrameMat = new THREE.MeshPhysicalMaterial({
+    color: 0x2f83bc,
+    roughness: 0.22,
     metalness: 0,
     transparent: true,
-    opacity: 0.36,
+    opacity: 0.56,
+    depthWrite: false,
+  });
+  const gasketMat = new THREE.MeshStandardMaterial({
+    color: 0x1c4257,
+    roughness: 0.63,
+    metalness: 0,
+  });
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color: 0xe8f9ff,
+    roughness: 0.045,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.17,
     depthWrite: false,
   });
   const strapMat = new THREE.MeshStandardMaterial({
-    color: 0x274353,
-    roughness: 0.72,
+    color: 0x1b2229,
+    roughness: 0.84,
     metalness: 0,
   });
-  const ventMat = new THREE.MeshStandardMaterial({
-    color: 0x0d1b23,
-    roughness: 0.62,
-  });
-  const highlightMat = new THREE.MeshBasicMaterial({
-    color: 0xe9fbff,
+  const accentMat = new THREE.MeshBasicMaterial({
+    color: 0xd9f8ff,
     transparent: true,
-    opacity: 0.42,
+    opacity: 0.33,
     depthWrite: false,
   });
 
-  // Deliberately modest segment counts: this prop is interactive decoration,
-  // not a hero asset. Sharing each geometry keeps its memory cost low.
-  const ringGeometry = new THREE.TorusGeometry(0.046, 0.0065, 6, 20);
-  const lensGeometry = new THREE.SphereGeometry(0.046, 14, 8);
-  const bridgeGeometry = new THREE.BoxGeometry(0.03, 0.013, 0.017);
-  const ventGeometry = new THREE.CylinderGeometry(0.0032, 0.0032, 0.008, 6);
-  const adjusterGeometry = new THREE.BoxGeometry(0.018, 0.02, 0.024);
-  const highlightGeometry = new THREE.TorusGeometry(0.036, 0.0018, 4, 14, Math.PI * 0.56);
+  // One wide frame is more recognisable as chemical-splash PPE than two round
+  // eye cups. The modest curve/segment counts preserve performance.
+  const gasketGeometry = new THREE.ExtrudeGeometry(
+    roundedFrameShape(0.226, 0.112, 0.028, 0.012),
+    { depth: 0.008, bevelEnabled: true, bevelSize: 0.0015, bevelThickness: 0.0015, bevelSegments: 1, curveSegments: 8 },
+  );
+  const frameGeometry = new THREE.ExtrudeGeometry(
+    roundedFrameShape(0.238, 0.124, 0.032, 0.010),
+    { depth: 0.012, bevelEnabled: true, bevelSize: 0.002, bevelThickness: 0.002, bevelSegments: 1, curveSegments: 8 },
+  );
+  const lensGeometry = new THREE.ShapeGeometry(roundedRectShape(0.210, 0.096, 0.023), 8);
+  const ventGeometry = new THREE.BoxGeometry(0.011, 0.003, 0.005);
+  const adjusterGeometry = new THREE.BoxGeometry(0.018, 0.022, 0.024);
 
-  for (const side of [-1, 1]) {
-    const cup = new THREE.Group();
-    cup.position.x = side * 0.052;
+  const gasket = setShadow(new THREE.Mesh(gasketGeometry, gasketMat));
+  gasket.position.set(0, 0, 0.002);
+  goggles.add(gasket);
 
-    const gasket = setShadow(new THREE.Mesh(ringGeometry, gasketMat));
-    gasket.scale.set(1.22, 0.9, 1);
-    gasket.position.z = 0.012;
-    cup.add(gasket);
+  const frame = setShadow(new THREE.Mesh(frameGeometry, flexibleFrameMat));
+  frame.position.z = 0.009;
+  goggles.add(frame);
 
-    const lens = setShadow(new THREE.Mesh(lensGeometry, lensMat));
-    lens.scale.set(1.17, 0.87, 0.42);
-    lens.position.z = 0.008;
-    cup.add(lens);
+  const lens = new THREE.Mesh(lensGeometry, lensMat);
+  lens.position.z = 0.022;
+  goggles.add(lens);
 
-    const reflection = new THREE.Mesh(highlightGeometry, highlightMat);
-    reflection.scale.set(1.14, 0.84, 1);
-    reflection.rotation.z = side * 0.34;
-    reflection.position.set(side * 0.003, 0.009, 0.028);
-    cup.add(reflection);
-
-    // Two small upper and lower vents give the sealed cup a recognisable
-    // chemical-splash-goggle construction without expensive micro-detail.
-    for (const y of [-0.027, 0.027]) {
-      const vent = setShadow(new THREE.Mesh(ventGeometry, ventMat));
-      vent.rotation.x = Math.PI / 2;
-      vent.position.set(side * 0.044, y, 0.014);
-      cup.add(vent);
-    }
-
-    const adjuster = setShadow(new THREE.Mesh(adjusterGeometry, strapMat));
-    adjuster.position.set(side * 0.064, 0, -0.004);
-    cup.add(adjuster);
-    goggles.add(cup);
+  // A restrained top row communicates indirect ventilation without creating
+  // expensive micro-geometry or breaking the sealed-goggle silhouette.
+  for (const x of [-0.074, -0.037, 0, 0.037, 0.074]) {
+    const vent = setShadow(new THREE.Mesh(ventGeometry, gasketMat));
+    vent.position.set(x, 0.054, 0.022);
+    goggles.add(vent);
   }
 
-  const bridge = setShadow(new THREE.Mesh(bridgeGeometry, gasketMat));
-  bridge.position.set(0, -0.005, 0.012);
-  goggles.add(bridge);
+  for (const side of [-1, 1]) {
+    const adjuster = setShadow(new THREE.Mesh(adjusterGeometry, strapMat));
+    adjuster.position.set(side * 0.131, 0, 0.004);
+    goggles.add(adjuster);
 
-  // The back strap is a single curved tube, making the object legible from both
-  // sides while adding only one mesh.
-  const strapCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.116, 0, -0.005),
-    new THREE.Vector3(-0.122, 0.022, -0.052),
-    new THREE.Vector3(0, 0.034, -0.076),
-    new THREE.Vector3(0.122, 0.022, -0.052),
-    new THREE.Vector3(0.116, 0, -0.005),
+    const reflection = new THREE.Mesh(new THREE.PlaneGeometry(0.042, 0.004), accentMat);
+    reflection.position.set(side * 0.065, 0.026, 0.024);
+    reflection.rotation.z = side * 0.28;
+    goggles.add(reflection);
+  }
+
+  const noseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.032, -0.036, 0.023),
+    new THREE.Vector3(-0.014, -0.050, 0.023),
+    new THREE.Vector3(0, -0.054, 0.023),
+    new THREE.Vector3(0.014, -0.050, 0.023),
+    new THREE.Vector3(0.032, -0.036, 0.023),
   ]);
-  const strap = setShadow(new THREE.Mesh(
-    new THREE.TubeGeometry(strapCurve, 18, 0.0048, 6, false),
+  goggles.add(setShadow(new THREE.Mesh(
+    new THREE.TubeGeometry(noseCurve, 10, 0.0038, 4, false),
+    gasketMat,
+  )));
+
+  const strapCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.139, 0, 0.002),
+    new THREE.Vector3(-0.145, 0.032, -0.052),
+    new THREE.Vector3(0, 0.048, -0.082),
+    new THREE.Vector3(0.145, 0.032, -0.052),
+    new THREE.Vector3(0.139, 0, 0.002),
+  ]);
+  goggles.add(setShadow(new THREE.Mesh(
+    new THREE.TubeGeometry(strapCurve, 18, 0.0055, 6, false),
     strapMat,
-  ));
-  goggles.add(strap);
+  )));
 
   return goggles;
 }
 
 function createWornOverlay(camera) {
   const overlay = new THREE.Group();
-  overlay.name = 'Worn chemical splash goggles';
+  overlay.name = 'Worn clear splash goggles — peripheral view';
   overlay.visible = false;
   camera.add(overlay);
 
-  const frameMat = new THREE.MeshBasicMaterial({
-    color: 0x12232d,
+  // Clear splash goggles are mainly perceived as a narrow gasket at the outer
+  // boundary of vision. This avoids the artificial "HUD mask" look produced by
+  // drawing a complete frame or coloured lens across the centre of the screen.
+  const gasketMat = new THREE.MeshBasicMaterial({
+    color: 0x5e9fc3,
     transparent: true,
-    opacity: 0.7,
+    opacity: 0.34,
     depthTest: false,
     depthWrite: false,
   });
-  const lensMat = new THREE.MeshBasicMaterial({
-    color: 0xbfeafa,
+  const innerEdgeMat = new THREE.MeshBasicMaterial({
+    color: 0x204a60,
     transparent: true,
-    opacity: 0.035,
-    side: THREE.DoubleSide,
-    depthTest: false,
-    depthWrite: false,
-  });
-  const sheenMat = new THREE.MeshBasicMaterial({
-    color: 0xe9fbff,
-    transparent: true,
-    opacity: 0.22,
+    opacity: 0.28,
     depthTest: false,
     depthWrite: false,
   });
 
-  const frameGeometry = new THREE.TorusGeometry(0.125, 0.009, 6, 22);
-  const lensGeometry = new THREE.CircleGeometry(0.123, 22);
-  const bridgeGeometry = new THREE.BoxGeometry(0.054, 0.018, 0.012);
-  const sheenGeometry = new THREE.TorusGeometry(0.101, 0.0024, 4, 16, Math.PI * 0.55);
-
-  for (const side of [-1, 1]) {
-    const lensGroup = new THREE.Group();
-    lensGroup.position.set(side * 0.148, 0.056, -0.36);
-
-    const frame = new THREE.Mesh(frameGeometry, frameMat);
-    frame.scale.set(1.12, 0.82, 1);
-    frame.renderOrder = 20;
-    lensGroup.add(frame);
-
-    const lens = new THREE.Mesh(lensGeometry, lensMat);
-    lens.scale.set(1.08, 0.78, 1);
-    lens.position.z = 0.002;
-    lens.renderOrder = 19;
-    lensGroup.add(lens);
-
-    const sheen = new THREE.Mesh(sheenGeometry, sheenMat);
-    sheen.scale.set(1.08, 0.78, 1);
-    sheen.rotation.z = side * 0.36;
-    sheen.position.set(side * 0.008, 0.018, 0.004);
-    sheen.renderOrder = 21;
-    lensGroup.add(sheen);
-
-    overlay.add(lensGroup);
+  function addEdge(points, radius, material, order) {
+    const curve = new THREE.CatmullRomCurve3(points);
+    const edge = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 12, radius, 4, false),
+      material,
+    );
+    edge.renderOrder = order;
+    overlay.add(edge);
   }
 
-  const bridge = new THREE.Mesh(bridgeGeometry, frameMat);
-  bridge.position.set(0, 0.046, -0.355);
-  bridge.renderOrder = 21;
-  overlay.add(bridge);
+  // The upper frame enters only from the two outer corners. It does not cross
+  // the user's brow or cover the sightline, as a real close-fitting clear lens
+  // frame falls outside normal central attention.
+  addEdge([
+    new THREE.Vector3(-0.67, 0.31, -0.70),
+    new THREE.Vector3(-0.57, 0.35, -0.70),
+    new THREE.Vector3(-0.45, 0.37, -0.70),
+    new THREE.Vector3(-0.31, 0.365, -0.70),
+  ], 0.0060, gasketMat, 20);
+  addEdge([
+    new THREE.Vector3(0.67, 0.31, -0.70),
+    new THREE.Vector3(0.57, 0.35, -0.70),
+    new THREE.Vector3(0.45, 0.37, -0.70),
+    new THREE.Vector3(0.31, 0.365, -0.70),
+  ], 0.0060, gasketMat, 20);
+
+  // The side seals sit beyond the player's working view. Their darker inner
+  // edge gives the frame depth without requiring a tinted fullscreen lens.
+  for (const side of [-1, 1]) {
+    addEdge([
+      new THREE.Vector3(side * 0.66, 0.31, -0.70),
+      new THREE.Vector3(side * 0.70, 0.16, -0.70),
+      new THREE.Vector3(side * 0.705, -0.06, -0.70),
+      new THREE.Vector3(side * 0.66, -0.235, -0.70),
+    ], 0.0066, gasketMat, 20);
+    addEdge([
+      new THREE.Vector3(side * 0.635, 0.27, -0.698),
+      new THREE.Vector3(side * 0.666, 0.10, -0.698),
+      new THREE.Vector3(side * 0.668, -0.08, -0.698),
+      new THREE.Vector3(side * 0.630, -0.205, -0.698),
+    ], 0.0028, innerEdgeMat, 21);
+  }
+
+  // A small, low nose seal is the only central-frame cue. Its position below
+  // the crosshair matches the near-face profile a wearer may notice when they
+  // look down at the bench.
+  addEdge([
+    new THREE.Vector3(-0.078, -0.292, -0.70),
+    new THREE.Vector3(-0.042, -0.326, -0.70),
+    new THREE.Vector3(0, -0.338, -0.70),
+    new THREE.Vector3(0.042, -0.326, -0.70),
+    new THREE.Vector3(0.078, -0.292, -0.70),
+  ], 0.0054, innerEdgeMat, 22);
 
   setLayer(overlay);
   return overlay;
