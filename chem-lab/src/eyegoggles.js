@@ -81,35 +81,45 @@ function createPhysicalGoggles() {
   // The reference form is a single, wide clear lens with a flexible blue body,
   // shaped nose bridge, upper indirect vents, and a separate elastic headband.
   const flexibleFrameMat = new THREE.MeshPhysicalMaterial({
-    color: 0x2f83bc,
-    roughness: 0.22,
+    // Industrial clear polycarbonate: nearly colourless body, cool edge tint,
+    // crisp clearcoat and low roughness rather than an opaque blue rubber look.
+    color: 0xb8d8e6,
+    roughness: 0.12,
     metalness: 0,
+    clearcoat: 0.86,
+    clearcoatRoughness: 0.07,
+    ior: 1.49,
     transparent: true,
-    opacity: 0.56,
+    opacity: 0.44,
     depthWrite: false,
   });
   const gasketMat = new THREE.MeshStandardMaterial({
-    color: 0x1c4257,
-    roughness: 0.63,
+    // The face-contact shroud remains soft and matte, contrasting with the
+    // clear polycarbonate structure without looking like a heavy dark frame.
+    color: 0x465963,
+    roughness: 0.78,
     metalness: 0,
   });
   const lensMat = new THREE.MeshPhysicalMaterial({
-    color: 0xe8f9ff,
-    roughness: 0.045,
+    color: 0xf5fcff,
+    roughness: 0.025,
     metalness: 0,
+    clearcoat: 0.92,
+    clearcoatRoughness: 0.03,
+    ior: 1.49,
     transparent: true,
-    opacity: 0.17,
+    opacity: 0.10,
     depthWrite: false,
   });
   const strapMat = new THREE.MeshStandardMaterial({
-    color: 0x1b2229,
-    roughness: 0.84,
+    color: 0x171b1e,
+    roughness: 0.92,
     metalness: 0,
   });
   const accentMat = new THREE.MeshBasicMaterial({
-    color: 0xd9f8ff,
+    color: 0xf5fdff,
     transparent: true,
-    opacity: 0.33,
+    opacity: 0.16,
     depthWrite: false,
   });
 
@@ -187,81 +197,74 @@ function createPhysicalGoggles() {
 
 function createWornOverlay(camera) {
   const overlay = new THREE.Group();
-  overlay.name = 'Worn clear splash goggles — peripheral view';
+  overlay.name = 'Worn clear splash goggles — natural peripheral view';
   overlay.visible = false;
   camera.add(overlay);
 
-  // Clear splash goggles are mainly perceived as a narrow gasket at the outer
-  // boundary of vision. This avoids the artificial "HUD mask" look produced by
-  // drawing a complete frame or coloured lens across the centre of the screen.
-  const gasketMat = new THREE.MeshBasicMaterial({
-    color: 0x5e9fc3,
+  // A clear industrial goggle lens is effectively invisible in normal use. The
+  // remaining cue is a soft near-face seal at the extreme outer field of view,
+  // not a coloured visor, a rectangular HUD, or a prominent central bridge.
+  const outerSealMat = new THREE.MeshBasicMaterial({
+    color: 0x9dc9dc,
     transparent: true,
-    opacity: 0.34,
+    opacity: 0.15,
     depthTest: false,
     depthWrite: false,
   });
-  const innerEdgeMat = new THREE.MeshBasicMaterial({
-    color: 0x204a60,
+  const noseSealMat = new THREE.MeshBasicMaterial({
+    color: 0x617982,
     transparent: true,
-    opacity: 0.28,
+    opacity: 0.15,
     depthTest: false,
     depthWrite: false,
   });
 
-  function addEdge(points, radius, material, order) {
+  function addSeal(points, radius, material, order) {
     const curve = new THREE.CatmullRomCurve3(points);
-    const edge = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 12, radius, 4, false),
+    const seal = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 10, radius, 4, false),
       material,
     );
-    edge.renderOrder = order;
-    overlay.add(edge);
+    seal.renderOrder = order;
+    overlay.add(seal);
   }
 
-  // The upper frame enters only from the two outer corners. It does not cross
-  // the user's brow or cover the sightline, as a real close-fitting clear lens
-  // frame falls outside normal central attention.
-  addEdge([
-    new THREE.Vector3(-0.67, 0.31, -0.70),
-    new THREE.Vector3(-0.57, 0.35, -0.70),
-    new THREE.Vector3(-0.45, 0.37, -0.70),
-    new THREE.Vector3(-0.31, 0.365, -0.70),
-  ], 0.0060, gasketMat, 20);
-  addEdge([
-    new THREE.Vector3(0.67, 0.31, -0.70),
-    new THREE.Vector3(0.57, 0.35, -0.70),
-    new THREE.Vector3(0.45, 0.37, -0.70),
-    new THREE.Vector3(0.31, 0.365, -0.70),
-  ], 0.0060, gasketMat, 20);
+  // Only the inner tips of these outer-corner segments enter the visible frame.
+  // Their distant placement makes the seals feel attached to the face instead
+  // of hovering in front of the player.
+  addSeal([
+    new THREE.Vector3(-0.73, 0.27, -0.78),
+    new THREE.Vector3(-0.66, 0.31, -0.78),
+    new THREE.Vector3(-0.58, 0.335, -0.78),
+    new THREE.Vector3(-0.49, 0.338, -0.78),
+  ], 0.0039, outerSealMat, 20);
+  addSeal([
+    new THREE.Vector3(0.73, 0.27, -0.78),
+    new THREE.Vector3(0.66, 0.31, -0.78),
+    new THREE.Vector3(0.58, 0.335, -0.78),
+    new THREE.Vector3(0.49, 0.338, -0.78),
+  ], 0.0039, outerSealMat, 20);
 
-  // The side seals sit beyond the player's working view. Their darker inner
-  // edge gives the frame depth without requiring a tinted fullscreen lens.
+  // One fine curve per side replaces the former doubled dark edge. The lower
+  // endpoint remains beyond the active work area and stays visually quiet.
   for (const side of [-1, 1]) {
-    addEdge([
-      new THREE.Vector3(side * 0.66, 0.31, -0.70),
-      new THREE.Vector3(side * 0.70, 0.16, -0.70),
-      new THREE.Vector3(side * 0.705, -0.06, -0.70),
-      new THREE.Vector3(side * 0.66, -0.235, -0.70),
-    ], 0.0066, gasketMat, 20);
-    addEdge([
-      new THREE.Vector3(side * 0.635, 0.27, -0.698),
-      new THREE.Vector3(side * 0.666, 0.10, -0.698),
-      new THREE.Vector3(side * 0.668, -0.08, -0.698),
-      new THREE.Vector3(side * 0.630, -0.205, -0.698),
-    ], 0.0028, innerEdgeMat, 21);
+    addSeal([
+      new THREE.Vector3(side * 0.73, 0.27, -0.78),
+      new THREE.Vector3(side * 0.755, 0.10, -0.78),
+      new THREE.Vector3(side * 0.754, -0.10, -0.78),
+      new THREE.Vector3(side * 0.700, -0.265, -0.78),
+    ], 0.0042, outerSealMat, 20);
   }
 
-  // A small, low nose seal is the only central-frame cue. Its position below
-  // the crosshair matches the near-face profile a wearer may notice when they
-  // look down at the bench.
-  addEdge([
-    new THREE.Vector3(-0.078, -0.292, -0.70),
-    new THREE.Vector3(-0.042, -0.326, -0.70),
-    new THREE.Vector3(0, -0.338, -0.70),
-    new THREE.Vector3(0.042, -0.326, -0.70),
-    new THREE.Vector3(0.078, -0.292, -0.70),
-  ], 0.0054, innerEdgeMat, 22);
+  // The nose contact is lower, shorter, thinner and more transparent than the
+  // previous bridge; it acts as a natural near-focus silhouette only on glance.
+  addSeal([
+    new THREE.Vector3(-0.045, -0.337, -0.78),
+    new THREE.Vector3(-0.022, -0.357, -0.78),
+    new THREE.Vector3(0, -0.363, -0.78),
+    new THREE.Vector3(0.022, -0.357, -0.78),
+    new THREE.Vector3(0.045, -0.337, -0.78),
+  ], 0.0033, noseSealMat, 21);
 
   setLayer(overlay);
   return overlay;
