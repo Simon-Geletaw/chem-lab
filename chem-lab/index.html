@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -41,7 +41,7 @@
       <div id="start-card">
         <h1 id="start-title">Chemistry Lab</h1>
         <p id="overlay-enter">Click anywhere to enter the lab</p>
-        <p id="overlay-keys" class="keys"><b>W A S D</b> walk &nbsp;•&nbsp; <b>Mouse</b> look &nbsp;•&nbsp; <b>ESC</b> release cursor &nbsp;•&nbsp; <b>R</b> empty flask</p>
+        <p id="overlay-keys" class="keys"><b>W A S D</b> walk &nbsp;â€¢&nbsp; <b>Mouse</b> look &nbsp;â€¢&nbsp; <b>ESC</b> release cursor &nbsp;â€¢&nbsp; <b>R</b> empty flask</p>
         <div id="overlay-buttons">
           <button id="enter-btn">Enter Lab</button>
           <button id="tour-btn">&#9654; Start Guided Tour</button>
@@ -67,14 +67,14 @@
       <button id="btn-right" class="dpad">&#9654;</button>
     </div>
     <div id="info-panel">
-      <button id="info-close">✕</button>
+      <button id="info-close">âœ•</button>
       <h2 id="info-title"></h2>
       <p id="info-description"></p>
     </div>
     <script type="module" src="/src/main.js"></script>
 
     <style>
-      /* ===== Chem Lab UI · Deep Blue Glass + Sky (brand #054b89) ===== */
+      /* ===== Chem Lab UI Â· Deep Blue Glass + Sky (brand #054b89) ===== */
 
       /* --- startup loading screen: static markup, paints before any JS --- */
       #loading-screen {
@@ -228,18 +228,32 @@
         #loading-bar::after, #loading-logo, #flask-liquid, .flask-bubble, #loading-title { animation: none; }
       }
 
+      /* The lab canvas is the permanent startup backdrop. The start card keeps
+         its existing content and layout, but fades in only after a rendered
+         game frame is availableâ€”never over a white page. */
+      html, body { background: #071018; }
       #start-overlay {
         position: fixed;
         inset: 0;
-        display: none;                  /* revealed by loader.done() once the lab is ready */
+        display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(214, 229, 243, 0.72);
+        background: rgba(4, 16, 34, 0.42);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.35s ease, visibility 0s linear 0.35s;
         z-index: 20;
         cursor: pointer;
         font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
         color: #0a2b4d;
         text-align: center;
+      }
+      #start-overlay.ready {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 0.35s ease;
       }
       #start-card {
         position: relative;
@@ -333,7 +347,7 @@
         z-index: 15;
         pointer-events: none;
       }
-      /* Travel overlay: a quick "Opening <sim> simulation…" beat before a
+      /* Travel overlay: a quick "Opening <sim> simulationâ€¦" beat before a
          simulation-door press routes to its destination (simDoors.js). */
       #travel-overlay[hidden] { display: none; }
       #travel-overlay {
@@ -562,3 +576,4 @@
     </style>
   </body>
 </html>
+

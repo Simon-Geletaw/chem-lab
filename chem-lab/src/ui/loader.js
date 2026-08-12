@@ -1,9 +1,9 @@
-// ui/loader.js — drives the startup loading screen (static markup in
+﻿// ui/loader.js â€” drives the startup loading screen (static markup in
 // index.html, so it paints before any JavaScript runs).
 //
-//   set(percent, message) — report progress (monotonic, never goes back)
-//   done()                — everything loaded: fade the screen, show the start menu
-//   fail(message)         — WebGL missing or startup threw: a friendly error card
+//   set(percent, message) â€” report progress (monotonic, never goes back)
+//   done()                â€” everything loaded: fade the screen, show the start menu
+//   fail(message)         â€” WebGL missing or startup threw: a friendly error card
 //                           with a Reload button instead of a silently dead page
 
 export function createLoader() {
@@ -28,18 +28,23 @@ export function createLoader() {
 
   function done() {
     set(100, 'Ready!');
-    screen.classList.add('done');
-    // After the fade, hand the screen over to the start overlay (pause menu),
-    // then detach the loading screen entirely so the browser can reclaim its
-    // nodes and any backing memory — it is never needed again.
-    setTimeout(() => {
-      screen.style.display = 'none';
-      if (screen.parentNode) screen.parentNode.removeChild(screen);
-      const overlay = document.getElementById('start-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    }, 500);
-  }
+    const overlay = document.getElementById('start-overlay');
 
+    // The game animation loop is already running. Waiting for two painted
+    // frames guarantees that the completed lab is present on the canvas before
+    // the loading layer fades and the existing start page becomes visible.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (overlay) overlay.classList.add('ready');
+        screen.classList.add('done');
+
+        // The faded loading screen is no longer needed after its transition.
+        window.setTimeout(() => {
+          if (screen.parentNode) screen.parentNode.removeChild(screen);
+        }, 360);
+      });
+    });
+  }
   function fail(message) {
     screen.classList.add('error');
     if (status) status.textContent = message;
@@ -52,7 +57,8 @@ export function createLoader() {
   return { set, done, fail };
 }
 
-// yieldToPaint() — one macrotask lets the browser actually paint the loading
+// yieldToPaint() â€” one macrotask lets the browser actually paint the loading
 // screen (and visibly move the bar) before the heavy synchronous world-build
 // blocks the main thread.
 export const yieldToPaint = () => new Promise((resolve) => setTimeout(resolve, 30));
+
