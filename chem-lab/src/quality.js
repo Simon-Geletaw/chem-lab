@@ -1,30 +1,30 @@
-// quality.js — performance settings, FPS meter, and auto-degrade.
+﻿// quality.js â€” performance settings, FPS meter, and auto-degrade.
 //
 // One plain object drives every performance knob in the app. High is the
 // default; LOW is entered two ways:
 //   1. explicitly: open the app with ?quality=low (client demo laptops)
 //   2. automatically: the monitor watches real FPS and drops ONCE if the
 //      machine can't hold 45 fps for 3 consecutive seconds.
-// Pure DOM + numbers — no Three.js import, so effects can import this without
+// Pure DOM + numbers â€” no Three.js import, so effects can import this without
 // creating a dependency cycle.
 
 export const quality = {
   level: 'high',        // 'high' | 'low'
   particleScale: 1,     // multiplies every effect's particle count
   effectLights: true,   // fire/flash may add real light to the room
-  pixelRatioCap: 1.5,   // never render more pixels than this × screen
+  pixelRatioCap: 1.5,   // never render more pixels than this Ã— screen
 
   // --- render budget (memory/perf): the single biggest hidden cost is the
-  // framebuffer, which scales with WINDOW SIZE × PIXEL RATIO, not with the
+  // framebuffer, which scales with WINDOW SIZE Ã— PIXEL RATIO, not with the
   // number of objects. On a big or high-DPI screen that one buffer can dwarf
   // everything else in the scene. We cap it explicitly so a 4K monitor does
   // not balloon memory, while a normal screen looks unchanged.
-  maxRenderPixels: 2073600,   // ≈ 1920×1080 (a 1440p screen → ~1.0 ratio, 4K → below it)
-  maxBloomWidth: 1280         // bloom is blur — it never needs more than this wide
+  maxRenderPixels: 2073600,   // â‰ˆ 1920Ã—1080 (a 1440p screen â†’ ~1.0 ratio, 4K â†’ below it)
+  maxBloomWidth: 1280         // bloom is blur â€” it never needs more than this wide
 };
 
-// effectivePixelRatio() — the pixel ratio the renderer should run at so that
-//   (width·ratio) × (height·ratio) ≤ maxRenderPixels,
+// effectivePixelRatio() â€” the pixel ratio the renderer should run at so that
+//   (widthÂ·ratio) Ã— (heightÂ·ratio) â‰¤ maxRenderPixels,
 // while never exceeding the device DPR or the quality pixelRatioCap.
 // Used by main.js before the WebGLRenderer is created.
 export function effectivePixelRatio() {
@@ -45,8 +45,8 @@ if (new URLSearchParams(location.search).get('quality') === 'low') {
   applyLowPreset();
 }
 
-// Small FPS/frame-time readout (top-left). Press P to show/hide.
-// "worst" is the LONGEST frame in the window — a smooth 60 fps average can
+// Small FPS/frame-time readout (top-left). Hidden by default; press P to show/hide.
+// "worst" is the LONGEST frame in the window â€” a smooth 60 fps average can
 // still hide a single 80 ms hitch (e.g. a shader compile), and worst-ms is
 // exactly the number that exposes it.
 export function createFpsMeter() {
@@ -58,7 +58,10 @@ export function createFpsMeter() {
     'border-radius:6px;pointer-events:none;';
   document.body.appendChild(el);
 
-  let visible = true;
+  // Keep diagnostic UI out of the player experience. It is available on demand
+  // through P for developers, teachers, and troubleshooting sessions.
+  let visible = false;
+  el.style.display = 'none';
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'KeyP') return;
     if (e.target.closest('input, textarea')) return;   // typing, not toggling
@@ -80,7 +83,7 @@ export function createFpsMeter() {
         const avgMs = ((acc / frames) * 1000).toFixed(1);
         const worstMs = Math.round(worst * 1000);
         el.textContent =
-          `${fps} fps · ${avgMs} ms · worst ${worstMs} ms · ${quality.level}`;
+          `${fps} fps Â· ${avgMs} ms Â· worst ${worstMs} ms Â· ${quality.level}`;
         frames = 0;
         acc = 0;
         worst = 0;
@@ -118,10 +121,11 @@ export function createQualityMonitor(renderer, scene) {
         applyLowPreset();
         renderer.setPixelRatio(1);
         renderer.shadowMap.enabled = false;
-        // Materials cache their shadow shader variant — poke them to rebuild.
+        // Materials cache their shadow shader variant â€” poke them to rebuild.
         scene.traverse((n) => { if (n.material) n.material.needsUpdate = true; });
         console.info('quality: dropped to LOW (fps < 45 for 3 s)');
       }
     }
   };
 }
+
