@@ -327,7 +327,9 @@ export function createEyegoggles(scene, camera, interactableObjects, hud) {
 
   function setOn(value) {
     on = Boolean(value);
-    box.visible = !on;
+    // The dispenser remains at the PPE station; only the displayed pair is
+    // removed while the player is wearing it, then restored when returned.
+    physicalGoggles.visible = !on;
     overlay.visible = on;
     hud.setGoggles(on);
   }
