@@ -1,6 +1,6 @@
 [
-  { "name": "chem", "dir": "chem-lab", "port": 5173 },
-  { "name": "bio", "dir": "biology-lab", "port": 5174 },
-  { "name": "math", "dir": "math-lab", "port": 5175 },
-  { "name": "physics", "dir": "physics-lab", "port": 5176 }
+  { "name": "chem", "dir": "chem-lab", "port": 5173, "path": "/c/" },
+  { "name": "bio", "dir": "biology-lab", "port": 5174, "path": "/b/" },
+  { "name": "math", "dir": "math-lab", "port": 5175, "path": "/m/" },
+  { "name": "physics", "dir": "physics-lab", "port": 5176, "path": "/p/" }
 ]

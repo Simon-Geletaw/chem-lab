@@ -29,7 +29,7 @@ for (const lab of labs) {
     continue;
   }
   const script = buildMode ? 'build' : 'dev';
-  console.log(`${pad(lab.name, 6)} starting npm run ${script} → http://localhost:${lab.port}`);
+  console.log(`${pad(lab.name, 6)} starting npm run ${script} → http://localhost:${lab.port}${lab.path || '/'}`);
   const cliArgs = buildMode
     ? []
     : ['--', '--port', String(lab.port), '--strictPort'];
