@@ -114,7 +114,6 @@ export function createExperimentTable(scene, interactableObjects, colliders) {
   const length = N * PITCH + 0.5;
   const bench = createBench(0, 0, 0, length);
   group.add(bench);
-  colliders.push(new THREE.Box3().setFromObject(bench));
 
   entries.forEach((entry, i) => {
     const card = new THREE.Group();
@@ -168,6 +167,7 @@ export function createExperimentTable(scene, interactableObjects, colliders) {
   scene.add(group);
   interactableObjects.push(group);
   group.updateMatrixWorld(true);
+  colliders.push(new THREE.Box3().setFromObject(bench));
 
   // Precompute each card's WORLD position once (local x runs along world z
   // after the group's rotation) so open() can do a plain 2D distance check.
