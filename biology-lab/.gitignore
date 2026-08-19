@@ -1,0 +1,30 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.md
+.vercel
+# but our engineering documentation (docs/) MUST be versioned - re-include it,
+# while keeping every other .md file ignored (this repo documents changes there).
+!docs/
+!docs/*.md
+!docs/**/*.md

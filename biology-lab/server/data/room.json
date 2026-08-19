@@ -1,0 +1,23 @@
+{
+  "name": "Biology Lab",
+  "tagline": "Cells & ecosystems",
+  "accent": "#2e8b57",
+  "backHref": "http://localhost:5173",
+  "backLabel": "Back to the Chemistry Lab",
+  "stations": [
+    {
+      "label": "BIOLOGY LAB",
+      "subtitle": "Cells & ecosystems",
+      "x": 0,
+      "z": -1.5,
+      "rotationY": 0
+    },
+    {
+      "label": "MICROSCOPY",
+      "subtitle": "Observe specimens",
+      "x": -6.55,
+      "z": 2.5,
+      "rotationY": 0
+    }
+  ]
+}
