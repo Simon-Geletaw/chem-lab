@@ -1,0 +1,11 @@
+{
+  "name": "Physics Lab",
+  "tagline": "Forces, motion & energy",
+  "accent": "#b3541e",
+  "backHref": "http://localhost:5173",
+  "backLabel": "Back to the Chemistry Lab",
+  "stations": [
+    { "label": "PHYSICS LAB", "subtitle": "Forces, motion & energy", "x": 0, "z": -1.5, "rotationY": 0 },
+    { "label": "OPTICS", "subtitle": "Light & lenses", "x": -6.55, "z": 2.5, "rotationY": 0 }
+  ]
+}

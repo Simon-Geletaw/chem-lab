@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" /></noscript>
+    <title>Physics Lab</title>
+  </head>
+  <body>
+    <div id="loading-screen" role="status" aria-live="polite">
+      <div id="loading-card">
+        <h1 id="loading-title">Physics Lab</h1>
+        <p id="loading-status">Loading&hellip;</p>
+        <div id="loading-track"><div id="loading-bar"></div></div>
+        <p id="loading-pct">0%</p>
+        <button id="loading-reload" hidden>Reload</button>
+      </div>
+    </div>
+    <div id="start-overlay">
+      <div id="start-card">
+        <h1 id="start-title">Physics Lab</h1>
+        <p id="overlay-enter">Click anywhere to enter the lab</p>
+        <p id="overlay-keys" class="keys"><b>W A S D</b> walk&nbsp;&nbsp;<b>Mouse</b> look&nbsp;&nbsp;<b>E</b> interact&nbsp;&nbsp;<b>ESC</b> release cursor</p>
+      </div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="action-hint"></div>
+    <div id="travel-overlay" hidden>
+      <div id="travel-card">
+        <div id="travel-spinner"></div>
+        <p id="travel-text">Opening&hellip;</p>
+      </div>
+    </div>
+    <div id="mobile-controls">
+      <button id="btn-up" class="dpad">&#9650;</button>
+      <button id="btn-left" class="dpad">&#9664;</button>
+      <button id="btn-down" class="dpad">&#9660;</button>
+      <button id="btn-right" class="dpad">&#9654;</button>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+
+    <style>
+      html, body { margin: 0; background: #071018; }
+      #loading-screen {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(180deg, #eef6fd 0%, #cfe2f2 100%);
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        transition: opacity 0.45s ease;
+      }
+      #loading-card {
+        position: relative;
+        width: min(420px, calc(100vw - 40px));
+        padding: 36px 44px;
+        border-radius: 18px;
+        text-align: center;
+        background: rgba(206, 225, 242, 0.94);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        backdrop-filter: blur(20px) saturate(140%);
+        border: 1px solid rgba(10, 43, 77, 0.20);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 28px 80px rgba(0, 0, 0, 0.65);
+        color: #0a2b4d;
+      }
+      #loading-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 15%;
+        right: 15%;
+        height: 2px;
+        border-radius: 2px;
+        background: #4da3ff;
+        opacity: 0.85;
+      }
+      #loading-title {
+        margin: 0 0 10px;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: #0a2b4d;
+      }
+      #loading-status { margin: 0 0 16px; min-height: 20px; font-size: 14px; color: #1c3a5a; }
+      #loading-track {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(77, 163, 255, 0.14);
+        overflow: hidden;
+      }
+      #loading-bar {
+        position: relative;
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: #4da3ff;
+        box-shadow: 0 0 12px rgba(77, 163, 255, 0.6);
+        transition: width 0.35s ease;
+        overflow: hidden;
+      }
+      #loading-bar::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+        transform: translateX(-100%);
+        animation: load-shimmer 1.2s ease infinite;
+      }
+      @keyframes load-shimmer { to { transform: translateX(100%); } }
+      #loading-pct { margin: 10px 0 0; font-size: 13px; color: #45607c; font-variant-numeric: tabular-nums; }
+      #loading-reload {
+        margin-top: 18px;
+        padding: 10px 26px;
+        border-radius: 10px;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        background: #054b89;
+        color: #eaf4ff;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      #loading-screen.done { opacity: 0; pointer-events: none; }
+      #loading-screen.error #loading-track,
+      #loading-screen.error #loading-pct { display: none; }
+      #loading-screen.error #loading-status { color: #ff6b7a; }
+      @media (prefers-reduced-motion: reduce) {
+        #loading-screen, #loading-bar { transition: none; }
+        #loading-bar::after { animation: none; }
+      }
+
+      #start-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 16, 34, 0.42);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.35s ease, visibility 0s linear 0.35s;
+        z-index: 20;
+        cursor: pointer;
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        color: #0a2b4d;
+        text-align: center;
+      }
+      #start-overlay.ready {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 0.35s ease;
+      }
+      #start-card {
+        position: relative;
+        padding: 40px 52px;
+        border-radius: 20px;
+        background: rgba(206, 225, 242, 0.94);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        backdrop-filter: blur(20px) saturate(140%);
+        border: 1px solid rgba(10, 43, 77, 0.20);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 28px 80px rgba(0, 0, 0, 0.65);
+      }
+      #start-card h1 {
+        margin: 0 0 12px;
+        font-family: 'Space Grotesk', 'Inter', sans-serif;
+        font-size: 46px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        color: #0a2b4d;
+        text-shadow: 0 0 30px rgba(77, 163, 255, 0.28);
+      }
+      #start-card p { margin: 4px 0; font-size: 16px; font-weight: 500; color: #1c3a5a; }
+      #start-card .keys { font-size: 14px; color: #45607c; margin-top: 18px; letter-spacing: 0.3px; }
+      #start-card .keys b {
+        color: #0a2b4d;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 5px;
+        background: rgba(10, 43, 77, 0.08);
+        border: 1px solid rgba(10, 43, 77, 0.22);
+        font-family: 'Inter', sans-serif;
+      }
+
+      #crosshair {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 8px;
+        height: 8px;
+        margin: -4px 0 0 -4px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 0 0 2px rgba(77, 163, 255, 0.55), 0 0 10px rgba(77, 163, 255, 0.7);
+        z-index: 15;
+        pointer-events: none;
+      }
+      #action-hint {
+        display: none;
+        position: fixed;
+        top: 56%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 18px;
+        border-radius: 10px;
+        background: rgba(4, 16, 34, 0.88);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        backdrop-filter: blur(14px) saturate(140%);
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+        color: #eaf4ff;
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        z-index: 15;
+        pointer-events: none;
+      }
+
+      #travel-overlay[hidden] { display: none; }
+      #travel-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 16, 34, 0.72);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+        backdrop-filter: blur(18px) saturate(140%);
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        z-index: 35;
+        pointer-events: none;
+      }
+      #travel-overlay.show { opacity: 1; }
+      #travel-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 30px;
+        border-radius: 14px;
+        background: rgba(206, 225, 242, 0.95);
+        border: 1px solid rgba(10, 43, 77, 0.25);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        color: #0a2b4d;
+        font-family: 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+        font-weight: 600;
+        font-size: 17px;
+      }
+      #travel-spinner {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 3px solid rgba(10, 43, 77, 0.2);
+        border-top-color: #0a63ad;
+        animation: travel-spin 0.8s linear infinite;
+      }
+      @keyframes travel-spin { to { transform: rotate(360deg); } }
+
+      #mobile-controls {
+        display: none;
+        position: fixed;
+        left: 18px;
+        bottom: 18px;
+        z-index: 15;
+        grid-template-columns: repeat(3, 64px);
+        grid-template-rows: repeat(2, 64px);
+        gap: 8px;
+      }
+      #btn-up    { grid-column: 2; grid-row: 1; }
+      #btn-left  { grid-column: 1; grid-row: 2; }
+      #btn-down  { grid-column: 2; grid-row: 2; }
+      #btn-right { grid-column: 3; grid-row: 2; }
+      .dpad {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        border: 1px solid rgba(77, 163, 255, 0.35);
+        background: rgba(4, 16, 34, 0.88);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        color: #eaf4ff;
+        font-size: 22px;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .dpad:active { background: #054b89; color: #eaf4ff; }
+    </style>
+  </body>
+</html>
