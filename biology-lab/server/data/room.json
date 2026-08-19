@@ -2,7 +2,7 @@
   "name": "Biology Lab",
   "tagline": "Cells & ecosystems",
   "accent": "#2e8b57",
-  "backHref": "http://localhost:5173",
+  "backHref": "/c",
   "backLabel": "Back to the Chemistry Lab",
   "stations": [
     {

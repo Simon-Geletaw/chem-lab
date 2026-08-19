@@ -2,10 +2,22 @@
   "name": "Mathematics Lab",
   "tagline": "Numbers, shapes & equations",
   "accent": "#1f6fd6",
-  "backHref": "http://localhost:5173",
+  "backHref": "/c",
   "backLabel": "Back to the Chemistry Lab",
   "stations": [
-    { "label": "MATHEMATICS LAB", "subtitle": "Numbers, shapes & equations", "x": 0, "z": -1.5, "rotationY": 0 },
-    { "label": "GEOMETRY", "subtitle": "Shapes & proofs", "x": -6.55, "z": 2.5, "rotationY": 0 }
+    {
+      "label": "MATHEMATICS LAB",
+      "subtitle": "Numbers, shapes & equations",
+      "x": 0,
+      "z": -1.5,
+      "rotationY": 0
+    },
+    {
+      "label": "GEOMETRY",
+      "subtitle": "Shapes & proofs",
+      "x": -6.55,
+      "z": 2.5,
+      "rotationY": 0
+    }
   ]
 }

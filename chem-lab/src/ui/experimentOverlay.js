@@ -190,7 +190,7 @@ export function createExperimentOverlay(player) {
       currentEntry = entry;
       image.style.display = '';
       image.alt = entry.title;   // dynamic alt text from the JSON entry
-      image.src = entry.image;
+      image.src = import.meta.env.BASE_URL + String(entry.image || '').replace(/^\//, '');
       title.textContent = entry.title;
       subtitle.textContent = entry.subtitle;
       description.textContent = entry.description;

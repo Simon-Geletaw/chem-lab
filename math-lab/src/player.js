@@ -31,12 +31,15 @@ export function createPlayer(camera) {
   overlay.addEventListener('click', () => {
     player.enter();
   });
-  // The pause-menu "Enter Lab / Resume" button — stopPropagation so the
-  // overlay's click-anywhere handler doesn't double-fire.
-  document.getElementById('enter-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    player.enter();
-  });
+  // The pause-menu "Enter Lab / Resume" button (chemistry lab only) —
+  // stopPropagation so the overlay's click-anywhere handler doesn't double-fire.
+  const enterBtn = document.getElementById('enter-btn');
+  if (enterBtn) {
+    enterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      player.enter();
+    });
+  }
   controls.addEventListener('lock', () => {
     overlay.style.display = 'none';
     crosshair.style.display = 'block';
@@ -49,7 +52,7 @@ export function createPlayer(camera) {
     crosshair.style.display = 'none';
     // Esc = pause: flip the start screen into a pause screen.
     document.getElementById('start-title').textContent = 'Paused';
-    document.getElementById('enter-btn').textContent = 'Resume';
+    if (enterBtn) enterBtn.textContent = 'Resume';
     unlockTime = performance.now();   // ignore the Esc that JUST paused
   });
 

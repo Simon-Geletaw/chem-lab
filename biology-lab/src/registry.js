@@ -32,9 +32,9 @@ function validate(d) {
   if (!/^#[0-9a-fA-F]{6}$/.test(d.accent)) {
     throw new Error(`room.json has a bad accent "${d.accent}" — use #rrggbb`);
   }
-  if (typeof d.backHref !== 'string' || !/^https?:\/\/\S+$/.test(d.backHref)) {
-    throw new Error(`room.json backHref "${d.backHref}" must be a http(s) URL`);
-  }
+if (typeof d.backHref !== 'string' || !/^(https?:\/\/\S+|\/\S*)$/.test(d.backHref)) {
+      throw new Error(`room.json backHref "${d.backHref}" — use a http(s) URL or a path like "/c"`);
+    }
   if (!Array.isArray(d.stations) || d.stations.length === 0) {
     throw new Error('room.json must have a non-empty stations[] array');
   }

@@ -409,7 +409,7 @@ export function createRoom(scene, interactableObjects) {
   // real room window.
   const windowGltf = new GLTFLoader();
   windowGltf.load(
-    '/Models/window.glb',
+    `${import.meta.env.BASE_URL}Models/window.glb`,
     (gltf) => {
       const win = gltf.scene;
       // NON-UNIFORM scale with one size per axis, measured from the model's
@@ -467,7 +467,7 @@ export function createRoom(scene, interactableObjects) {
       scene.add(win);
     },
     undefined,
-    (err) => console.error('FAILED to load /Models/window.glb', err)
+    (err) => console.error('FAILED to load window.glb', err)
   );
 
   // Sky visible through the glass: the walls fully enclose the room, so this
@@ -488,7 +488,7 @@ export function createRoom(scene, interactableObjects) {
   // AIT logo on the wall where the second window used to be (z = -2.5).
   // The PNG is TRANSPARENT (no background), so it is drawn straight onto the
   // wall - no frame behind it - and the wall paint shows through empty pixels.
-  const logoTex = new THREE.TextureLoader().load('/Logo/AIT%20logo%20.png');
+  const logoTex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}Logo/AIT%20logo%20.png`);
   logoTex.colorSpace = THREE.SRGBColorSpace;
   const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true });
   const logo = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.96), logoMat);

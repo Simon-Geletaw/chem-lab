@@ -82,8 +82,8 @@ function validate(d) {
     if (!e.image || typeof e.image !== 'string' || !e.image.startsWith('/')) {
       throw new Error(`Experiment "${e.id}" needs an image path starting with "/"`);
     }
-    if (e.href !== '' && !/^https?:\/\/\S+$/.test(e.href)) {
-      throw new Error(`Experiment "${e.id}" has a bad href "${e.href}" — use a http(s) URL or ""`);
+    if (e.href !== '' && !/^(https?:\/\/\S+|\/\S*)$/.test(e.href)) {
+      throw new Error(`Experiment "${e.id}" has a bad href "${e.href}" — use a http(s) URL, a path like "/b", or ""`);
     }
     if (e.target !== '_self' && e.target !== '_blank') {
       throw new Error(`Experiment "${e.id}" target must be "_self" or "_blank"`);

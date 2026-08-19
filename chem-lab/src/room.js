@@ -348,8 +348,9 @@ export function createRoom(scene, interactableObjects) {
   // ~0.8 m, the top at ~2.3 m. Placed at z = +2.5 so it mirrors the AIT logo
   // at z = -2.5: the two halves of the wall read balanced.
   const windowGltf = new GLTFLoader();
+  const glbUrl = `${import.meta.env.BASE_URL}Models/window.glb`;
   windowGltf.load(
-    '/Models/window.glb',
+    glbUrl,
     (gltf) => {
       const win = gltf.scene;
       // 1.5 m tall (0.8..2.3 m). The model ships ~80 units tall, so the
@@ -371,7 +372,7 @@ export function createRoom(scene, interactableObjects) {
       scene.add(win);
     },
     undefined,
-    (err) => console.error('FAILED to load /Models/window.glb', err)
+    (err) => console.error('FAILED to load window.glb', err)
   );
 
   // Sky visible through the glass: the room is fully enclosed (no holes in the
@@ -391,7 +392,7 @@ export function createRoom(scene, interactableObjects) {
   // AIT logo on the wall where the second window used to be (z = -2.5).
   // The PNG is TRANSPARENT (no background), so it is drawn straight onto the
   // wall - no frame behind it - and the wall paint shows through empty pixels.
-  const logoTex = new THREE.TextureLoader().load('/Logo/AIT%20logo%20.png');
+  const logoTex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}Logo/AIT%20logo%20.png`);
   logoTex.colorSpace = THREE.SRGBColorSpace;
   const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, transparent: true });
   const logo = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.96), logoMat);

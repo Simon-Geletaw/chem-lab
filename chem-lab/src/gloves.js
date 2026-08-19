@@ -413,8 +413,8 @@ export function createGloves(scene, camera, interactableObjects) {
     warmupRenderer.render(scene, camera);
     for (const entry of [right, left]) setGloved(entry, false);
   }
-  loadHand(right, '/Models/hand_model.glb');
-  loadHand(left, '/Models/hand_model.glb');
+  loadHand(right, `${import.meta.env.BASE_URL}Models/hand_model.glb`);
+  loadHand(left, `${import.meta.env.BASE_URL}Models/hand_model.glb`);
 
   // Slerp every finger joint toward its pose target. Called each frame; cheap
   // (21 joints x 2 hands). The flexion AXIS is per-pose: relaxed curls about

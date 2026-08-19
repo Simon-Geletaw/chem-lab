@@ -398,20 +398,20 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
 
   // --- Downloaded GLB models ---
   // Burner + beaker now live on the ISLAND BENCH worktop.
-  loadModel(scene, interactableObjects, '/Models/bunsen_burner.glb', { x: 0.3, y: TOP, z: -1.5 }, 0.15, 'Bunsen Burner',
+  loadModel(scene, interactableObjects, `${import.meta.env.BASE_URL}Models/bunsen_burner.glb`, { x: 0.3, y: TOP, z: -1.5 }, 0.15, 'Bunsen Burner',
     'A Bunsen burner is a common piece of laboratory equipment that produces a single open gas flame, used for heating, sterilization, and combustion.');
 
-  loadModel(scene, interactableObjects, '/Models/beaker.glb', { x: -0.3, y: TOP, z: -1.5 }, 0.12, 'Beaker',
+  loadModel(scene, interactableObjects, `${import.meta.env.BASE_URL}Models/beaker.glb`, { x: -0.3, y: TOP, z: -1.5 }, 0.12, 'Beaker',
     'A beaker is a simple container for stirring, mixing and heating liquids commonly used in many laboratories.');
 
   // The folding table becomes a storage table in the back-right corner.
-  loadModel(scene, interactableObjects, '/Models/folding_table.glb', { x: 5, y: 0, z: -4 }, 0.74, 'Folding Table',
+  loadModel(scene, interactableObjects, `${import.meta.env.BASE_URL}Models/folding_table.glb`, { x: 5, y: 0, z: -4 }, 0.74, 'Folding Table',
     'A folding table used as extra storage space. It can be collapsed and stored away when not in use.',
     (tableModel) => {
       colliders.push(new THREE.Box3().setFromObject(tableModel));
     });
 
-  loadModel(scene, interactableObjects, '/Models/FireEx.glb', { x: 6.85, y: 1.0, z: 2 }, 0.55, 'Fire Extinguisher',
+  loadModel(scene, interactableObjects, `${import.meta.env.BASE_URL}Models/FireEx.glb`, { x: 6.85, y: 1.0, z: 2 }, 0.55, 'Fire Extinguisher',
     'A fire extinguisher is a device used to put out small fires. It contains a pressurized agent that is sprayed onto the fire to extinguish it.',
     (model) => {
       // Facing fix: the printed label/instructions live on the model's local +X

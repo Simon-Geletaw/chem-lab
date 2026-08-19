@@ -134,9 +134,9 @@ async function boot() {
   // the Physics sim door and the exit door (decorative canvases, load with
   // the other wall art). Note: the PNG filenames contain spaces â€” encoded as
   // %20 in the URLs, same pattern as the AIT logo (/Logo/AIT%20logo%20.png).
-  createWallSticker(scene, '/sticker/sticker-1-atomic-structure-1.png', -4.55, -4.98);
-  createWallSticker(scene, '/sticker/sticker-2%20c2h205%20.png', 4.55, -4.98);
-  createWallSticker(scene, '/sticker/sticker3%20chemistry%20.png', 0.425, 4.97, Math.PI);
+  createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker-1-atomic-structure-1.png`, -4.55, -4.98);
+  createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker-2%20c2h205%20.png`, 4.55, -4.98);
+  createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker3%20chemistry%20.png`, 0.425, 4.97, Math.PI);
   const player = createPlayer(camera);
   // Experiment-cards table in the front-left corner (between the Biology door
   // and the chemical shelf) â€” cards, images, safety text and destination URLs

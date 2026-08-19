@@ -45,8 +45,8 @@ function validate(d) {
     if (!/^#[0-9a-fA-F]{6}$/.test(s.accent)) {
       throw new Error(`Simulation "${s.id}" has a bad accent "${s.accent}" — use #rrggbb`);
     }
-    if (s.href !== '' && !/^https?:\/\/\S+$/.test(s.href)) {
-      throw new Error(`Simulation "${s.id}" has a bad href "${s.href}" — use a http(s) URL or ""`);
+    if (s.href !== '' && !/^(https?:\/\/\S+|\/\S*)$/.test(s.href)) {
+      throw new Error(`Simulation "${s.id}" has a bad href "${s.href}" — use a http(s) URL, a path like "/b", or ""`);
     }
     if (s.target !== '_self' && s.target !== '_blank') {
       throw new Error(`Simulation "${s.id}" target must be "_self" or "_blank"`);
