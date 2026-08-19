@@ -1,0 +1,12 @@
+{
+  "name": "ait-labs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "build": "node dev.mjs --build",
+    "dev:chem": "node dev.mjs chem",
+    "dev:bio": "node dev.mjs bio"
+  }
+}
