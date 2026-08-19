@@ -15,8 +15,18 @@ import rawData from '../../server/data/experiments.json';
 
 let data = null;
 
+// Shared UI labels for the experiment-card overlay. Every word on the card UI
+// now lives in JSON (experiments.json "ui" block) instead of hard-coded
+// strings — swap a label in the JSON and the overlay follows on next boot.
+const DEFAULT_UI = {
+  safetyLabel: 'Safety first:',
+  openButton: 'Open Experiment',
+  closeButton: 'Close',
+  travelText: 'Opening {title} experiment\u2026'
+};
+
 export async function loadExperiments() {
-  data = rawData;
+  data = { ...rawData, ui: { ...DEFAULT_UI, ...(rawData.ui || {}) } };
   validate(data);
   console.log(`experiments: ${data.experiments.length} experiment cards loaded`);
   return data;
@@ -30,6 +40,10 @@ export function getExperiment(id) {
   return data.experiments.find((e) => e.id === id) || null;
 }
 
+export function getUiLabels() {
+  return data.ui;
+}
+
 // ---------------------------------------------------------------------------
 // validate() — fail LOUDLY at startup instead of silently mid-demo (same
 // philosophy as chemistry/registry.js and simulations/registry.js): a typo'd
@@ -39,6 +53,16 @@ export function getExperiment(id) {
 function validate(d) {
   if (!d || !Array.isArray(d.experiments)) {
     throw new Error('experiments.json must have { experiments: [...] }');
+  }
+
+  const ui = d.ui || {};
+  for (const key of Object.keys(DEFAULT_UI)) {
+    if (ui[key] !== undefined && typeof ui[key] !== 'string') {
+      throw new Error(`experiments.json ui.${key} must be a string`);
+    }
+  }
+  if (ui.travelText !== undefined && !ui.travelText.includes('{title}')) {
+    throw new Error('experiments.json ui.travelText must contain the {title} placeholder');
   }
 
   const ids = new Set();

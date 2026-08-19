@@ -87,7 +87,7 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat) {
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
@@ -265,6 +265,26 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     window.addEventListener('keydown', (event) => {
         if (burnOut) return;   // game-over: block every E/Q interaction during the burn reveal
         if (event.code === 'KeyE' && state === 'EMPTY') {
+            // Experiment cards: E on a card (crosshair) opens its detail
+            // overlay — description, safety chips, then "Open Experiment".
+            // Checked BEFORE the sim doors: the cards stand physically nearer
+            // than the front wall when aiming at them from the corner.
+            const card = expTable.aim(camera);
+            if (card) {
+                const verdict = expTable.open(card, camera);
+                if (verdict === 'far') {
+                    zoneHint('Step closer to the experiment table, then press E to read the card.');
+                } else if (verdict === 'undep') {
+                    warningCard.show({
+                        title: `${card.title} experiment`,
+                        text: 'This experiment has not been deployed yet — check back soon.'
+                    }, 'info');
+                } else if (verdict === 'ok') {
+                    experimentOverlay.show(card);
+                }
+                return;
+            }
+
             // Simulation doors: E on a door (crosshair) routes to its sim —
             // only when standing close enough, and only empty-handed.
             const simDoor = simDoors.aim(camera);
@@ -278,6 +298,22 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                         text: 'This simulation has not been deployed yet — check back soon.'
                     }, 'info');
                 }
+                return;
+            }
+
+            // Exit door: E at the steel door on the front wall (x=3) leaves the
+            // lab. Same gate as the sim doors — close enough and empty-handed.
+            const exitDoor = aimAt('exitDoor', 3);
+            if (exitDoor) {
+                const pos = exitDoor.userData.exitPos;
+                const dx = camera.position.x - pos.x;
+                const dz = camera.position.z - pos.z;
+                if (dx * dx + dz * dz > 1.3 * 1.3) {
+                    zoneHint('Step closer to the exit door, then press E to leave the lab.');
+                    return;
+                }
+                player.beginModal();       // free the mouse without the pause menu
+                exitCard.show();
                 return;
             }
 
@@ -741,35 +777,47 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
             // One ray per frame against a few dozen objects costs nothing.
             if (!hint) return;
             if (state === 'EMPTY') {
-                const simDoor = simDoors.aim(camera);
-                const target = simDoor ? null : aimAt('isBottle', 2.5);
+                const card = expTable.aim(camera);
+                const simDoor = card ? null : simDoors.aim(camera);
+                const exitDoor = simDoor ? null : aimAt('exitDoor', 3);
+                const target = (card || simDoor || exitDoor) ? null : aimAt('isBottle', 2.5);
                 const gbox = target ? null : aimAt('gloveBox', 2.5);
                 const mbox = target || gbox ? null : aimAt('maskBox', 2.5);
-                const coatRack = target || gbox || mbox ? null : aimAt('coat', 2.5);
-                const tbin = target || gbox || mbox || coatRack ? null : aimAt('trashBin', 2.5);
-                if (simDoor) hint.textContent = `[E] Enter ${simDoor.label} simulation`;
+                const gox = target || gbox || mbox ? null : aimAt('goggleBox', 2.5);
+                const coatRack = target || gbox || mbox || gox ? null : aimAt('coat', 2.5);
+                const tbin = target || gbox || mbox || gox || coatRack ? null : aimAt('trashBin', 2.5);
+                if (card) hint.textContent = `[E] View ${card.title} experiment`;
+                else if (simDoor) hint.textContent = `[E] Enter ${simDoor.label} simulation`;
+                else if (exitDoor) hint.textContent = '[E] Leave the lab';
                 else if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
                 else if (gbox) hint.textContent = gloves.on ? 'Used gloves go in the biohazard bin' : '[E] Put on gloves';
                 else if (mbox) hint.textContent = mask.on ? 'Used masks go in the biohazard bin' : '[E] Put on mask';
+                else if (gox) hint.textContent = goggles.on ? '[E] Take off safety goggles' : '[E] Put on safety goggles';
                 else if (coatRack) hint.textContent = coat.on ? '[E] Take off lab coat' : '[E] Put on lab coat';
                 else if (tbin) {
                     hint.textContent = gloves.on
                         ? '[E] Throw away gloves'
                         : mask.on ? '[E] Throw away mask' : 'Nothing to throw away';
                 }
-                hint.style.display = (simDoor || target || gbox || mbox || coatRack || tbin) ? 'block' : 'none';
+                hint.style.display = (card || simDoor || exitDoor || target || gbox || mbox || gox || coatRack || tbin) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask
                 // shows its contents breakdown instead.
                 showAimInfo(target || aimAt('isBeaker', 2.5), beaker);
             } else if (state === 'HOLDING') {
-                const overDoor = simDoors.aim(camera);
-                const overBeaker = overDoor ? null : aimAt('isBeaker', 2);
+                const overCard = expTable.aim(camera);
+                const overSimDoor = overCard ? null : simDoors.aim(camera);
+                const overExitDoor = overSimDoor ? null : aimAt('exitDoor', 3);
+                const overBeaker = overExitDoor ? null : aimAt('isBeaker', 2);
                 const overGloveBox = overBeaker ? null : aimAt('gloveBox', 2.5);
+                const overGoggleBox = overGloveBox ? null : aimAt('goggleBox', 2.5);
                 // The [Q] return notice only appears near the chemical shelf —
                 // exactly where Q actually works (near + facing). Away from the
                 // shelf the hint directs the player there instead.
                 let showHint = false;
-                if (overDoor) {
+                if (overCard) {
+                    hint.textContent = 'Set the bottle down first';     // nothing is carried to an experiment
+                    showHint = true;
+                } else if (overSimDoor || overExitDoor) {
                     hint.textContent = 'Set the bottle down first';     // nothing is carried past a door
                     showHint = true;
                 } else if (overBeaker) {

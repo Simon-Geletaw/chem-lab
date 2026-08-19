@@ -13,6 +13,7 @@ import { createHand } from './hand.js';
 import { createBeaker } from './beaker.js';
 import { createEffectRunner, initEffectPools, prewarmEffects } from './effects/index.js';
 import { createWelcomeCard } from './ui/welcomeCard.js';
+import { createExitCard } from './ui/exitCard.js';
 import { createWarningCard } from './ui/warningCard.js';
 import { createBurnCard } from './ui/burnCard.js';
 import { createPourDialog } from './ui/pourDialog.js';
@@ -116,7 +117,7 @@ async function boot() {
 
   // 4. Build the world (each module adds its own part to the scene)
   const interactableObjects = [];
-  createRoom(scene);
+  createRoom(scene, interactableObjects);
   // Simulation doors (Biology / Mathematics / Physics) on the front wall â€”
   // position, labels, accent colors and E-triggers all come from
   // server/data/simulations.json. Pressing E at a door routes to its sim.
@@ -150,6 +151,14 @@ async function boot() {
   // F2: welcome/help card on load; its Start button reuses player.enter() so the
   // pointer-lock request happens inside the user's real click gesture.
   const welcomeCard = createWelcomeCard(() => player.enter());
+
+  // E at the steel exit door on the front wall leaves the lab. hand.js opens
+  // it in modal mode (mouse freed, no pause menu); "Return to Lab" starts a
+  // fresh session (resetLab below) and re-locks the pointer.
+  const exitCard = createExitCard(() => {
+      resetLab();
+      player.endModal();
+  });
 
   // Pause-menu actions (the start overlay doubles as a pause screen):
   // "Reset Flask" empties the flask so any reaction can be re-run from scratch;
@@ -202,13 +211,13 @@ const goggles = createEyegoggles(scene, camera, interactableObjects, hud);
   const coat = createCoat(scene, camera, interactableObjects, hud, gloves);
   // The biohazard bin: the ONLY way used PPE comes off (dispensers only put ON).
   const trashBin = createTrashBin(scene, interactableObjects);
-  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay);
+  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard);
 
-  // T6 burn game-over: the FIRST bare-handed hazardous contact triggers a
-  // dramatic burn reveal (slow-mo + charring in real time), then a blocking
-  // "Restart Experiment" card. Clicking it resets the whole lab and resumes fresh
-  // at the entrance. hand.onBurn fires the reveal; the card's onRestart runs the reset.
-  const burnCard = createBurnCard(player, hand, () => {
+  // resetLab() — a "fresh session": every lab module back to its start state,
+  // the camera home at the entrance. Shared by the exit card's "Return to Lab"
+  // (E at the exit door) and the T6 burn-game-over "Restart Experiment" card,
+  // so one function defines what "starting over" means.
+  function resetLab() {
       hand.resolveBurn();                    // gripped/fallen bottle -> shelf, hand cleared
       player.enabled = true;                 // re-enable walking (was off during the reveal)
       interactions.setPicking(true);         // re-enable clicks (tiles, panels)
@@ -218,8 +227,16 @@ const goggles = createEyegoggles(scene, camera, interactableObjects, hud);
       if (goggles.on) goggles.remove();                 // chip + overlay handled inside
       beaker.reset();                        // empty the flask
       effectRunner.clear();                  // kill leftover fire/smoke/flash
-      camera.position.set(0, 1.6, 4);        // fresh entranceâ€¦
-      camera.quaternion.identity();          // â€¦facing into the room
+      camera.position.set(0, 1.6, 4);        // fresh entrance
+      camera.quaternion.identity();          // facing into the room
+  }
+
+  // T6 burn game-over: the FIRST bare-handed hazardous contact triggers a
+  // dramatic burn reveal (slow-mo + charring in real time), then a blocking
+  // "Restart Experiment" card. Clicking it resets the whole lab and resumes fresh
+  // at the entrance. hand.onBurn fires the reveal; the card's onRestart runs the reset.
+  const burnCard = createBurnCard(player, hand, () => {
+      resetLab();                            // fresh session (shared with the exit door)
       player.endModal();                     // modal=false + re-enter (pointer lock)
   });
   hand.onBurn = (chem) => {

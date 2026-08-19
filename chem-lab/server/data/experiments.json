@@ -1,4 +1,10 @@
 {
+  "ui": {
+    "safetyLabel": "Safety first:",
+    "openButton": "Open Experiment",
+    "closeButton": "Close",
+    "travelText": "Opening {title} experiment\u2026"
+  },
   "experiments": [
     {
       "id": "acid-base-titration",

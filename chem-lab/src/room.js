@@ -142,7 +142,7 @@ function createSkyTexture() {
   return texture;
 }
 
-export function createRoom(scene) {
+export function createRoom(scene, interactableObjects) {
   // --- Lighting ---
   // Pure room lighting — no sun. Real fluorescent tubes are RECTANGULAR area
   // lights, so each ceiling fixture is a RectAreaLight (soft, directional,
@@ -249,20 +249,29 @@ export function createRoom(scene) {
   corniceRun(10.3, -7.01, 3.47, 0, 0, Math.PI / 2, 0);  // left
   corniceRun(10.3, 7.01, 3.47, 0, 0, -Math.PI / 2, 0);  // right
 
-  // --- Door (on the front wall, steel lab door) ---
+  // --- Exit door (on the front wall, steel lab door) ---
+  // Wrapped in a raycastable group so hand.js can aim at it (userData.exitDoor)
+  // and press E to leave the lab. exitPos = the 2D point the distance gate uses.
+  const exitDoor = new THREE.Group();
+  exitDoor.userData.exitDoor = true;
+  exitDoor.userData.exitPos = new THREE.Vector3(3, 0, 4.97);
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(0.9, 2.1, 0.05),
     new THREE.MeshStandardMaterial({ color: 0x59636d, roughness: 0.6, metalness: 0.3 })
   );
   door.position.set(3, 1.05, 4.97);
-  scene.add(door);
+  door.castShadow = true;
+  exitDoor.add(door);
 
   const handle = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 12, 12),
     new THREE.MeshStandardMaterial({ color: 0x2b3035, roughness: 0.3, metalness: 0.9 })
   );
   handle.position.set(2.65, 1.05, 4.92);
-  scene.add(handle);
+  exitDoor.add(handle);
+
+  scene.add(exitDoor);
+  interactableObjects.push(exitDoor);
 
   // --- Safety accents: green EXIT sign + yellow/black hazard stripe at the
   // wall bases — the visual language of a real, properly run lab.
