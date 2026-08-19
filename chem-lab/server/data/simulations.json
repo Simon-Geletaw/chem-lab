@@ -15,7 +15,7 @@
       "label": "Mathematics",
       "subtitle": "Geometry & algebra",
       "accent": "#1f6fd6",
-      "href": "",
+      "href": "http://localhost:5175",
       "target": "_blank",
       "door": { "x": -4.0, "z": 5.0, "width": 1.0 },
       "trigger": { "radius": 1.3, "reach": 3.0 }
@@ -25,7 +25,7 @@
       "label": "Physics",
       "subtitle": "Motion & energy",
       "accent": "#b3541e",
-      "href": "",
+      "href": "http://localhost:5176",
       "target": "_blank",
       "door": { "x": -2.2, "z": 5.0, "width": 1.0 },
       "trigger": { "radius": 1.3, "reach": 3.0 }
