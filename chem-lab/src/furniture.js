@@ -341,7 +341,11 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
   };
   scene.add(islandBench);
   interactableObjects.push(islandBench);
-  colliders.push(new THREE.Box3().setFromObject(islandBench));
+  // Keep movement collision to the cabinet footprint; the worktop overhang must remain walkable.
+  colliders.push(new THREE.Box3(
+    new THREE.Vector3(-1.4, 0, -1.8),
+    new THREE.Vector3(1.4, 0.95, -1.2)
+  ));
 
   // Second bench along the left wall
   const wallBench = createBench(-6.55, -1, Math.PI / 2);
@@ -353,12 +357,12 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
   interactableObjects.push(wallBench);
   colliders.push(new THREE.Box3().setFromObject(wallBench));
 
-    // PPE station by the door: gloves + mask + goggles dispensers live on this table,
+      // PPE station by the door: gloves + mask + goggles dispensers live on this table,
   // and the 'ppe' zone gates where they can be put on/taken off.
   const ppeBench = createBench(ZONES.ppe.x, ZONES.ppe.z, 0);
   ppeBench.userData = {
     name: 'PPE Station',
-        description: 'Personal protective equipment: nitrile gloves, face masks and safety goggles. Put them on HERE before handling hazardous chemicals, and take them off here before leaving.'
+            description: 'Personal protective equipment: nitrile gloves, face masks and safety goggles. Put them on HERE before handling hazardous chemicals, and take them off here before leaving.'
   };
   scene.add(ppeBench);
   interactableObjects.push(ppeBench);
@@ -453,7 +457,7 @@ export function createFurniture(scene, interactableObjects, colliders, shelfChem
       {
         position: new THREE.Vector3(ZONES.ppe.x, 1.7, ZONES.ppe.z),
         title: 'PPE Station',
-                description: 'Personal protective equipment: nitrile gloves, face masks and safety goggles. Put them on here before handling hazardous chemicals.',
+        description: 'Personal protective equipment: nitrile gloves, face masks and safety goggles. Put them on here before handling hazardous chemicals.',
         radius: 2.2
       }
     ]
