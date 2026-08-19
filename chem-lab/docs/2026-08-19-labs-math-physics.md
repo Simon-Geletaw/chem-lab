@@ -27,22 +27,40 @@ themed room with JSON-driven signage.
 ## Creating a new subject lab
 
 1. `robocopy biology-lab <subject>-lab /E /XD node_modules dist .git`
-2. `package.json` → rename; `vite.config.js` → port + room name comment.
+2. `package.json` → rename; `vite.config.js` → port + base path + room name comment.
 3. `index.html` → title + loading-title + start-title.
-4. `server/data/room.json` → name, tagline, accent, stations, backHref.
-5. Add `{ "name", "dir", "port" }` to `labs.json`.
-6. Point the matching chem-lab door `href` in `simulations.json` at the port.
+4. `server/data/room.json` → name, tagline, accent, stations, backHref (`/c`).
+5. Add `{ "name", "dir", "port", "path" }` to `labs.json`.
+6. Point the matching chem-lab door `href` in `simulations.json` at the path.
 7. `npm install`, `npm run build`, smoke-test.
 
 ## Run everything
 
 ```bash
-npm run dev            # all four apps, one terminal, prefixed output
+npm run dev            # all four apps in dev, one terminal, prefixed output
 node dev.mjs math      # just one
 npm run build          # production build of every lab
+npm run serve          # ONE backend (port 8080) hosting every lab at
+                       #   /c Chemistry, /b Biology, /m Mathematics, /p Physics
 ```
+
+## URL scheme
+
+Since 2026-08-19 the labs are hosted on a **single origin with path URLs**:
+
+| Lab | Dev port | Backend path |
+|-----|----------|--------------|
+| Chemistry (hub) | 5173 | `/c` |
+| Biology | 5174 | `/b` |
+| Mathematics | 5175 | `/m` |
+| Physics | 5176 | `/p` |
+
+Door links are **relative** (`/b`, `/m`, `/p`, and back to `/c`), so they work
+on the backend with no ports to remember. Each app builds with a matching vite
+`base` (chem `/c/`, bio `/b/`, ...) so every asset resolves under its path.
+`BASE_PATH=/` overrides the base for a root-level deploy (e.g. Vercel).
 
 ## Production note
 
-`href`/`backHref` are `localhost` for local dev. For Vercel (or any host),
-replace them in the JSON files with the deployed URLs — no code change needed.
+For a root-level deploy (Vercel), set `BASE_PATH=/` when building each app, and
+the relative door links keep working because every lab lives on one origin.
