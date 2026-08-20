@@ -15,6 +15,8 @@ Each document follows the same structure so it is easy to scan:
 | Date | Doc | Area |
 |---|---|---|
 | 2026-08-10 | [Window — flush-mounted at z=+2.5 with gradient sky backdrop](2026-08-10-window-position-sky-backdrop.md) | `src/room.js` |
+| 2026-08-10 | [Window — not rendering fix (BASE_URL asset paths)](2026-08-10-window-not-rendering-fix.md) | `src/room.js` |
+| 2026-08-10 | [Window — centred, wide wall-around-opening rework](2026-08-10-window-centered-wide-wall-around-opening.md) | `src/room.js` |
 | 2026-08-10 | [Room wall painting — realism](2026-08-10-room-wall-painting-realism.md) | `src/room.js` |
 | 2026-08-10 | [Floor tiles — realism](2026-08-10-floor-tile-realism.md) | `src/room.js` |
 | 2026-08-10 | [PPE status indicators — red off / green on](2026-08-10-ppe-indicator-status-colors.md) | `src/ui/hud.js`, `src/ui/theme.js` |
@@ -27,3 +29,10 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-11 | [Atomic-structure sticker — fills the open back-wall space right of the periodic table](2026-08-11-sticker-right-of-periodic.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
 | 2026-08-11 | [Chemistry sticker — front wall, between the Biology and the exit door](2026-08-11-sticker-front-wall-chemistry.md) | `src/periodicWall.js`, `src/main.js`, `public/sticker/` |
 | 2026-08-11 | [Fire extinguisher — label text faces into the room (readable)](2026-08-11-fire-extinguisher-label-facing-fix.md) | `src/furniture.js` |
+| 2026-08-11 | [PPE station — glove and mask boxes separated (gloves box visible)](2026-08-11-ppe-glove-mask-box-separated.md) | `src/mask.js` |
+| 2026-08-11 | [Safety goggles — PPE table dispenser, E to toggle on/off (HUD chip + FPS overlay)](2026-08-11-safety-goggles.md) | `src/eyegoggles.js`, `src/hand.js`, `src/ui/hud.js`, `src/main.js`, `src/furniture.js`, `src/ui/welcomeCard.js` |
+| 2026-08-20 | [Safety goggles — HUD chip and E-toggle wiring](2026-08-20-goggles-hud-chip.md) | `src/ui/hud.js`, `src/ui/welcomeCard.js`, `src/hand.js`, `index.html` |
+| 2026-08-20 | [Atomic-structure 3D view — click the picture, walk around the atom](2026-08-20-atomic-structure-3d-view.md) | `src/atomView.js`, `src/ui/atomicStructure.js`, `src/main.js`, `src/hand.js`, `src/interactions.js`, `src/periodicWall.js` |
+| 2026-08-20 | [Single-source inter-lab links via /data/simulations.json](2026-08-20-single-source-inter-lab-links.md) | `server.mjs`, `chem-lab/src/simulations/registry.js`, `chem-lab/src/simDoors.js`, `simulations.json`, satellite `exitDoor.js` ×3 |
+| 2026-08-20 | [Lab coat procedural rewrite + centred window + compressed sticker](2026-08-20-lab-coat-window-rewrite.md) | `src/coat.js`, `src/room.js`, `public/sticker/sticker3 chemistry .png` |
+
