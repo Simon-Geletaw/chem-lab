@@ -35,4 +35,5 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-20 | [Atomic-structure 3D view — click the picture, walk around the atom](2026-08-20-atomic-structure-3d-view.md) | `src/atomView.js`, `src/ui/atomicStructure.js`, `src/main.js`, `src/hand.js`, `src/interactions.js`, `src/periodicWall.js` |
 | 2026-08-20 | [Single-source inter-lab links via /data/simulations.json](2026-08-20-single-source-inter-lab-links.md) | `server.mjs`, `chem-lab/src/simulations/registry.js`, `chem-lab/src/simDoors.js`, `simulations.json`, satellite `exitDoor.js` ×3 |
 | 2026-08-20 | [Lab coat procedural rewrite + centred window + compressed sticker](2026-08-20-lab-coat-window-rewrite.md) | `src/coat.js`, `src/room.js`, `public/sticker/sticker3 chemistry .png` |
+| 2026-08-20 | [Exact stage-driven loading progress + fail-safe boot](2026-08-20-exact-stage-loading-progress.md) | `src/ui/loader.js`, `src/main.js` (all four labs) |
 
