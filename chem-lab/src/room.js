@@ -82,8 +82,8 @@ function createWallTexture() {
   const bandRatio = 1.05 / 3.5;
   const bandPx = Math.round(512 * bandRatio);   // ~154 px from the bottom
 
-  const UPPER = '#e9ece9';      // warm off-white upper paint
-  const DADO  = '#9fb2bd';      // soft blue-gray lower band
+  const UPPER = '#d3d4d3';      // warm off-white upper paint
+  const DADO  = '#82a1b4';      // soft blue-gray lower band
   const BREAK = '#7d8f9b';      // painted break line between the two
 
   // Upper paint covers the whole canvas first...
@@ -211,12 +211,52 @@ export function createRoom(scene, interactableObjects) {
   leftWall.receiveShadow = true;
   scene.add(leftWall);
 
-  // Right wall — rotated −90°, same reason
-  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), paintMat());
-  rightWall.position.set(7, 1.75, 0);
-  rightWall.rotation.y = -Math.PI / 2;
-  rightWall.receiveShadow = true;
-  scene.add(rightWall);
+  // Right wall — rotated −90°, same reason. Built as FOUR pieces around the
+  // window opening (z -0.87..+0.87, y 0.8..2.3): two full-height side panels,
+  // a top band (y 2.3..3.5) and a bottom band (y 0..0.8) — the wall above and
+  // below the window is real painted wall like the sides, and the ONLY hole
+  // is the opening itself. The window frame (flush-mounted at x=6.96) covers
+  // the cut edges. The opening sits in the wall's CENTER — between the AIT
+  // logo (z=-2.5) and the fire extinguisher (z=2) — and the sky plane is
+  // sized to the window only, so nothing of the outside shows beyond it.
+  const rightWallPanel1 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 3.5), paintMat());
+  rightWallPanel1.position.set(7, 1.75, -2.935);         // z -5 .. -0.87, full height
+  rightWallPanel1.rotation.y = -Math.PI / 2;
+  rightWallPanel1.receiveShadow = true;
+  scene.add(rightWallPanel1);
+
+  const rightWallPanel2 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 3.5), paintMat());
+  rightWallPanel2.position.set(7, 1.75, 2.935);          // z +0.87 .. +5, full height
+  rightWallPanel2.rotation.y = -Math.PI / 2;
+  rightWallPanel2.receiveShadow = true;
+  scene.add(rightWallPanel2);
+
+  // Wall texture sampling helper: the painted texture is authored for a full
+  // 3.5 m wall (v: 0=floor .. 1=ceiling; dado band pinned to the floor). A
+  // shorter band must sample JUST its own slice of that wall: with
+  // ClampToEdge, `v' = v*repeat.y + offset.y` maps the band onto
+  // v ∈ [y0/3.5, y1/3.5] — so the dado stays glued to the floor on the
+  // bottom band and the upper paint starts at the same height as the sides.
+  const paintBandMat = (y0, y1) => {
+    const tex = createWallTexture();
+    tex.repeat.set(2, (y1 - y0) / 3.5);
+    tex.offset.y = y0 / 3.5;
+    return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.0 });
+  };
+
+  // Top band — linteel between the window top (2.3 m) and the ceiling.
+  const rightWallTop = new THREE.Mesh(new THREE.PlaneGeometry(1.74, 1.2), paintBandMat(2.3, 3.5));
+  rightWallTop.position.set(7, 2.9, 0);
+  rightWallTop.rotation.y = -Math.PI / 2;
+  rightWallTop.receiveShadow = true;
+  scene.add(rightWallTop);
+
+  // Bottom band — sill wall between the floor and the window sill (0.8 m).
+  const rightWallBottom = new THREE.Mesh(new THREE.PlaneGeometry(1.74, 0.8), paintBandMat(0, 0.8));
+  rightWallBottom.position.set(7, 0.4, 0);
+  rightWallBottom.rotation.y = -Math.PI / 2;
+  rightWallBottom.receiveShadow = true;
+  scene.add(rightWallBottom);
 
   // Front wall — rotated 180° so its face points back INTO the room
   const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), paintMat());
@@ -334,58 +374,118 @@ export function createRoom(scene, interactableObjects) {
   backStripe.position.set(0, 0.07, -4.99);
   scene.add(backStripe);
 
-  for (const [x, rotY] of [[-6.99, Math.PI / 2], [6.99, -Math.PI / 2]]) {
-    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(10, 0.14), createHazardStripe(10));
-    stripe.position.set(x, 0.07, 0);
-    stripe.rotation.y = rotY;
-    scene.add(stripe);
-  }
+  // Left wall stripe keeps its full 10 m run; the RIGHT wall stripe is split
+  // into two pieces that match the window-gap panels, so no stripe material
+  // ever floats in front of the sky through the gap.
+  const leftStripe = new THREE.Mesh(new THREE.PlaneGeometry(10, 0.14), createHazardStripe(10));
+  leftStripe.position.set(-6.99, 0.07, 0);
+  leftStripe.rotation.y = Math.PI / 2;
+  scene.add(leftStripe);
+
+  const rightStripe1 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 0.14), createHazardStripe(4.13));
+  rightStripe1.position.set(6.99, 0.07, -2.935);
+  rightStripe1.rotation.y = -Math.PI / 2;
+  scene.add(rightStripe1);
+
+  // Center stripe piece under the window sill — keeps the hazard line running
+  // continuously along the wall base (sits inside the bottom wall band).
+  const rightStripe0 = new THREE.Mesh(new THREE.PlaneGeometry(1.74, 0.14), createHazardStripe(1.74));
+  rightStripe0.position.set(6.99, 0.07, 0);
+  rightStripe0.rotation.y = -Math.PI / 2;
+  scene.add(rightStripe0);
+
+  const rightStripe2 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 0.14), createHazardStripe(4.13));
+  rightStripe2.position.set(6.99, 0.07, 2.935);
+  rightStripe2.rotation.y = -Math.PI / 2;
+  scene.add(rightStripe2);
 
   // --- Window (on the right wall) ---
   // A real 3D window model (window.glb), flush-mounted into the wall: its inner
-  // frame face sits at the wall plane and the deep frame body passes through
+  // frame face sits at the wall plane and the thin frame body passes through
   // the zero-thickness wall to the outside. Waist-height — the sill rests at
-  // ~0.8 m, the top at ~2.3 m. Placed at z = +2.5 so it mirrors the AIT logo
-  // at z = -2.5: the two halves of the wall read balanced.
-  const windowGltf = new GLTFLoader();
+  // ~0.8 m, the top at ~2.3 m. Centered on the wall at z = 0, BETWEEN the AIT
+  // logo (z=-2.5) and the fire extinguisher (z=2), and stretched to a 1.7 m
+  // LANDSCAPE opening (the raw model is a 0.63 m portrait) so it reads as a
+  // real room window.
+  // BASE_URL = the app's root path (vite "base"): "/" for a root deploy, or
+  // "/c/" when served behind the lab backend. Asset URLs must be prefixed so
+  // the room renders from ANY host layout — dev server, preview, or backend.
   const glbUrl = `${import.meta.env.BASE_URL}Models/window.glb`;
+  const windowGltf = new GLTFLoader();
   windowGltf.load(
     glbUrl,
     (gltf) => {
       const win = gltf.scene;
-      // 1.5 m tall (0.8..2.3 m). The model ships ~80 units tall, so the
-      // uniform scale is dimensionless height ratio.
+      // NON-UNIFORM scale with one size per axis, measured from the model's
+      // raw bounds (x=width, y=height, z=depth): width 1.7 m (landscape
+      // stretch), height 1.5 m (sill 0.8 .. top 2.3), depth 0.15 m (a real
+      // frame, not the model's 1.24 m tunnel).
       const box0 = new THREE.Box3().setFromObject(win);
       const s0 = box0.getSize(new THREE.Vector3());
-      win.scale.setScalar(1.5 / s0.y);
+      win.scale.set(1.7 / s0.x, 1.5 / s0.y, 0.15 / s0.z);
       // Rotate FIRST, then measure: the oriented bounds are what we pin to.
-      // After +90° about Y the model's depth axis runs along room-x (through
-      // the wall) and its width along room-z (along the wall).
+      // After +90° about Y the model's width axis runs along room-z (along
+      // the wall) and its depth axis along room-x (through the wall).
       win.rotation.y = Math.PI / 2;
       const box = new THREE.Box3().setFromObject(win);
       win.position.set(
         6.96 - box.min.x,                             // inner face flush with the wall
         0.8 - box.min.y,                              // sill height
-        2.5 - box.getCenter(new THREE.Vector3()).z    // centered on the wall's right half
+        -box.getCenter(new THREE.Vector3()).z         // centered between logo and extinguisher
       );
-      win.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+      // The Sketchfab model renders invisible on the painted wall: the frame
+      // is near-white (same tone as the wall paint). Repaint to a lab-aluminum
+      // frame so the window reads at a glance. The model's own glass is
+      // UNUSABLE — SketchUp exported each pane as thousands of overlapping
+      // triangles (~5000 m² of geometry for a ~1 m² pane) that z-fight and
+      // draw barely anything — so the original panes are hidden and replaced
+      // with two clean planes (see below).
+      win.traverse((n) => {
+        if (!n.isMesh) return;
+        n.castShadow = true;
+        n.receiveShadow = true;
+        if (n.material.name === 'metal_blanco') {
+          n.material.color.set(0x9aa5ad);            // brushed aluminum, pops off the paint
+        } else if (n.material.name === 'Glass_Crystal') {
+          n.visible = false;                         // hide the broken original panes
+        }
+      });
+
+      // Clean replacement glass: two single transparent planes, one per cell,
+      // inset 2 cm behind the frame's front face. Same glazed look as the
+      // original intent but ONE draw call per pane — and guaranteed to show
+      // the sky through it.
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: 0xbfd8ea,                  // cool glass tint
+        transparent: true,
+        opacity: 0.5,                     // glazed veil — the sky reads through
+        side: THREE.DoubleSide,
+        depthWrite: false                 // never occlude the sky behind
+      });
+      for (const [zx, zw] of [[-0.345, 0.69], [0.39, 0.68]]) {
+        const pane = new THREE.Mesh(new THREE.PlaneGeometry(zw, 1.39), glassMat);
+        pane.position.set(6.985, 1.545, zx);   // cell centers, inset in the frame
+        pane.rotation.y = Math.PI / 2;         // face INTO the room (-x)
+        scene.add(pane);
+      }
       scene.add(win);
     },
     undefined,
     (err) => console.error('FAILED to load window.glb', err)
   );
 
-  // Sky visible through the glass: the room is fully enclosed (no holes in the
-  // walls), so the blue scene background never shows. This gradient sky plane
-  // lives OUTSIDE the wall behind the window — through the model's transparent
-  // glass panes it reads as late-afternoon sky. Sized ~4x the opening so its
-  // edges can never peek around the frame, and clear of the frame's outer end
-  // (x=6.96 + 1.24 m depth = 8.2, plane sits at 9).
+  // Sky visible through the glass: the walls fully enclose the room, so this
+  // gradient sky plane lives OUTSIDE the wall at x=9 and is seen through the
+  // hole cut in the right wall at the window (gap z -0.87..+0.87) plus the
+  // window's transparent glass panes. Sized TO THE WINDOW ONLY (2.2 x 1.9 m
+  // vs the 1.7 x 1.5 m opening, ~0.25 m margin so no edge ever peeks at
+  // glancing angles) — nothing of the outside shows beyond the window. Clear
+  // of the frame's outer end (x=6.96 + 0.15 m depth = 7.11, plane sits at 9).
   const sky = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.5, 2.6),
+    new THREE.PlaneGeometry(2.2, 1.9),
     new THREE.MeshBasicMaterial({ map: createSkyTexture(), color: 0xffffff })
   );
-  sky.position.set(9, 1.55, 2.5);
+  sky.position.set(9, 1.55, 0);
   sky.rotation.y = -Math.PI / 2;      // face INTO the room (-x)
   scene.add(sky);
 
