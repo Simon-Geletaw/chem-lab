@@ -33,6 +33,7 @@ import { loadExperiments } from './experiments/registry.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
 import { quality, effectivePixelRatio, createFpsMeter, createQualityMonitor } from './quality.js';
 import { initLightPool } from './effects/lightPool.js';
+import { bindShadowUpdate } from './shadowUpdate.js';
 
 // Startup: the loading screen (static markup in index.html) is already painted.
 // main.js only reports real progress on it through the stage pipeline; a
@@ -118,6 +119,13 @@ async function boot() {
           renderer.setPixelRatio(effectivePixelRatio());
           renderer.shadowMap.enabled = quality.level !== 'low';   // LOW preset skips shadows entirely
           renderer.shadowMap.type = THREE.PCFSoftShadowMap;       // soft penumbra = lights sit in the floor
+          // PERF (Phase 2b): the room's shadow casters are static except for a
+          // few interactions (trash-bin lid, PPE toggles), so the 1024² shadow
+          // map is rendered once and re-rendered only when one moves instead
+          // of every frame. Modules call requestShadowUpdate() on those moves.
+          renderer.shadowMap.autoUpdate = false;
+          renderer.shadowMap.needsUpdate = true;   // draw the map for the first frame
+          bindShadowUpdate(() => { renderer.shadowMap.needsUpdate = true; });
           // ACES filmic tone mapping: without it, bright primaries clip to ugly flat
           // colors. One line gives the whole room a natural, photographic response.
           renderer.toneMapping = THREE.ACESFilmicToneMapping;

@@ -41,4 +41,5 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-20 | [Start screen — light scrim + settled first frames behind the loader](2026-08-20-start-screen-scrim-settle-frames.md) | `index.html`, `src/main.js` (all four labs) |
 | 2026-08-20 | [Window — GLB loads inside the loading stage (no pop-in)](2026-08-20-window-glb-inside-loading-stage.md) | `src/room.js`, `src/main.js` (chem-lab) |
 | 2026-08-20 | [Atom showcase — prebuilt at boot + in-place trail tubes (no click freeze)](2026-08-20-atom-showcase-prebuilt-trails.md) | `src/atomView.js`, `src/ui/atomicStructure.js` (chem-lab) |
+| 2026-08-20 | [Perf — lighting/shadow budget: static shadow map + fitted shadow camera](2026-08-20-perf-lighting-shadow-budget.md) | `src/main.js`, `src/room.js` (all four labs), `src/shadowUpdate.js`, `src/eyegoggles.js`, `src/trashBin.js` (chem-lab) |
 

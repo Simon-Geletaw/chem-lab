@@ -166,11 +166,15 @@ export function createRoom(scene, interactableObjects) {
   // sweet spot — sharper contact shadows for one extra ~4 MB texture).
   dirLight.shadow.mapSize.set(1024, 1024);
   // Shadow camera = the invisible box shadows are computed inside.
-  // Smaller box over the same shadow map = SHARPER shadows.
-  dirLight.shadow.camera.left = -8;
-  dirLight.shadow.camera.right = 8;
-  dirLight.shadow.camera.top = 8;
-  dirLight.shadow.camera.bottom = -8;
+  // Smaller box over the same shadow map = SHARPER shadows. Fitted to the
+  // 14 x 10 m room footprint (+ a small margin) instead of the old ±8 square,
+  // and the near/far clamped to the room's height (light sits at y=6).
+  dirLight.shadow.camera.left = -7.3;
+  dirLight.shadow.camera.right = 7.3;
+  dirLight.shadow.camera.top = 5.3;
+  dirLight.shadow.camera.bottom = -5.3;
+  dirLight.shadow.camera.near = 1;
+  dirLight.shadow.camera.far = 7;
   dirLight.shadow.bias = -0.0001;       // kill shadow acne
   dirLight.shadow.normalBias = 0.02;
   scene.add(dirLight);

@@ -83,6 +83,10 @@ async function boot() {
           renderer.setPixelRatio(effectivePixelRatio());
           renderer.shadowMap.enabled = quality.level !== 'low';
           renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          // PERF: every shadow caster in this room is static — render the
+          // shadow map once instead of re-rendering it every frame.
+          renderer.shadowMap.autoUpdate = false;
+          renderer.shadowMap.needsUpdate = true;
           renderer.toneMapping = THREE.ACESFilmicToneMapping;
           renderer.toneMappingExposure = 0.9;
           document.body.appendChild(renderer.domElement);

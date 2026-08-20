@@ -6,6 +6,7 @@
 // the same silhouette without obscuring the crosshair or interaction area.
 import * as THREE from 'three';
 import { ZONES } from './zones.js';
+import { requestShadowUpdate } from './shadowUpdate.js';
 
 const HAND_LAYER = 1;
 
@@ -332,6 +333,9 @@ export function createEyegoggles(scene, camera, interactableObjects, hud) {
     physicalGoggles.visible = !on;
     overlay.visible = on;
     hud.setGoggles(on);
+    // The static shadow map still holds the dispenser's goggle shadow — ask
+    // for one re-render so the table's shadow follows the visible model.
+    requestShadowUpdate();
   }
 
   return {

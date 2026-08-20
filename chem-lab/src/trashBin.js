@@ -10,6 +10,7 @@
 // hand.js owns the E-key rules, exactly like the glove/mask boxes.
 import * as THREE from 'three';
 import { ZONES } from './zones.js';
+import { requestShadowUpdate } from './shadowUpdate.js';
 
 const LID_OPEN = -1.85;         // radians the lid swings back
 const FLIGHT_TIME = 0.55;       // seconds a prop arcs through the air
@@ -181,6 +182,10 @@ export function createTrashBin(scene, interactableObjects) {
 
       // Ease the lid toward its target — same idiom as every other animation.
       lidPivot.rotation.x += (lidTarget - lidPivot.rotation.x) * Math.min(1, delta * 8);
+
+      // The lid is a shadow caster and the shadow map is static — re-render it
+      // for every frame the lid is still swinging so it never lags its shadow.
+      if (Math.abs(lidTarget - lidPivot.rotation.x) > 0.001) requestShadowUpdate();
     }
   };
 }
