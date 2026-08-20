@@ -58,6 +58,14 @@ function pathFor(url) {
 
 const server = createServer(async (req, res) => {
   try {
+    // /data/simulations.json — the inter-lab door config, served for the labs
+    // to read their "back to the Chemistry Lab" link from (single source).
+    if (req.url === '/data/simulations.json') {
+      const body = await readFile(resolve(ROOT, 'chem-lab', 'server', 'data', 'simulations.json'));
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
+      return res.end(body);
+    }
+
     const info = pathFor(req.url);
     if (!info) return send(res, 404, 'text/plain; charset=utf-8', '404 — unknown lab route');
 

@@ -48,10 +48,17 @@ function validate(d) {
     if (s.href !== '' && !/^(https?:\/\/\S+|\/\S*)$/.test(s.href)) {
       throw new Error(`Simulation "${s.id}" has a bad href "${s.href}" — use a http(s) URL, a path like "/b", or ""`);
     }
+    // hrefDev is the vite-dev override (per-port URL when there is no backend).
+    // It is optional; if present it must be a real http(s) URL.
+    if (s.hrefDev !== undefined && !/^https?:\/\/\S+$/.test(s.hrefDev)) {
+      throw new Error(`Simulation "${s.id}" has a bad hrefDev "${s.hrefDev}" — use a http(s) URL`);
+    }
     if (s.target !== '_self' && s.target !== '_blank') {
       throw new Error(`Simulation "${s.id}" target must be "_self" or "_blank"`);
     }
-    if (!s.door || typeof s.door.x !== 'number' || typeof s.door.z !== 'number' ||
+    if (!s.door) continue;              // link-only entries (e.g. the "chemistry"
+                                        // back-link source) carry no door geometry
+    if (typeof s.door.x !== 'number' || typeof s.door.z !== 'number' ||
         !(s.door.width > 0)) {
       throw new Error(`Simulation "${s.id}" needs door { x, z, width }`);
     }

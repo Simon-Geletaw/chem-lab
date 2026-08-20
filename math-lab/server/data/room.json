@@ -3,6 +3,7 @@
   "tagline": "Numbers, shapes & equations",
   "accent": "#1f6fd6",
   "backHref": "/c",
+  "backHrefDev": "http://localhost:5173/",
   "backLabel": "Back to the Chemistry Lab",
   "stations": [
     {

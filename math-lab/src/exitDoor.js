@@ -3,6 +3,12 @@
 // from server/data/room.json (backHref/backLabel) — change the JSON to point
 // this door somewhere else.
 //
+// The back-link href itself is read from the hub's simulations.json (served
+// by the backend at /data/simulations.json, entry id "chemistry") so there is
+// ONE source of truth for the inter-lab links. In vite dev there is no
+// backend, so it falls back to room.json's backHref (prod, "/c") or
+// backHrefDev (dev, the chem dev server URL).
+//
 // Same aim + E + travel-overlay pattern as the chem-lab sim doors. Only works
 // when standing close enough to the door (1.3 m radius around userData.exitPos).
 import * as THREE from 'three';
@@ -12,6 +18,20 @@ const HOVER_REACH = 4.0;
 const CENTER = new THREE.Vector2(0, 0);
 const raycaster = new THREE.Raycaster();
 const hint = document.getElementById('action-hint');
+
+async function resolveBackHref() {
+  const room = getRoom();
+  if (import.meta.env.DEV) return room.backHrefDev || room.backHref;
+  try {
+    const res = await fetch('/data/simulations.json');
+    if (!res.ok) return room.backHref;
+    const data = await res.json();
+    const chem = (data.simulations || []).find((s) => s.id === 'chemistry');
+    return (chem && chem.href) || room.backHref;
+  } catch {
+    return room.backHref;
+  }
+}
 
 function raycastDoor(camera) {
   raycaster.setFromCamera(CENTER, camera);
@@ -54,9 +74,8 @@ export function createExitDoor(scene, camera, interactableObjects) {
     if (dx * dx + dz * dz > 1.3 * 1.3) return;   // too far — hint covers this
     locked = true;
     travelOverlay();
-    setTimeout(() => {
-      const href = getRoom().backHref;
-      window.open(href, '_blank', 'noopener,noreferrer');
+    setTimeout(async () => {
+      window.open(await resolveBackHref(), '_blank', 'noopener,noreferrer');
       locked = false;
     }, 420);
   });

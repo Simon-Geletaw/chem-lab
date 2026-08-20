@@ -72,7 +72,9 @@ export function createSimDoors(scene) {
   const raycaster = new THREE.Raycaster();
   let aimedId = null;
 
-  getSimulations().forEach((entry, index) => {
+  // Only entries that declare a door get rendered — the "chemistry" entry
+  // exists purely as the back-link source for the other labs.
+  getSimulations().filter((entry) => entry.door).forEach((entry, index) => {
     const group = new THREE.Group();
     group.position.set(entry.door.x, 0, 0);
     group.userData.simId = entry.id;
@@ -180,11 +182,15 @@ export function createSimDoors(scene) {
       const dz = camera.position.z - entry.door.z;
       const r = entry.trigger.radius;
       if (dx * dx + dz * dz > r * r) return 'far';
-      if (!entry.href) return 'undep';
+      // Production opens backend-relative paths (/b, /m, /p — single origin);
+      // vite dev has no backend, so the per-port dev URLs take over. Same
+      // import.meta.env.DEV split the satellite exit doors use (backHrefDev).
+      const href = import.meta.env.DEV ? (entry.hrefDev || entry.href) : entry.href;
+      if (!href) return 'undep';
       travelOverlay(entry.label);
       setTimeout(() => {
-        if (entry.target === '_blank') window.open(entry.href, '_blank', 'noopener,noreferrer');
-        else window.location.assign(entry.href);
+        if (entry.target === '_blank') window.open(href, '_blank', 'noopener,noreferrer');
+        else window.location.assign(href);
       }, 420);
       return 'ok';
     },

@@ -1,11 +1,21 @@
 {
   "simulations": [
     {
+      "id": "chemistry",
+      "label": "Chemistry",
+      "subtitle": "Molecules & reactions",
+      "accent": "#3f51b5",
+      "href": "/c",
+      "hrefDev": "http://localhost:5173/",
+      "target": "_blank"
+    },
+    {
       "id": "biology",
       "label": "Biology",
       "subtitle": "Cells & ecosystems",
       "accent": "#2e8b57",
       "href": "/b",
+      "hrefDev": "http://localhost:5174/b/",
       "target": "_blank",
       "door": {
         "x": -5.8,
@@ -23,6 +33,7 @@
       "subtitle": "Geometry & algebra",
       "accent": "#1f6fd6",
       "href": "/m",
+      "hrefDev": "http://localhost:5175/m/",
       "target": "_blank",
       "door": {
         "x": -4,
@@ -40,6 +51,7 @@
       "subtitle": "Motion & energy",
       "accent": "#b3541e",
       "href": "/p",
+      "hrefDev": "http://localhost:5176/p/",
       "target": "_blank",
       "door": {
         "x": -2.2,

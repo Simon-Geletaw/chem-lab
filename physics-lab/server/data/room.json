@@ -3,6 +3,7 @@
   "tagline": "Forces, motion & energy",
   "accent": "#b3541e",
   "backHref": "/c",
+  "backHrefDev": "http://localhost:5173/",
   "backLabel": "Back to the Chemistry Lab",
   "stations": [
     {
