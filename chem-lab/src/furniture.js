@@ -13,7 +13,7 @@ const loader = new GLTFLoader();
 
 // ---------- shared materials (create once, reuse everywhere) ----------
 const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x6b7a87, roughness: 0.8 });
-const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.4, metalness: 0.1 });
+const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.85, metalness: 0 });
 const woodMat    = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness: 0.8 });
 const capMat     = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
 // "Glass": MeshPhysicalMaterial.transmission is REAL refraction — it renders

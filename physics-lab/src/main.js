@@ -16,6 +16,7 @@ import { createExitDoor } from './exitDoor.js';
 import { loadRoom, getRoom } from './registry.js';
 import { quality, effectivePixelRatio, createFpsMeter, createQualityMonitor } from './quality.js';
 import { loader } from './ui/loader.js';
+import './fullscreen.js';
 
 function webglAvailable() {
   try {

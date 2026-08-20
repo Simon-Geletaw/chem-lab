@@ -12,6 +12,7 @@ Each document follows the same structure so it is easy to scan:
 
 ## Index
 
+| 2026-08-20 | [Showcase lights leak fix + branded scrollbars + fullscreen toggle](2026-08-20-showcase-light-leak-scrollbars-fullscreen.md) | `src/atomView.js`, `src/ui/atomicStructure.js`, `src/furniture.js`, `index.html`, `src/fullscreen.js`, `src/main.js` (all labs) |
 | Date | Doc | Area |
 |---|---|---|
 | 2026-08-10 | [Window — flush-mounted at z=+2.5 with gradient sky backdrop](2026-08-10-window-position-sky-backdrop.md) | `src/room.js` |

@@ -20,6 +20,7 @@ import { createBurnCard } from './ui/burnCard.js';
 import { createPourDialog } from './ui/pourDialog.js';
 import { createHUD } from './ui/hud.js';
 import { loader } from './ui/loader.js';
+import './fullscreen.js';
 import { createGloves } from './gloves.js';
 import { createCoat } from './coat.js';
 import { createMask } from './mask.js';

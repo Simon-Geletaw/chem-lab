@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { getRoom } from './registry.js';
 
 const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x6b7a87, roughness: 0.8 });
-const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.4, metalness: 0.1 });
+const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.85, metalness: 0 });
 
 // Same bench recipe as chem-lab: storage cabinet + thin worktop at y = 0.9 m.
 export function createBench(x, z, rotationY, length = 2.8) {

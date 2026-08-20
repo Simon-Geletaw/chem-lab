@@ -512,10 +512,6 @@ export class AtomicStructure extends THREE.Group {
     this.add(this.rimLight);
 
     this.add(new THREE.HemisphereLight(0x0a0e2a, 0x06030a, 0.25));
-
-    const bounce = new THREE.PointLight(0x301800, 1.2, 22, 2.5);
-    bounce.position.set(0, -8, 0);
-    this.add(bounce);
   }
 
   // ===========================================================

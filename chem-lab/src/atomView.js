@@ -2,8 +2,9 @@
 // periodic table, back wall) pops the animated 3D atom out of the picture on
 // a small pedestal. While it's out you keep FULL first-person movement —
 // walk up to it, walk around it — and the showcase treatment is applied:
-// the demo's key light + blue rim light aimed at the nucleus, and a boosted
-// bloom so the gold nucleus and coloured electrons glow. Pressing E puts the
+// the atom's own internal lights (nucleus glow, orbit colors, dark
+// hemisphere), and a boosted bloom so the gold nucleus and coloured
+// electrons glow. Pressing E puts the
 // atom back into the picture and the room returns to its normal glow.
 //
 // States:
@@ -73,24 +74,10 @@ export function createAtomView(scene, camera, player, renderer, setBloom, sticke
     atom.position.set(0, ATOM_Y, 0);
     group.add(atom);
 
-    // Demo lighting, aimed at the nucleus. The lights live INSIDE the group,
-    // so they appear with the atom and vanish with it — the rest of the room
-    // is never lit by the showcase.
-    const key = new THREE.DirectionalLight(0xffffff, 2.4);
-    key.position.set(0, 3.2, 4);         // from the player's side, top-down
-    group.add(key);
-    const keyTarget = new THREE.Object3D();
-    keyTarget.position.set(0, ATOM_Y, 0);
-    group.add(keyTarget);
-    key.target = keyTarget;
-
-    const rim = new THREE.DirectionalLight(0x7aa7ff, 1.5);  // cool rim, demo value
-    rim.position.set(0, 2.2, -4);        // behind the atom, toward the wall
-    group.add(rim);
-    const rimTarget = new THREE.Object3D();
-    rimTarget.position.set(0, ATOM_Y, 0);
-    group.add(rimTarget);
-    rim.target = rimTarget;
+    // The atom brings its OWN internal lighting (nucleus glow, orbit colors,
+    // dark hemisphere) — no showcase lights here. DirectionalLights would
+    // flood the whole room (they ignore the group's scale/position), which
+    // showed up as glare on the benches and a wash over the lab.
 
     // The display is built ONCE at boot (scale ~0, invisible) so its shaders
     // compile behind the loading screen — clicking the picture is then an
