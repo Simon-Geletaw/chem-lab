@@ -350,6 +350,27 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 return;
             }
 
+            // Safety goggles: E at the goggle box on the PPE table toggles them
+            // — look at the dispenser: E puts them on (the box vanishes from the
+            // table, an FPS goggle frame appears at the top of your view); E again
+            // takes them off (the box reappears, the overlay hides). Like the coat,
+            // the goggles are removed the SAME way they're worn — never via the
+            // biohazard bin (that's only for disposable gloves/masks).
+            const gox = aimAt('goggleBox', 2.5);
+            if (gox) {
+                if (!inZone('ppe', camera)) {
+                    zoneHint('The safety goggles live at the PPE station by the door — put them on there.');
+                    return;
+                }
+                if (goggles.on) {
+                    goggles.remove();       // overlay hides + box reappears on the table
+                } else {
+                    goggles.wear();         // box vanishes + overlay appears in your view
+                }
+                return;
+            }
+
+
             // The lab coat: E at the hanging coat (rack beside the exit door)
             // toggles it — look UP at the hanger: E puts it on (the coat
             // vanishes from the rack), E again takes it off (it hangs there
@@ -825,6 +846,9 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                     showHint = true;
                 } else if (overGloveBox) {
                     hint.textContent = 'Set the bottle down first';  // F5: no gloving-up mid-carry
+                    showHint = true;
+                } else if (overGoggleBox) {
+                    hint.textContent = 'Set the bottle down first';  // no PPE changes mid-carry
                     showHint = true;
                 } else if (inZone('shelf', camera)) {
                     hint.textContent = `[Q] Put back ${heldBottle.userData.name}`;

@@ -10,7 +10,8 @@ export function createHUD() {
     root.innerHTML = `
       <div id="hud-gloves" class="hud-chip off">Gloves: OFF</div>
       <div id="hud-mask" class="hud-chip off">Mask: OFF</div>
-      <div id="hud-coat" class="hud-chip off">Coat: OFF</div>`;
+      <div id="hud-coat" class="hud-chip off">Coat: OFF</div>
+      <div id="hud-goggles" class="hud-chip off">Goggles: OFF</div>`;
     document.body.appendChild(root);
 
     const style = document.createElement('style');
@@ -64,6 +65,7 @@ export function createHUD() {
     const glovesChip = root.querySelector('#hud-gloves');
     const maskChip = root.querySelector('#hud-mask');
     const coatChip = root.querySelector('#hud-coat');
+    const gogglesChip = root.querySelector('#hud-goggles');
 
     // flashMask(on): safety-alarm state — the mask chip pulses red for a few
     // seconds when a hazardous chemical is poured without a mask on.
@@ -85,6 +87,11 @@ export function createHUD() {
             coatChip.classList.toggle('on', on);
             coatChip.classList.toggle('off', !on);
         },
+        setGoggles(on) {
+            gogglesChip.textContent = on ? 'Goggles: ON' : 'Goggles: OFF';
+            gogglesChip.classList.toggle('on', on);
+            gogglesChip.classList.toggle('off', !on);
+        },
         flashMask(on) {
             clearTimeout(flashTimer);
             maskChip.classList.toggle('alarm', on);
@@ -92,3 +99,5 @@ export function createHUD() {
         }
     };
 }
+
+
