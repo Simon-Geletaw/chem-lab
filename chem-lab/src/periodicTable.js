@@ -1,6 +1,41 @@
 // --- PERIODIC TABLE DATA ---
-// All 118 elements with 2 descriptive fields: fact and use.
-export const elementsData = [
+// All 118 elements with 2 descriptive fields: fact and use. The live data is
+// server/data/periodic-table.json — static import + validation, with the
+// defaults below as the fallback (same pattern as room.json / theme.json /
+// chemicals.json). The loader also owns the chemical-family mapping and the
+// category tile colors, so the poster never has to re-derive either.
+import rawTable from '../server/data/periodic-table.json';
+
+// Chemical family for atomic number z (drives the tile color). Used both to
+// fill a missing JSON "category" and as the grid-side fallback for a category
+// the JSON does not name.
+export function getCategory(z) {
+  if ([1, 6, 7, 8, 15, 16, 34].includes(z))         return 'nonmetal';
+  if ([2, 10, 18, 36, 54, 86, 118].includes(z))     return 'noble-gas';
+  if ([9, 17, 35, 53, 85, 117].includes(z))         return 'halogen';
+  if ([3, 11, 19, 37, 55, 87].includes(z))          return 'alkali';
+  if ([4, 12, 20, 38, 56, 88].includes(z))          return 'alkaline';
+  if ([5, 14, 32, 33, 51, 52].includes(z))          return 'metalloid';
+  if (z >= 57 && z <= 71)                           return 'lanthanide';
+  if (z >= 89 && z <= 103)                          return 'actinide';
+  if ([13, 31, 49, 50, 81, 82, 83, 84, 113, 114, 115, 116].includes(z)) return 'post-transition';
+  return 'transition';                              // everything else
+}
+
+export const DEFAULT_CATEGORY_COLORS = {
+  'alkali':          '#d95d39',
+  'alkaline':        '#e8a94b',
+  'transition':      '#3f6fa8',
+  'post-transition': '#7d8ca3',
+  'metalloid':       '#c9a227',
+  'nonmetal':        '#2a9d5c',
+  'halogen':         '#1f9e89',
+  'noble-gas':       '#8d5bd4',
+  'lanthanide':      '#c95f8e',
+  'actinide':        '#a4636f'
+};
+
+export const DEFAULT_ELEMENTS = [
   { symbol: "H", name: "Hydrogen", fact: "Lightest element, makes up 75% of universe.", use: "Used in fuel cells and ammonia production." },
   { symbol: "He", name: "Helium", fact: "Second lightest, inert noble gas.", use: "Used in balloons and cooling MRI scanners." },
   { symbol: "Li", name: "Lithium", fact: "Lightest metal, highly reactive.", use: "Used in rechargeable batteries." },
@@ -120,3 +155,38 @@ export const elementsData = [
   { symbol: "Ts", name: "Tennessine", fact: "Synthetic halogen.", use: "Only used for research." },
   { symbol: "Og", name: "Oganesson", fact: "Heaviest known element.", use: "Only used for research." }
 ];
+
+// build() — merge server/data/periodic-table.json over the defaults. The JSON
+// must list exactly 118 elements; any element/field that is missing or
+// malformed falls back to the default, and any unnamed category keeps its
+// default color. Same contract as the room paint and UI theme.
+function build() {
+  const jsonElements =
+    Array.isArray(rawTable && rawTable.elements) && rawTable.elements.length === DEFAULT_ELEMENTS.length
+      ? rawTable.elements
+      : null;
+
+  const elementsData = DEFAULT_ELEMENTS.map((d, i) => {
+    const e = jsonElements ? jsonElements[i] : {};
+    return {
+      symbol:   (typeof e.symbol === 'string' && e.symbol) ? e.symbol : d.symbol,
+      name:     (typeof e.name === 'string' && e.name) ? e.name : d.name,
+      fact:     (typeof e.fact === 'string' && e.fact) ? e.fact : d.fact,
+      use:      (typeof e.use === 'string' && e.use) ? e.use : d.use,
+      number:   Number.isInteger(e.number) ? e.number : i + 1,
+      category: (typeof e.category === 'string' && e.category) ? e.category : getCategory(i + 1)
+    };
+  });
+
+  const categoryColors = {};
+  for (const key of Object.keys(DEFAULT_CATEGORY_COLORS)) {
+    const v = rawTable && rawTable.categoryColors ? rawTable.categoryColors[key] : undefined;
+    categoryColors[key] = (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : DEFAULT_CATEGORY_COLORS[key];
+  }
+
+  return { elementsData, categoryColors };
+}
+
+const built = build();
+export const elementsData = built.elementsData;
+export const categoryColors = built.categoryColors;

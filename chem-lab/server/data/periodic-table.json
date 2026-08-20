@@ -1,0 +1,960 @@
+{
+  "categoryColors": {
+    "alkali": "#d95d39",
+    "alkaline": "#e8a94b",
+    "transition": "#3f6fa8",
+    "post-transition": "#7d8ca3",
+    "metalloid": "#c9a227",
+    "nonmetal": "#2a9d5c",
+    "halogen": "#1f9e89",
+    "noble-gas": "#8d5bd4",
+    "lanthanide": "#c95f8e",
+    "actinide": "#a4636f"
+  },
+  "elements": [
+    {
+      "symbol": "H",
+      "name": "Hydrogen",
+      "number": 1,
+      "category": "nonmetal",
+      "fact": "Lightest element, makes up 75% of universe.",
+      "use": "Used in fuel cells and ammonia production."
+    },
+    {
+      "symbol": "He",
+      "name": "Helium",
+      "number": 2,
+      "category": "noble-gas",
+      "fact": "Second lightest, inert noble gas.",
+      "use": "Used in balloons and cooling MRI scanners."
+    },
+    {
+      "symbol": "Li",
+      "name": "Lithium",
+      "number": 3,
+      "category": "alkali",
+      "fact": "Lightest metal, highly reactive.",
+      "use": "Used in rechargeable batteries."
+    },
+    {
+      "symbol": "Be",
+      "name": "Beryllium",
+      "number": 4,
+      "category": "alkaline",
+      "fact": "Lightweight but extremely stiff.",
+      "use": "Used in aerospace materials."
+    },
+    {
+      "symbol": "B",
+      "name": "Boron",
+      "number": 5,
+      "category": "metalloid",
+      "fact": "Metalloid essential for plant growth.",
+      "use": "Used in glass and detergents."
+    },
+    {
+      "symbol": "C",
+      "name": "Carbon",
+      "number": 6,
+      "category": "nonmetal",
+      "fact": "Basis of all known life.",
+      "use": "Used in steel and diamonds."
+    },
+    {
+      "symbol": "N",
+      "name": "Nitrogen",
+      "number": 7,
+      "category": "nonmetal",
+      "fact": "Makes up 78% of Earth's atmosphere.",
+      "use": "Used in fertilizers."
+    },
+    {
+      "symbol": "O",
+      "name": "Oxygen",
+      "number": 8,
+      "category": "nonmetal",
+      "fact": "Essential for respiration.",
+      "use": "Used in medical breathing apparatus."
+    },
+    {
+      "symbol": "F",
+      "name": "Fluorine",
+      "number": 9,
+      "category": "halogen",
+      "fact": "Most reactive element.",
+      "use": "Used in toothpaste."
+    },
+    {
+      "symbol": "Ne",
+      "name": "Neon",
+      "number": 10,
+      "category": "noble-gas",
+      "fact": "Inert noble gas that glows red.",
+      "use": "Used in neon signs."
+    },
+    {
+      "symbol": "Na",
+      "name": "Sodium",
+      "number": 11,
+      "category": "alkali",
+      "fact": "Soft metal that explodes in water.",
+      "use": "Used in street lights."
+    },
+    {
+      "symbol": "Mg",
+      "name": "Magnesium",
+      "number": 12,
+      "category": "alkaline",
+      "fact": "Lightweight structural metal.",
+      "use": "Used in fireworks."
+    },
+    {
+      "symbol": "Al",
+      "name": "Aluminum",
+      "number": 13,
+      "category": "post-transition",
+      "fact": "Most abundant metal in Earth's crust.",
+      "use": "Used in cans and foil."
+    },
+    {
+      "symbol": "Si",
+      "name": "Silicon",
+      "number": 14,
+      "category": "metalloid",
+      "fact": "Main component of sand.",
+      "use": "Used in computer chips."
+    },
+    {
+      "symbol": "P",
+      "name": "Phosphorus",
+      "number": 15,
+      "category": "nonmetal",
+      "fact": "Exists in white and red forms.",
+      "use": "Used in matchsticks."
+    },
+    {
+      "symbol": "S",
+      "name": "Sulfur",
+      "number": 16,
+      "category": "nonmetal",
+      "fact": "Yellow solid with distinct smell.",
+      "use": "Used in vulcanizing rubber."
+    },
+    {
+      "symbol": "Cl",
+      "name": "Chlorine",
+      "number": 17,
+      "category": "halogen",
+      "fact": "Toxic green gas.",
+      "use": "Used to disinfect water."
+    },
+    {
+      "symbol": "Ar",
+      "name": "Argon",
+      "number": 18,
+      "category": "noble-gas",
+      "fact": "Most abundant noble gas in air.",
+      "use": "Used as shielding gas in welding."
+    },
+    {
+      "symbol": "K",
+      "name": "Potassium",
+      "number": 19,
+      "category": "alkali",
+      "fact": "Reactive alkali metal.",
+      "use": "Essential for plant growth."
+    },
+    {
+      "symbol": "Ca",
+      "name": "Calcium",
+      "number": 20,
+      "category": "alkaline",
+      "fact": "Essential for bones.",
+      "use": "Used in cement."
+    },
+    {
+      "symbol": "Sc",
+      "name": "Scandium",
+      "number": 21,
+      "category": "transition",
+      "fact": "Rare earth metal.",
+      "use": "Used in aerospace components."
+    },
+    {
+      "symbol": "Ti",
+      "name": "Titanium",
+      "number": 22,
+      "category": "transition",
+      "fact": "Strong and corrosion resistant.",
+      "use": "Used in medical implants."
+    },
+    {
+      "symbol": "V",
+      "name": "Vanadium",
+      "number": 23,
+      "category": "transition",
+      "fact": "Hard transition metal.",
+      "use": "Used in steel alloys."
+    },
+    {
+      "symbol": "Cr",
+      "name": "Chromium",
+      "number": 24,
+      "category": "transition",
+      "fact": "Hard and shiny.",
+      "use": "Used in stainless steel."
+    },
+    {
+      "symbol": "Mn",
+      "name": "Manganese",
+      "number": 25,
+      "category": "transition",
+      "fact": "Essential trace nutrient.",
+      "use": "Used in batteries."
+    },
+    {
+      "symbol": "Fe",
+      "name": "Iron",
+      "number": 26,
+      "category": "transition",
+      "fact": "Most used metal on Earth.",
+      "use": "Used to make steel."
+    },
+    {
+      "symbol": "Co",
+      "name": "Cobalt",
+      "number": 27,
+      "category": "transition",
+      "fact": "Produces deep blue color.",
+      "use": "Used in lithium batteries."
+    },
+    {
+      "symbol": "Ni",
+      "name": "Nickel",
+      "number": 28,
+      "category": "transition",
+      "fact": "Corrosion resistant.",
+      "use": "Used in coins."
+    },
+    {
+      "symbol": "Cu",
+      "name": "Copper",
+      "number": 29,
+      "category": "transition",
+      "fact": "Excellent conductor.",
+      "use": "Used in electrical wiring."
+    },
+    {
+      "symbol": "Zn",
+      "name": "Zinc",
+      "number": 30,
+      "category": "transition",
+      "fact": "Brittle at room temp.",
+      "use": "Used to galvanize steel."
+    },
+    {
+      "symbol": "Ga",
+      "name": "Gallium",
+      "number": 31,
+      "category": "post-transition",
+      "fact": "Melts in your hand.",
+      "use": "Used in LEDs."
+    },
+    {
+      "symbol": "Ge",
+      "name": "Germanium",
+      "number": 32,
+      "category": "metalloid",
+      "fact": "Early semiconductor.",
+      "use": "Used in fiber optics."
+    },
+    {
+      "symbol": "As",
+      "name": "Arsenic",
+      "number": 33,
+      "category": "metalloid",
+      "fact": "Notorious poison.",
+      "use": "Used in semiconductors."
+    },
+    {
+      "symbol": "Se",
+      "name": "Selenium",
+      "number": 34,
+      "category": "nonmetal",
+      "fact": "Nonmetal essential for animals.",
+      "use": "Used in glassmaking."
+    },
+    {
+      "symbol": "Br",
+      "name": "Bromine",
+      "number": 35,
+      "category": "halogen",
+      "fact": "Liquid at room temp.",
+      "use": "Used in flame retardants."
+    },
+    {
+      "symbol": "Kr",
+      "name": "Krypton",
+      "number": 36,
+      "category": "noble-gas",
+      "fact": "Rare noble gas.",
+      "use": "Used in high performance lighting."
+    },
+    {
+      "symbol": "Rb",
+      "name": "Rubidium",
+      "number": 37,
+      "category": "alkali",
+      "fact": "Soft silvery metal.",
+      "use": "Used in atomic clocks."
+    },
+    {
+      "symbol": "Sr",
+      "name": "Strontium",
+      "number": 38,
+      "category": "alkaline",
+      "fact": "Burns bright red.",
+      "use": "Used in fireworks."
+    },
+    {
+      "symbol": "Y",
+      "name": "Yttrium",
+      "number": 39,
+      "category": "transition",
+      "fact": "Transition metal.",
+      "use": "Used in lasers."
+    },
+    {
+      "symbol": "Zr",
+      "name": "Zirconium",
+      "number": 40,
+      "category": "transition",
+      "fact": "Resistant to heat.",
+      "use": "Used in nuclear reactors."
+    },
+    {
+      "symbol": "Nb",
+      "name": "Niobium",
+      "number": 41,
+      "category": "transition",
+      "fact": "Soft grey metal.",
+      "use": "Used in superconductors."
+    },
+    {
+      "symbol": "Mo",
+      "name": "Molybdenum",
+      "number": 42,
+      "category": "transition",
+      "fact": "High melting point.",
+      "use": "Used in steel alloys."
+    },
+    {
+      "symbol": "Tc",
+      "name": "Technetium",
+      "number": 43,
+      "category": "transition",
+      "fact": "First artificial element.",
+      "use": "Used in medical imaging."
+    },
+    {
+      "symbol": "Ru",
+      "name": "Ruthenium",
+      "number": 44,
+      "category": "transition",
+      "fact": "Rare transition metal.",
+      "use": "Used in electronics."
+    },
+    {
+      "symbol": "Rh",
+      "name": "Rhodium",
+      "number": 45,
+      "category": "transition",
+      "fact": "Highly reflective.",
+      "use": "Used in catalytic converters."
+    },
+    {
+      "symbol": "Pd",
+      "name": "Palladium",
+      "number": 46,
+      "category": "transition",
+      "fact": "Absorbs hydrogen.",
+      "use": "Used in catalytic converters."
+    },
+    {
+      "symbol": "Ag",
+      "name": "Silver",
+      "number": 47,
+      "category": "transition",
+      "fact": "Best electrical conductor.",
+      "use": "Used in jewelry."
+    },
+    {
+      "symbol": "Cd",
+      "name": "Cadmium",
+      "number": 48,
+      "category": "transition",
+      "fact": "Toxic metal.",
+      "use": "Used in old batteries."
+    },
+    {
+      "symbol": "In",
+      "name": "Indium",
+      "number": 49,
+      "category": "post-transition",
+      "fact": "Soft metal.",
+      "use": "Used in touchscreens."
+    },
+    {
+      "symbol": "Sn",
+      "name": "Tin",
+      "number": 50,
+      "category": "post-transition",
+      "fact": "Used since ancient times.",
+      "use": "Used in solder."
+    },
+    {
+      "symbol": "Sb",
+      "name": "Antimony",
+      "number": 51,
+      "category": "metalloid",
+      "fact": "Metalloid.",
+      "use": "Used in flame retardants."
+    },
+    {
+      "symbol": "Te",
+      "name": "Tellurium",
+      "number": 52,
+      "category": "metalloid",
+      "fact": "Brittle metalloid.",
+      "use": "Used in solar panels."
+    },
+    {
+      "symbol": "I",
+      "name": "Iodine",
+      "number": 53,
+      "category": "halogen",
+      "fact": "Essential for thyroid.",
+      "use": "Used as antiseptic."
+    },
+    {
+      "symbol": "Xe",
+      "name": "Xenon",
+      "number": 54,
+      "category": "noble-gas",
+      "fact": "Heavy noble gas.",
+      "use": "Used in car headlights."
+    },
+    {
+      "symbol": "Cs",
+      "name": "Cesium",
+      "number": 55,
+      "category": "alkali",
+      "fact": "Most reactive metal.",
+      "use": "Used in atomic clocks."
+    },
+    {
+      "symbol": "Ba",
+      "name": "Barium",
+      "number": 56,
+      "category": "alkaline",
+      "fact": "Heavy metal.",
+      "use": "Used in medical X-rays."
+    },
+    {
+      "symbol": "La",
+      "name": "Lanthanum",
+      "number": 57,
+      "category": "lanthanide",
+      "fact": "First lanthanide.",
+      "use": "Used in camera lenses."
+    },
+    {
+      "symbol": "Ce",
+      "name": "Cerium",
+      "number": 58,
+      "category": "lanthanide",
+      "fact": "Most abundant rare earth.",
+      "use": "Used in lighter flints."
+    },
+    {
+      "symbol": "Pr",
+      "name": "Praseodymium",
+      "number": 59,
+      "category": "lanthanide",
+      "fact": "Green tinted metal.",
+      "use": "Used in magnets."
+    },
+    {
+      "symbol": "Nd",
+      "name": "Neodymium",
+      "number": 60,
+      "category": "lanthanide",
+      "fact": "Strongest magnets.",
+      "use": "Used in headphones."
+    },
+    {
+      "symbol": "Pm",
+      "name": "Promethium",
+      "number": 61,
+      "category": "lanthanide",
+      "fact": "Radioactive.",
+      "use": "Used in luminous paint."
+    },
+    {
+      "symbol": "Sm",
+      "name": "Samarium",
+      "number": 62,
+      "category": "lanthanide",
+      "fact": "Rare earth metal.",
+      "use": "Used in headphones."
+    },
+    {
+      "symbol": "Eu",
+      "name": "Europium",
+      "number": 63,
+      "category": "lanthanide",
+      "fact": "Most reactive rare earth.",
+      "use": "Used in Euro banknotes."
+    },
+    {
+      "symbol": "Gd",
+      "name": "Gadolinium",
+      "number": 64,
+      "category": "lanthanide",
+      "fact": "Magnetic properties.",
+      "use": "Used in MRI contrast."
+    },
+    {
+      "symbol": "Tb",
+      "name": "Terbium",
+      "number": 65,
+      "category": "lanthanide",
+      "fact": "Soft silvery metal.",
+      "use": "Used in green LEDs."
+    },
+    {
+      "symbol": "Dy",
+      "name": "Dysprosium",
+      "number": 66,
+      "category": "lanthanide",
+      "fact": "High melting point.",
+      "use": "Used in wind turbines."
+    },
+    {
+      "symbol": "Ho",
+      "name": "Holmium",
+      "number": 67,
+      "category": "lanthanide",
+      "fact": "Highest magnetic strength.",
+      "use": "Used in lasers."
+    },
+    {
+      "symbol": "Er",
+      "name": "Erbium",
+      "number": 68,
+      "category": "lanthanide",
+      "fact": "Pink colored salts.",
+      "use": "Used in fiber optics."
+    },
+    {
+      "symbol": "Tm",
+      "name": "Thulium",
+      "number": 69,
+      "category": "lanthanide",
+      "fact": "Rarest lanthanide.",
+      "use": "Used in X-ray machines."
+    },
+    {
+      "symbol": "Yb",
+      "name": "Ytterbium",
+      "number": 70,
+      "category": "lanthanide",
+      "fact": "Soft metal.",
+      "use": "Used in atomic clocks."
+    },
+    {
+      "symbol": "Lu",
+      "name": "Lutetium",
+      "number": 71,
+      "category": "lanthanide",
+      "fact": "Hardest lanthanide.",
+      "use": "Used in PET scans."
+    },
+    {
+      "symbol": "Hf",
+      "name": "Hafnium",
+      "number": 72,
+      "category": "transition",
+      "fact": "Absorbs neutrons.",
+      "use": "Used in nuclear control rods."
+    },
+    {
+      "symbol": "Ta",
+      "name": "Tantalum",
+      "number": 73,
+      "category": "transition",
+      "fact": "Resistant to corrosion.",
+      "use": "Used in phone capacitors."
+    },
+    {
+      "symbol": "W",
+      "name": "Tungsten",
+      "number": 74,
+      "category": "transition",
+      "fact": "Highest melting point.",
+      "use": "Used in lightbulb filaments."
+    },
+    {
+      "symbol": "Re",
+      "name": "Rhenium",
+      "number": 75,
+      "category": "transition",
+      "fact": "Very rare.",
+      "use": "Used in jet engines."
+    },
+    {
+      "symbol": "Os",
+      "name": "Osmium",
+      "number": 76,
+      "category": "transition",
+      "fact": "Densest element.",
+      "use": "Used in fountain pen tips."
+    },
+    {
+      "symbol": "Ir",
+      "name": "Iridium",
+      "number": 77,
+      "category": "transition",
+      "fact": "Most corrosion resistant.",
+      "use": "Found in meteorites."
+    },
+    {
+      "symbol": "Pt",
+      "name": "Platinum",
+      "number": 78,
+      "category": "transition",
+      "fact": "Precious metal.",
+      "use": "Used in jewelry."
+    },
+    {
+      "symbol": "Au",
+      "name": "Gold",
+      "number": 79,
+      "category": "transition",
+      "fact": "Unreactive precious metal.",
+      "use": "Used in electronics."
+    },
+    {
+      "symbol": "Hg",
+      "name": "Mercury",
+      "number": 80,
+      "category": "transition",
+      "fact": "Liquid metal at room temp.",
+      "use": "Used in thermometers."
+    },
+    {
+      "symbol": "Tl",
+      "name": "Thallium",
+      "number": 81,
+      "category": "post-transition",
+      "fact": "Highly toxic.",
+      "use": "Used in rat poison."
+    },
+    {
+      "symbol": "Pb",
+      "name": "Lead",
+      "number": 82,
+      "category": "post-transition",
+      "fact": "Heavy toxic metal.",
+      "use": "Used in car batteries."
+    },
+    {
+      "symbol": "Bi",
+      "name": "Bismuth",
+      "number": 83,
+      "category": "post-transition",
+      "fact": "Crystallizes geometrically.",
+      "use": "Used in Pepto-Bismol."
+    },
+    {
+      "symbol": "Po",
+      "name": "Polonium",
+      "number": 84,
+      "category": "post-transition",
+      "fact": "Highly radioactive.",
+      "use": "Used in antistatic devices."
+    },
+    {
+      "symbol": "At",
+      "name": "Astatine",
+      "number": 85,
+      "category": "halogen",
+      "fact": "Rarest natural element.",
+      "use": "Used in cancer research."
+    },
+    {
+      "symbol": "Rn",
+      "name": "Radon",
+      "number": 86,
+      "category": "noble-gas",
+      "fact": "Radioactive noble gas.",
+      "use": "Used in cancer therapy."
+    },
+    {
+      "symbol": "Fr",
+      "name": "Francium",
+      "number": 87,
+      "category": "alkali",
+      "fact": "Extremely unstable.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Ra",
+      "name": "Radium",
+      "number": 88,
+      "category": "alkaline",
+      "fact": "Glows in the dark.",
+      "use": "Used in old watch dials."
+    },
+    {
+      "symbol": "Ac",
+      "name": "Actinium",
+      "number": 89,
+      "category": "actinide",
+      "fact": "Glows pale blue.",
+      "use": "Used in neutron sources."
+    },
+    {
+      "symbol": "Th",
+      "name": "Thorium",
+      "number": 90,
+      "category": "actinide",
+      "fact": "Weakly radioactive.",
+      "use": "Potential nuclear fuel."
+    },
+    {
+      "symbol": "Pa",
+      "name": "Protactinium",
+      "number": 91,
+      "category": "actinide",
+      "fact": "Rare and toxic.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "U",
+      "name": "Uranium",
+      "number": 92,
+      "category": "actinide",
+      "fact": "Used in nuclear power.",
+      "use": "Used in reactors and bombs."
+    },
+    {
+      "symbol": "Np",
+      "name": "Neptunium",
+      "number": 93,
+      "category": "actinide",
+      "fact": "First transuranium element.",
+      "use": "Used in neutron detectors."
+    },
+    {
+      "symbol": "Pu",
+      "name": "Plutonium",
+      "number": 94,
+      "category": "actinide",
+      "fact": "Used in nuclear weapons.",
+      "use": "Used in RTGs for space probes."
+    },
+    {
+      "symbol": "Am",
+      "name": "Americium",
+      "number": 95,
+      "category": "actinide",
+      "fact": "Synthetic element.",
+      "use": "Used in smoke detectors."
+    },
+    {
+      "symbol": "Cm",
+      "name": "Curium",
+      "number": 96,
+      "category": "actinide",
+      "fact": "Named after Marie Curie.",
+      "use": "Used in pacemakers."
+    },
+    {
+      "symbol": "Bk",
+      "name": "Berkelium",
+      "number": 97,
+      "category": "actinide",
+      "fact": "Synthetic element.",
+      "use": "Used to make heavier elements."
+    },
+    {
+      "symbol": "Cf",
+      "name": "Californium",
+      "number": 98,
+      "category": "actinide",
+      "fact": "Strong neutron emitter.",
+      "use": "Used in oil well logging."
+    },
+    {
+      "symbol": "Es",
+      "name": "Einsteinium",
+      "number": 99,
+      "category": "actinide",
+      "fact": "Found in hydrogen bomb debris.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Fm",
+      "name": "Fermium",
+      "number": 100,
+      "category": "actinide",
+      "fact": "Heaviest element made in labs.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Md",
+      "name": "Mendelevium",
+      "number": 101,
+      "category": "actinide",
+      "fact": "Named after Mendeleev.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "No",
+      "name": "Nobelium",
+      "number": 102,
+      "category": "actinide",
+      "fact": "Named after Alfred Nobel.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Lr",
+      "name": "Lawrencium",
+      "number": 103,
+      "category": "actinide",
+      "fact": "Last actinide.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Rf",
+      "name": "Rutherfordium",
+      "number": 104,
+      "category": "transition",
+      "fact": "First transactinide.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Db",
+      "name": "Dubnium",
+      "number": 105,
+      "category": "transition",
+      "fact": "Highly radioactive.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Sg",
+      "name": "Seaborgium",
+      "number": 106,
+      "category": "transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Bh",
+      "name": "Bohrium",
+      "number": 107,
+      "category": "transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Hs",
+      "name": "Hassium",
+      "number": 108,
+      "category": "transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Mt",
+      "name": "Meitnerium",
+      "number": 109,
+      "category": "transition",
+      "fact": "Named after Lise Meitner.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Ds",
+      "name": "Darmstadtium",
+      "number": 110,
+      "category": "transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Rg",
+      "name": "Roentgenium",
+      "number": 111,
+      "category": "transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Cn",
+      "name": "Copernicium",
+      "number": 112,
+      "category": "transition",
+      "fact": "Predicted to be a gas.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Nh",
+      "name": "Nihonium",
+      "number": 113,
+      "category": "post-transition",
+      "fact": "First discovered in Japan.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Fl",
+      "name": "Flerovium",
+      "number": 114,
+      "category": "post-transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Mc",
+      "name": "Moscovium",
+      "number": 115,
+      "category": "post-transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Lv",
+      "name": "Livermorium",
+      "number": 116,
+      "category": "post-transition",
+      "fact": "Synthetic element.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Ts",
+      "name": "Tennessine",
+      "number": 117,
+      "category": "halogen",
+      "fact": "Synthetic halogen.",
+      "use": "Only used for research."
+    },
+    {
+      "symbol": "Og",
+      "name": "Oganesson",
+      "number": 118,
+      "category": "noble-gas",
+      "fact": "Heaviest known element.",
+      "use": "Only used for research."
+    }
+  ]
+}

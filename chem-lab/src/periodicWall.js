@@ -1,7 +1,7 @@
 // periodicWall.js — the giant periodic-table poster on the back wall:
 // 118 canvas-textured tiles + dark board + title strip.
 import * as THREE from 'three';
-import { elementsData } from './periodicTable.js';
+import { elementsData, categoryColors, getCategory } from './periodicTable.js';
 
 // Returns the real periodic-table cell for atomic number z:
 // col 1..18 (left to right), row 1..7 (top to bottom),
@@ -22,33 +22,6 @@ function getGridPosition(z) {
   if (z <= 103)  return { col: z - 86,  row: 9.5 };   // Ac..Lr (detached)
   return { col: z - 100, row: 7 };                    // Rf..Og
 }
-
-// Chemical family for atomic number z (drives the tile color)
-function getCategory(z) {
-  if ([1, 6, 7, 8, 15, 16, 34].includes(z))         return 'nonmetal';
-  if ([2, 10, 18, 36, 54, 86, 118].includes(z))     return 'noble-gas';
-  if ([9, 17, 35, 53, 85, 117].includes(z))         return 'halogen';
-  if ([3, 11, 19, 37, 55, 87].includes(z))          return 'alkali';
-  if ([4, 12, 20, 38, 56, 88].includes(z))          return 'alkaline';
-  if ([5, 14, 32, 33, 51, 52].includes(z))          return 'metalloid';
-  if (z >= 57 && z <= 71)                           return 'lanthanide';
-  if (z >= 89 && z <= 103)                          return 'actinide';
-  if ([13, 31, 49, 50, 81, 82, 83, 84, 113, 114, 115, 116].includes(z)) return 'post-transition';
-  return 'transition';                              // everything else
-}
-
-const categoryColors = {
-  'alkali':          '#d95d39',
-  'alkaline':        '#e8a94b',
-  'transition':      '#3f6fa8',
-  'post-transition': '#7d8ca3',
-  'metalloid':       '#c9a227',
-  'nonmetal':        '#2a9d5c',
-  'halogen':         '#1f9e89',
-  'noble-gas':       '#8d5bd4',
-  'lanthanide':      '#c95f8e',
-  'actinide':        '#a4636f'
-};
 
 function createElementTexture(element, atomicNumber, bgColor) {
   const canvas = document.createElement('canvas');
@@ -154,7 +127,7 @@ export function createPeriodicWall(scene, interactableObjects) {
   elementsData.forEach((element, index) => {
     const atomicNumber = index + 1;
     const cell = getGridPosition(atomicNumber);
-    const color = categoryColors[getCategory(atomicNumber)];
+    const color = categoryColors[element.category] || categoryColors[getCategory(atomicNumber)];
 
     const texture = createElementTexture(element, atomicNumber, color);
     // PERF (Phase 5c): a printed poster reads fine UNLIT. MeshBasicMaterial
