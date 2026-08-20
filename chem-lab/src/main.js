@@ -132,7 +132,16 @@ async function boot() {
 
           // 4. Build the world (each module adds its own part to the scene)
           interactableObjects = [];
-          createRoom(scene, interactableObjects);
+          const room = createRoom(scene, interactableObjects);
+          // The window model (window.glb) is fetched async by the GLTFLoader —
+          // WAIT for it here, inside the loading stage, so the window is already
+          // in the wall when the start screen appears (no pop-in after "done").
+          // Raced against a 5 s timeout: a missing/failed GLB must never hang
+          // the boot — room.js builds a simple frame fallback in that case.
+          await Promise.race([
+            room.windowReady,
+            new Promise((resolve) => setTimeout(resolve, 5000))
+          ]);
           // Simulation doors (Biology / Mathematics / Physics) on the front wall —
           // position, labels, accent colors and E-triggers all come from
           // server/data/simulations.json. Pressing E at a door routes to its sim.

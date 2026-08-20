@@ -410,7 +410,35 @@ export function createRoom(scene, interactableObjects) {
   // BASE_URL = the app's root path (vite "base"): "/" for a root deploy, or
   // "/c/" when served behind the lab backend. Asset URLs must be prefixed so
   // the room renders from ANY host layout — dev server, preview, or backend.
+  //
+  // The GLB is fetched asynchronously; createRoom returns `windowReady` so the
+  // boot pipeline can AWAIT the window inside the loading stage (no pop-in
+  // after the start screen). On failure or a 5 s timeout, a simple aluminum
+  // frame + glass fallback is drawn so the opening never shows a raw cut edge.
   const glbUrl = `${import.meta.env.BASE_URL}Models/window.glb`;
+  let resolveWindowReady;
+  const windowReady = new Promise((resolve) => { resolveWindowReady = resolve; });
+
+  // Clean replacement glass: two single transparent planes, one per cell,
+  // inset 2 cm behind the frame's front face. Same glazed look as the
+  // original intent but ONE draw call per pane — and guaranteed to show
+  // the sky through it. Shared by the GLB path and the fallback frame.
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xbfd8ea,                  // cool glass tint
+    transparent: true,
+    opacity: 0.5,                     // glazed veil — the sky reads through
+    side: THREE.DoubleSide,
+    depthWrite: false                 // never occlude the sky behind
+  });
+  const addGlassPanes = () => {
+    for (const [zx, zw] of [[-0.345, 0.69], [0.39, 0.68]]) {
+      const pane = new THREE.Mesh(new THREE.PlaneGeometry(zw, 1.39), glassMat);
+      pane.position.set(6.985, 1.545, zx);   // cell centers, inset in the frame
+      pane.rotation.y = Math.PI / 2;         // face INTO the room (-x)
+      scene.add(pane);
+    }
+  };
+
   const windowGltf = new GLTFLoader();
   windowGltf.load(
     glbUrl,
@@ -451,27 +479,35 @@ export function createRoom(scene, interactableObjects) {
         }
       });
 
-      // Clean replacement glass: two single transparent planes, one per cell,
-      // inset 2 cm behind the frame's front face. Same glazed look as the
-      // original intent but ONE draw call per pane — and guaranteed to show
-      // the sky through it.
-      const glassMat = new THREE.MeshStandardMaterial({
-        color: 0xbfd8ea,                  // cool glass tint
-        transparent: true,
-        opacity: 0.5,                     // glazed veil — the sky reads through
-        side: THREE.DoubleSide,
-        depthWrite: false                 // never occlude the sky behind
-      });
-      for (const [zx, zw] of [[-0.345, 0.69], [0.39, 0.68]]) {
-        const pane = new THREE.Mesh(new THREE.PlaneGeometry(zw, 1.39), glassMat);
-        pane.position.set(6.985, 1.545, zx);   // cell centers, inset in the frame
-        pane.rotation.y = Math.PI / 2;         // face INTO the room (-x)
-        scene.add(pane);
-      }
+      addGlassPanes();
       scene.add(win);
+      resolveWindowReady();
     },
     undefined,
-    (err) => console.error('FAILED to load window.glb', err)
+    (err) => {
+      console.error('FAILED to load window.glb — using the fallback frame', err);
+      // Simple aluminum frame around the 1.7 x 1.5 m opening: two jambs, a
+      // head and a sill, flush with the wall face, plus the clean glass panes.
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x9aa5ad, roughness: 0.5, metalness: 0.4 });
+      const jamb = (z, y, h) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 0.14), frameMat);
+        m.position.set(6.965, y, z);
+        m.castShadow = true;
+        scene.add(m);
+      };
+      jamb(-0.87, 1.55, 1.5);
+      jamb(0.87, 1.55, 1.5);
+      const rail = (y, h) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.06, h, 1.88), frameMat);
+        m.position.set(6.965, y, 0);
+        m.castShadow = true;
+        scene.add(m);
+      };
+      rail(2.275, 0.06);
+      rail(0.77, 0.06);
+      addGlassPanes();
+      resolveWindowReady();
+    }
   );
 
   // Sky visible through the glass: the walls fully enclose the room, so this
@@ -530,5 +566,5 @@ export function createRoom(scene, interactableObjects) {
     }
   }
 
-  return { dirLight, ambientLight };
+  return { dirLight, ambientLight, windowReady };
 }
