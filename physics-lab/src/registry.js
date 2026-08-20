@@ -1,4 +1,4 @@
-// registry.js — the ONE place that knows where the Physics Lab's room data
+// registry.js — the ONE place that knows where the Biology Lab's room data
 // comes from. Everything user-facing in this app (room name, tagline, accent,
 // the back-to-chem-lab link, station signs) is driven by server/data/room.json
 // — change the JSON, restart, and the room relabels itself.
@@ -20,6 +20,12 @@ export function getRoom() {
   return data;
 }
 
+// getWallPaint() — the five paint tokens (upper/dado/break/ceiling/trim).
+// null until loadRoom() has run; callers fall back to their own defaults.
+export function getWallPaint() {
+  return data ? data.wallPaint : null;
+}
+
 // ---------------------------------------------------------------------------
 // validate() — fail LOUDLY at startup instead of showing a half-named room:
 // a missing accent or a station without a label would otherwise surface as a
@@ -37,6 +43,14 @@ if (typeof d.backHref !== 'string' || !/^(https?:\/\/\S+|\/\S*)$/.test(d.backHre
     }
   if (!Array.isArray(d.stations) || d.stations.length === 0) {
     throw new Error('room.json must have a non-empty stations[] array');
+  }
+  if (!d.wallPaint || typeof d.wallPaint !== 'object') {
+    throw new Error('room.json must have a "wallPaint" object');
+  }
+  for (const key of ['upper', 'dado', 'break', 'ceiling', 'trim']) {
+    if (d.wallPaint[key] !== undefined && !/^#[0-9a-fA-F]{6}$/.test(d.wallPaint[key])) {
+      console.warn(`room.json wallPaint.${key} "${d.wallPaint[key]}" is not #rrggbb — using the default`);
+    }
   }
   for (const s of d.stations) {
     if (!s.label || !s.subtitle) {

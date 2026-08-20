@@ -12,6 +12,7 @@ Each document follows the same structure so it is easy to scan:
 
 ## Index
 
+| 2026-08-20 | [Data-driven wall paint from server/data/room.json (all four labs)](2026-08-20-data-driven-wall-paint.md) | `server/data/room.json`, `src/roomRegistry.js`, `src/room.js` (all labs), `src/main.js` (chem) |
 | 2026-08-20 | [Showcase lights leak fix + branded scrollbars + fullscreen toggle](2026-08-20-showcase-light-leak-scrollbars-fullscreen.md) | `src/atomView.js`, `src/ui/atomicStructure.js`, `src/furniture.js`, `index.html`, `src/fullscreen.js`, `src/main.js` (all labs) |
 | Date | Doc | Area |
 |---|---|---|

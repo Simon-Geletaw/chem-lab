@@ -5,6 +5,29 @@ import * as THREE from 'three';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { quality } from './quality.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { getWallPaint } from './registry.js';
+
+// The wall paint every surface in this room reads. server/data/room.json is
+// the source of truth (loaded in main.js Phase 1); these constants are the
+// fallback so the lab still paints correctly if the JSON is missing or a
+// token is malformed. Change the JSON, rebuild, the whole room repaints.
+const DEFAULT_PAINT = {
+  upper:   '#d3d4d3',   // warm off-white upper paint
+  dado:    '#82a1b4',   // soft blue-gray lower band
+  break:   '#7d8f9b',   // painted break line between the two
+  ceiling: '#f2efe8',   // warm off-white ceiling
+  trim:    '#f4f6f8'    // crisp white cornice trim
+};
+
+function paint() {
+  const p = getWallPaint() || {};
+  const out = {};
+  for (const key of Object.keys(DEFAULT_PAINT)) {
+    const v = p[key];
+    out[key] = (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : DEFAULT_PAINT[key];
+  }
+  return out;
+}
 
 
 function createFloorTexture() {
@@ -82,9 +105,10 @@ function createWallTexture() {
   const bandRatio = 1.05 / 3.5;
   const bandPx = Math.round(512 * bandRatio);   // ~154 px from the bottom
 
-  const UPPER = '#d3d4d3';      // warm off-white upper paint
-  const DADO  = '#82a1b4';      // soft blue-gray lower band
-  const BREAK = '#7d8f9b';      // painted break line between the two
+  const P = paint();
+  const UPPER = P.upper;      // warm off-white upper paint (room.json wallPaint)
+  const DADO  = P.dado;       // soft blue-gray lower band
+  const BREAK = P.break;      // painted break line between the two
 
   // Upper paint covers the whole canvas first...
   ctx.fillStyle = UPPER;
@@ -124,7 +148,7 @@ function makeWallTexture(canvas) {
 // createTrimMaterial() — the crisp white painted trim used for the ceiling
 // cornice. Slightly glossy so it catches light like fresh-painted molding.
 function createTrimMaterial() {
-  return new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.5 });
+  return new THREE.MeshStandardMaterial({ color: paint().trim, roughness: 0.5 });
 }
 
 // createSkyTexture() — the late-afternoon sky seen through the window glass.
@@ -283,7 +307,7 @@ export function createRoom(scene, interactableObjects) {
   // Ceiling — rotated +90° around X so it faces DOWN into the room
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(14, 10),
-    new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: paint().ceiling, roughness: 0.9 })
   );
   ceiling.position.set(0, 3.5, 0);
   ceiling.rotation.x = Math.PI / 2;

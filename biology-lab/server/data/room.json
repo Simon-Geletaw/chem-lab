@@ -2,6 +2,13 @@
   "name": "Biology Lab",
   "tagline": "Cells & ecosystems",
   "accent": "#2e8b57",
+  "wallPaint": {
+    "upper": "#d3d4d3",
+    "dado": "#82a1b4",
+    "break": "#7d8f9b",
+    "ceiling": "#d3d4d3",
+    "trim": "#f4f6f8"
+  },
   "backHref": "/c",
   "backHrefDev": "http://localhost:5173/",
   "backLabel": "Back to the Chemistry Lab",

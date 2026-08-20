@@ -32,6 +32,7 @@ import { loadSimulations } from './simulations/registry.js';
 import { createExperimentTable } from './experimentTable.js';
 import { loadExperiments } from './experiments/registry.js';
 import { loadChemistry, getShelfChemicals } from './chemistry/registry.js';
+import { loadRoom, getRoom } from './roomRegistry.js';
 import { quality, effectivePixelRatio, createFpsMeter, createQualityMonitor } from './quality.js';
 import { initLightPool } from './effects/lightPool.js';
 import { bindShadowUpdate } from './shadowUpdate.js';
@@ -71,10 +72,19 @@ async function boot() {
     let tour, gloves, trashBin, atomView, effectRunner, animate;
 
     loader.register([
-      // PHASE 1: chemistry data loads BEFORE the world is built, because the
-      // shelf bottles are generated from it. (Phase 10 swaps the data source
+      // PHASE 1: room + chemistry data load BEFORE the world is built — the
+      // wall paint comes from server/data/room.json and the shelf bottles are
+      // generated from chemicals.json. (Phase 10 swaps the data source
       // to the backend API — this stage stays.)
       { name: 'Loading the lab data\u2026', weight: 15, run: async () => {
+          await loadRoom();
+          const roomData = getRoom();
+          if (roomData) {
+            document.title = roomData.name;
+            const titleEls = document.querySelectorAll('#loading-title, #start-title');
+            titleEls.forEach((el) => { if (el) el.textContent = roomData.name; });
+          }
+          loader.progress(0.15);
           await loadChemistry();
           loader.progress(0.35);
           await loadSimulations();
