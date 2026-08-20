@@ -147,6 +147,16 @@ async function boot() {
           renderer.render(scene, camera);
           animate();
 
+          // First-frame settle: shadow maps, bloom history and the area-light
+          // passes need a few frames before the room looks its intended,
+          // fully lit self. Let those frames paint BEHIND the loading screen,
+          // then hand off — the start screen never reveals a dark first frame.
+          await new Promise((resolve) => {
+            let n = 0;
+            const tick = () => (++n >= 8 ? resolve() : requestAnimationFrame(tick));
+            requestAnimationFrame(tick);
+          });
+
           window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();

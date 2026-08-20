@@ -38,4 +38,7 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-20 | [Exact stage-driven loading progress + fail-safe boot](2026-08-20-exact-stage-loading-progress.md) | `src/ui/loader.js`, `src/main.js` (all four labs) |
 | 2026-08-20 | [Perf — vendor-split three.js + addons chunks](2026-08-20-perf-vendor-split.md) | `vite.config.js` (all four labs) |
 | 2026-08-20 | [Perf — world delta clamp + per-frame allocation removal](2026-08-20-perf-delta-clamp-allocations.md) | `src/main.js`, `src/player.js` (all four labs), `src/tour.js`, `src/interactions.js`, `src/ui/atomicStructure.js` (chem-lab) |
+| 2026-08-20 | [Start screen — light scrim + settled first frames behind the loader](2026-08-20-start-screen-scrim-settle-frames.md) | `index.html`, `src/main.js` (all four labs) |
+| 2026-08-20 | [Window — GLB loads inside the loading stage (no pop-in)](2026-08-20-window-glb-inside-loading-stage.md) | `src/room.js`, `src/main.js` (chem-lab) |
+| 2026-08-20 | [Atom showcase — prebuilt at boot + in-place trail tubes (no click freeze)](2026-08-20-atom-showcase-prebuilt-trails.md) | `src/atomView.js`, `src/ui/atomicStructure.js` (chem-lab) |
 

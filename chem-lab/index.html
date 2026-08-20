@@ -231,14 +231,18 @@
       /* The lab canvas is the permanent startup backdrop. The start card keeps
          its existing content and layout, but fades in only after a rendered
          game frame is availableâ€”never over a white page. */
-      html, body { background: #071018; }
+      /* The lab canvas is the backdrop: the page itself is the scene's sky
+         color so no black seam ever shows through a gap or transition, and
+         the start overlay is a LIGHT sky-glass scrim — the settled, fully
+         lit lab reads through it instead of a dark wall. */
+      html, body { background: #9fbdd6; }
       #start-overlay {
         position: fixed;
         inset: 0;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: rgba(4, 16, 34, 0.42);
+        background: rgba(233, 243, 252, 0.55);
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
