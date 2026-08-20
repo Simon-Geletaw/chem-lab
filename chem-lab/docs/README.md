@@ -12,6 +12,7 @@ Each document follows the same structure so it is easy to scan:
 
 ## Index
 
+| 2026-08-20 | [Backdrop-blur trim on near-opaque overlays + geometry micro-trim](2026-08-20-backdrop-blur-trim-and-geometry-trim.md) | `index.html` ×4, `src/ui/burnCard.js`, `src/ui/atomicStructure.js` |
 | 2026-08-20 | [Tangent-basis comet trails (no more head-ring drift)](2026-08-20-tangent-basis-comet-trails.md) | `src/ui/atomicStructure.js` (chem) |
 | 2026-08-20 | [Atom hover tooltips from server/data/atomic-model.json + hover activation](2026-08-20-data-driven-atom-hover.md) | `server/data/atomic-model.json`, `src/ui/atomicStructure.js`, `src/atomView.js` (chem) |
 | 2026-08-20 | [Periodic table from server/data/periodic-table.json](2026-08-20-data-driven-periodic-table.md) | `server/data/periodic-table.json`, `src/periodicTable.js`, `src/periodicWall.js` (chem) |

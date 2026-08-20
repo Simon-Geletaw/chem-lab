@@ -669,7 +669,7 @@ export class AtomicStructure extends THREE.Group {
     this.add(pivot);
 
     // Orbit ring
-    const samples  = 120;
+    const samples  = 96;
     const curvePts = [];
     for (let i = 0; i <= samples; i++) {
       const th = (i / samples) * Math.PI * 2;
@@ -702,7 +702,7 @@ export class AtomicStructure extends THREE.Group {
     });
     applyFresnelGlow(electronMat, color, 2.8, 0.9);
 
-    const electron = new THREE.Mesh(new THREE.SphereGeometry(0.40, 32, 32), electronMat);
+    const electron = new THREE.Mesh(new THREE.SphereGeometry(0.40, 24, 24), electronMat);
     pivot.add(electron);
 
     // Register electron for hover
