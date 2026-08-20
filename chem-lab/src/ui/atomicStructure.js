@@ -22,305 +22,596 @@ function ellipseRadius(a, b, theta) {
   return (a * b) / Math.sqrt((b * cos) ** 2 + (a * sin) ** 2);
 }
 
-// Tiny procedural gradient env map — gives metallic surfaces something
-// believable to reflect without loading an external HDRI.
-function buildProceduralEnvMap(renderer) {
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  pmrem.compileEquirectangularShader();
-
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size / 2;
-  const ctx = canvas.getContext("2d");
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  grad.addColorStop(0, "#1a2340");
-  grad.addColorStop(0.5, "#050810");
-  grad.addColorStop(1, "#000000");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  // a couple of soft "highlight" patches so reflections aren't flat
-  ctx.fillStyle = "rgba(255, 210, 130, 0.5)";
-  ctx.beginPath();
-  ctx.ellipse(size * 0.7, canvas.height * 0.3, 40, 20, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.mapping = THREE.EquirectangularReflectionMapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-
-  const envRT = pmrem.fromEquirectangular(tex);
-  tex.dispose();
-  pmrem.dispose();
-  return envRT.texture;
-}
-
-// Fresnel rim-glow shader — modifies a standard physical material so its
-// edges bloom with `glowColor` based on view angle. No extra mesh needed.
-function applyFresnelGlow(material, glowColor, power = 2.2, intensity = 1.4) {
+function applyFresnelGlow(material, glowColor, power = 3.5, intensity = 0.6) {
   material.onBeforeCompile = (shader) => {
-    shader.uniforms.glowColor = { value: new THREE.Color(glowColor) };
-    shader.uniforms.fresnelPower = { value: power };
+    shader.uniforms.glowColor       = { value: new THREE.Color(glowColor) };
+    shader.uniforms.fresnelPower    = { value: power };
     shader.uniforms.fresnelIntensity = { value: intensity };
 
     shader.vertexShader = shader.vertexShader
-      .replace(
-        "#include <common>",
+      .replace("#include <common>",
         `#include <common>
          varying vec3 vFresnelNormal;
-         varying vec3 vFresnelView;`
-      )
-      .replace(
-        "#include <begin_vertex>",
+         varying vec3 vFresnelView;`)
+      .replace("#include <begin_vertex>",
         `#include <begin_vertex>
          vFresnelNormal = normalize(normalMatrix * normal);
-         vFresnelView = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);`
-      );
+         vFresnelView   = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);`);
 
     shader.fragmentShader = shader.fragmentShader
-      .replace(
-        "#include <common>",
+      .replace("#include <common>",
         `#include <common>
-         uniform vec3 glowColor;
-         uniform float fresnelPower;
-         uniform float fresnelIntensity;
-         varying vec3 vFresnelNormal;
-         varying vec3 vFresnelView;`
-      )
-      .replace(
-        "#include <opaque_fragment>",
+         uniform vec3  glowColor;
+         uniform float fresnelPower, fresnelIntensity;
+         varying vec3  vFresnelNormal, vFresnelView;`)
+      .replace("#include <opaque_fragment>",
         `#include <opaque_fragment>
          float fresnel = pow(1.0 - saturate(dot(vFresnelNormal, vFresnelView)), fresnelPower);
-         gl_FragColor.rgb += glowColor * fresnel * fresnelIntensity;`
-      );
+         gl_FragColor.rgb += glowColor * fresnel * fresnelIntensity;`);
 
     material.userData.shader = shader;
   };
   material.needsUpdate = true;
 }
 
-const TRAIL_LENGTH = 26;
+// ============================================================
+// Constants
+// ============================================================
 
-// Scratch objects reused by the per-frame trail rebuild in update() — the
-// previous code allocated ~700 Vector3s plus a fresh CatmullRomCurve3 per frame
-// per electron while the atom showcase was open.
-const _trailPts = Array.from({ length: TRAIL_LENGTH }, () => new THREE.Vector3());
+const TRAIL_LENGTH = 32;
 const _center = new THREE.Vector3();
-const _dir = new THREE.Vector3();
+const _dir    = new THREE.Vector3();
+const _prev   = new THREE.Vector3();
+const _next   = new THREE.Vector3();
+
+// ============================================================
+// HoverSystem — self-contained raycaster + DOM tooltip
+// Inject once; call .register(mesh, info) for every hittable
+// object, then .update(mouseEvent, camera) each frame.
+// ============================================================
+
+const HOVER_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+#atm-tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  transition: opacity 0.2s cubic-bezier(.4,0,.2,1),
+              transform 0.2s cubic-bezier(.4,0,.2,1);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+#atm-tooltip.atm-vis {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.atm-card {
+  background: rgba(8, 10, 20, 0.82);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 13px 16px 14px;
+  min-width: 190px;
+  max-width: 240px;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.atm-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+.atm-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.atm-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+.atm-tag {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+.atm-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 9px 0;
+}
+.atm-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+.atm-row:last-child { margin-bottom: 0; }
+.atm-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.32);
+  flex-shrink: 0;
+  min-width: 54px;
+}
+.atm-value {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.72);
+  line-height: 1.4;
+}
+.atm-value strong {
+  font-weight: 600;
+  color: rgba(255,255,255,0.92);
+}
+`;
+
+function injectTooltipStyles() {
+  if (document.getElementById("atm-style")) return;
+  const style = document.createElement("style");
+  style.id = "atm-style";
+  style.textContent = HOVER_CSS;
+  document.head.appendChild(style);
+}
+
+function buildTooltipDOM() {
+  if (document.getElementById("atm-tooltip")) return document.getElementById("atm-tooltip");
+  const el = document.createElement("div");
+  el.id = "atm-tooltip";
+  el.innerHTML = `<div class="atm-card">
+    <div class="atm-header">
+      <div class="atm-icon" id="atm-icon"></div>
+      <div>
+        <div class="atm-name" id="atm-name"></div>
+        <div class="atm-tag" id="atm-tag"></div>
+      </div>
+    </div>
+    <div class="atm-divider"></div>
+    <div id="atm-rows"></div>
+  </div>`;
+  document.body.appendChild(el);
+  return el;
+}
+
+class HoverSystem {
+  constructor() {
+    injectTooltipStyles();
+    this._tip    = buildTooltipDOM();
+    this._rc     = new THREE.Raycaster();
+    this._mouse  = new THREE.Vector2(-9999, -9999);
+    this._map    = new Map();   // mesh → info object
+    this._meshes = [];
+    this._last   = null;
+    this._hideTimer = null;
+  }
+
+  /**
+   * Register a mesh as hoverable.
+   * info = { name, tag, color, hexIcon, rows: [{label, value}] }
+   *   name    — display name, e.g. "Proton"
+   *   tag     — short category, e.g. "Hadron · +1 charge"
+   *   color   — hex string for accent, e.g. "#c44020"
+   *   hexIcon — single character shown in the icon circle, e.g. "p"
+   *   rows    — array of { label, value } fact rows
+   */
+  register(mesh, info) {
+    this._map.set(mesh, info);
+    this._meshes.push(mesh);
+  }
+
+  onMouseMove(evt) {
+    this._mouse.x =  (evt.clientX / window.innerWidth)  * 2 - 1;
+    this._mouse.y = -(evt.clientY / window.innerHeight) * 2 + 1;
+    this._cursorX = evt.clientX;
+    this._cursorY = evt.clientY;
+  }
+
+  update(camera) {
+    this._rc.setFromCamera(this._mouse, camera);
+    const hits = this._rc.intersectObjects(this._meshes, false);
+
+    if (hits.length > 0) {
+      const info = this._map.get(hits[0].object);
+      if (!info) return;
+
+      if (this._last !== info) {
+        this._last = info;
+        this._populate(info);
+      }
+
+      // Position — clamp to viewport
+      const tx = Math.min(this._cursorX + 18, window.innerWidth  - 260);
+      const ty = Math.min(this._cursorY - 12, window.innerHeight - 180);
+      this._tip.style.left = tx + "px";
+      this._tip.style.top  = ty + "px";
+      this._tip.classList.add("atm-vis");
+
+      if (this._hideTimer) { clearTimeout(this._hideTimer); this._hideTimer = null; }
+    } else {
+      if (this._last) {
+        this._last = null;
+        // Small grace period before hiding (prevents flicker when crossing meshes)
+        this._hideTimer = setTimeout(() => {
+          this._tip.classList.remove("atm-vis");
+          this._hideTimer = null;
+        }, 80);
+      }
+    }
+  }
+
+  _populate(info) {
+    const icon  = document.getElementById("atm-icon");
+    const name  = document.getElementById("atm-name");
+    const tag   = document.getElementById("atm-tag");
+    const rows  = document.getElementById("atm-rows");
+
+    // Icon circle — bg is 15% opacity of accent color
+    icon.textContent = info.hexIcon;
+    icon.style.background   = info.color + "26";   // 15% alpha
+    icon.style.border       = `1px solid ${info.color}55`;
+    icon.style.color        = info.color;
+
+    name.textContent = info.name;
+    name.style.color = "#ffffff";
+
+    tag.textContent  = info.tag;
+    tag.style.background = info.color + "22";
+    tag.style.color      = info.color;
+
+    rows.innerHTML = info.rows.map(r =>
+      `<div class="atm-row">
+         <span class="atm-label">${r.label}</span>
+         <span class="atm-value">${r.value}</span>
+       </div>`
+    ).join("");
+  }
+
+  dispose() {
+    this._tip.remove();
+    const s = document.getElementById("atm-style");
+    if (s) s.remove();
+  }
+}
+
+// ============================================================
+// Particle data catalogue
+// ============================================================
+
+const PARTICLE_INFO = {
+  nucleus: {
+    name: "Nucleus",
+    tag: "Atomic core",
+    color: "#e8820a",
+    hexIcon: "N",
+    rows: [
+      { label: "Contents", value: "<strong>Protons + Neutrons</strong>" },
+      { label: "Force",    value: "Strong nuclear (~10⁴⁴ N)" },
+      { label: "Mass",     value: "≈ 99.97% of atom's mass" },
+      { label: "Size",     value: "~1–10 fm (10⁻¹⁵ m)" },
+    ],
+  },
+  proton: {
+    name: "Proton",
+    tag: "Hadron · +1e charge",
+    color: "#d94f2a",
+    hexIcon: "p",
+    rows: [
+      { label: "Quarks",  value: "<strong>2 up + 1 down</strong>" },
+      { label: "Charge",  value: "+1.602 × 10⁻¹⁹ C" },
+      { label: "Mass",    value: "938.3 MeV/c²" },
+      { label: "Spin",    value: "½" },
+    ],
+  },
+  neutron: {
+    name: "Neutron",
+    tag: "Hadron · neutral",
+    color: "#c49030",
+    hexIcon: "n",
+    rows: [
+      { label: "Quarks",  value: "<strong>1 up + 2 down</strong>" },
+      { label: "Charge",  value: "0" },
+      { label: "Mass",    value: "939.6 MeV/c²" },
+      { label: "Role",    value: "Stabilises nucleus" },
+    ],
+  },
+};
+
+const ELECTRON_INFO = [
+  {
+    name: "Electron — shell 1",
+    tag: "Lepton · −1e charge",
+    color: "#e03050",
+    hexIcon: "e",
+    rows: [
+      { label: "Shell",   value: "<strong>1st orbital (K)</strong>" },
+      { label: "Charge",  value: "−1.602 × 10⁻¹⁹ C" },
+      { label: "Mass",    value: "0.511 MeV/c²" },
+      { label: "Spin",    value: "½" },
+    ],
+  },
+  {
+    name: "Electron — shell 2",
+    tag: "Lepton · −1e charge",
+    color: "#1a9fde",
+    hexIcon: "e",
+    rows: [
+      { label: "Shell",   value: "<strong>2nd orbital (L)</strong>" },
+      { label: "Charge",  value: "−1.602 × 10⁻¹⁹ C" },
+      { label: "Mass",    value: "0.511 MeV/c²" },
+      { label: "Spin",    value: "½" },
+    ],
+  },
+  {
+    name: "Electron — shell 3",
+    tag: "Lepton · −1e charge",
+    color: "#9030e8",
+    hexIcon: "e",
+    rows: [
+      { label: "Shell",   value: "<strong>3rd orbital (M)</strong>" },
+      { label: "Charge",  value: "−1.602 × 10⁻¹⁹ C" },
+      { label: "Mass",    value: "0.511 MeV/c²" },
+      { label: "Spin",    value: "½" },
+    ],
+  },
+];
+
+// ============================================================
+// Main class
+// ============================================================
 
 export class AtomicStructure extends THREE.Group {
-  constructor(renderer = null) {
+  /**
+   * @param {object} [opts]
+   * @param {HTMLCanvasElement} [opts.canvas]   – renderer's canvas (for cursor)
+   * @param {THREE.Camera}     [opts.camera]    – required for raycasting
+   */
+  constructor(opts = {}) {
     super();
 
-    this.clock = new THREE.Clock();
+    this.clock   = new THREE.Clock();
     this.elapsed = 0;
+    this._camera = opts.camera || null;
 
     this.colors = {
-      core: 0xfff2b0,
-      proton: 0xff6a3d,
-      neutron: 0xffe08a,
-      glow: 0xff9900,
-
-      red: 0xff2b4d,
-      blue: 0x1fc8ff,
-      purple: 0xd23cff,
-
-      orbit: 0x2a3350,
+      coreBase: 0xd4610a,
+      coreEmit: 0xff8c2a,
+      glowHalo: 0xff6600,
+      proton:   0xc44020,
+      neutron:  0xb8872a,
+      red:      0xe03050,
+      blue:     0x1a9fde,
+      purple:   0x9030e8,
+      orbit:    0x3a4a5a,
     };
 
-    this.envMap = renderer ? buildProceduralEnvMap(renderer) : null;
+    // Hover system — attaches to window mouse events automatically
+    this._hover = new HoverSystem();
+    this._boundMouseMove = (e) => this._hover.onMouseMove(e);
+    window.addEventListener("mousemove", this._boundMouseMove, { passive: true });
 
     this._buildNucleus();
     this._buildLighting();
     this._buildElectrons();
   }
 
-  // =====================================================
+  // -----------------------------------------------------------
+  // Expose setCamera() so the caller can wire it after init
+  // -----------------------------------------------------------
+  setCamera(camera) { this._camera = camera; }
+
+  // ===========================================================
   // NUCLEUS
-  // =====================================================
+  // ===========================================================
   _buildNucleus() {
     this.nucleus = new THREE.Group();
     this.add(this.nucleus);
 
-    const coreMat = new THREE.MeshBasicMaterial({ color: this.colors.core });
-    applyFresnelGlow(coreMat, 0xffb347, 1.8, 1.6);
+    const coreMat = new THREE.MeshStandardMaterial({
+      color:             this.colors.coreBase,
+      emissive:          this.colors.coreEmit,
+      emissiveIntensity: 0.25,
+      metalness:         0.15,
+      roughness:         0.55,
+    });
+    applyFresnelGlow(coreMat, 0xff7700, 3.8, 0.45);
+
     const core = new THREE.Mesh(new THREE.SphereGeometry(0.9, 48, 48), coreMat);
     this.nucleus.add(core);
     this.core = core;
 
-    const nucleonCount = 13;
-    const clusterRadius = 1.15;
-    const positions = fibonacciSphere(nucleonCount);
-    this.nucleons = [];
+    // Register nucleus for hover
+    this._hover.register(core, PARTICLE_INFO.nucleus);
 
-    const makeNucleonMat = (color) => {
-      const mat = new THREE.MeshPhysicalMaterial({
+    // Nucleons
+    const positions = fibonacciSphere(13);
+    this.nucleons   = [];
+
+    const makeNucleonMat = (color, emitColor) =>
+      new THREE.MeshStandardMaterial({
         color,
-        emissive: color,
-        emissiveIntensity: 0.7,
-        metalness: 0.2,
-        roughness: 0.22,
-        clearcoat: 1,
-        clearcoatRoughness: 0.1,
-        envMap: this.envMap,
-        envMapIntensity: 0.6,
+        emissive:          emitColor,
+        emissiveIntensity: 0.3,
+        metalness:         0.2,
+        roughness:         0.45,
       });
-      return mat;
-    };
 
-    const protonMat = makeNucleonMat(this.colors.proton);
-    const neutronMat = makeNucleonMat(this.colors.neutron);
+    const protonMat  = makeNucleonMat(this.colors.proton,  0x7a1808);
+    const neutronMat = makeNucleonMat(this.colors.neutron, 0x6a4a08);
 
     positions.forEach((dir, i) => {
       const isProton = i % 2 === 0;
-      const radius = 0.55 + Math.random() * 0.08;
-      const mesh = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 32, 32),
-        (isProton ? protonMat : neutronMat).clone()
-      );
+      const radius   = 0.52 + Math.random() * 0.06;
+      const mat      = (isProton ? protonMat : neutronMat).clone();
+      mat.userData.isProton = isProton;
 
-      const basePos = dir.clone().multiplyScalar(clusterRadius);
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 28, 28), mat);
+      const basePos = dir.clone().multiplyScalar(1.18);
       mesh.position.copy(basePos);
       this.nucleus.add(mesh);
 
+      // Register each nucleon for hover
+      this._hover.register(mesh, isProton ? PARTICLE_INFO.proton : PARTICLE_INFO.neutron);
+
       this.nucleons.push({
-        mesh,
-        basePos,
-        dir,
+        mesh, basePos, dir,
         phase: Math.random() * Math.PI * 2,
-        speed: 1.2 + Math.random() * 0.8,
-        amp: 0.05 + Math.random() * 0.03,
+        speed: 1.0 + Math.random() * 0.7,
+        amp:   0.04 + Math.random() * 0.02,
       });
     });
 
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(2.05, 64, 64),
+    // Glow halo
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(2.0, 32, 32),
       new THREE.MeshBasicMaterial({
-        color: this.colors.glow,
+        color:       this.colors.glowHalo,
         transparent: true,
-        opacity: 0.1,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
+        opacity:     0.04,
+        blending:    THREE.AdditiveBlending,
+        depthWrite:  false,
+        side:        THREE.BackSide,
       })
     );
-    this.nucleus.add(glow);
-    this.glowShell = glow;
+    this.nucleus.add(halo);
+    this.glowShell = halo;
   }
 
-  // =====================================================
+  // ===========================================================
   // LIGHTING
-  // =====================================================
+  // ===========================================================
   _buildLighting() {
-    this.nucleusLight = new THREE.PointLight(this.colors.core, 20, 34, 2);
+    this.keyLight = new THREE.PointLight(0xffcc88, 3.5, 40, 2);
+    this.keyLight.position.set(6, 5, 4);
+    this.add(this.keyLight);
+
+    this.nucleusLight = new THREE.PointLight(0xff9940, 4.0, 14, 2.5);
     this.add(this.nucleusLight);
 
-    this.fillLight = new THREE.HemisphereLight(0x2a3a66, 0x120018, 0.5);
-    this.add(this.fillLight);
-
-    this.rimLight = new THREE.DirectionalLight(0xbfe8ff, 0.7);
-    this.rimLight.position.set(-8, 6, 6);
+    this.rimLight = new THREE.DirectionalLight(0x88c8ff, 0.55);
+    this.rimLight.position.set(-7, 4, -5);
     this.add(this.rimLight);
+
+    this.add(new THREE.HemisphereLight(0x0a0e2a, 0x06030a, 0.25));
+
+    const bounce = new THREE.PointLight(0x301800, 1.2, 22, 2.5);
+    bounce.position.set(0, -8, 0);
+    this.add(bounce);
   }
 
-  // =====================================================
-  // ORBITS + ELECTRONS
-  // =====================================================
+  // ===========================================================
+  // ELECTRONS
+  // ===========================================================
   _buildElectrons() {
     this.electrons = [];
 
     const specs = [
-      { color: this.colors.red, a: 6.5, e: 0.12, speed: 0.55, rot: [0, 0, 0], precess: 0.02 },
-      { color: this.colors.blue, a: 6.5, e: 0.24, speed: 0.8, rot: [Math.PI / 3, 0, Math.PI / 8], precess: -0.015 },
-      { color: this.colors.purple, a: 6.5, e: 0.32, speed: 1.05, rot: [-Math.PI / 3, Math.PI / 2, 0], precess: 0.025 },
+      { color: this.colors.red,    a: 6.0, e: 0.10, speed: 0.50, rot: [0, 0, 0],                  precess:  0.018, idx: 0 },
+      { color: this.colors.blue,   a: 6.0, e: 0.22, speed: 0.72, rot: [Math.PI/3, 0, Math.PI/8],  precess: -0.013, idx: 1 },
+      { color: this.colors.purple, a: 6.0, e: 0.30, speed: 0.95, rot: [-Math.PI/3, Math.PI/2, 0], precess:  0.022, idx: 2 },
     ];
 
-    specs.forEach((spec) => this._createElectron(spec));
+    specs.forEach((s) => this._createElectron(s));
   }
 
-  _createElectron(spec) {
-    const { color, a, e, speed, rot, precess } = spec;
-    const b = a * Math.sqrt(1 - e * e);
-
-    const pivot = new THREE.Group();
-    pivot.rotation.set(rot[0], rot[1], rot[2]);
+  _createElectron({ color, a, e, speed, rot, precess, idx }) {
+    const b          = a * Math.sqrt(1 - e * e);
+    const startTheta = Math.random() * Math.PI * 2;
+    const pivot      = new THREE.Group();
+    pivot.rotation.set(...rot);
     this.add(pivot);
 
-    // --- Orbit ring: reflective metal, matches actual electron path ---
-    const samples = 200;
+    // Orbit ring
+    const samples  = 120;
     const curvePts = [];
     for (let i = 0; i <= samples; i++) {
-      const theta = (i / samples) * Math.PI * 2;
-      curvePts.push(new THREE.Vector3(a * Math.cos(theta), b * Math.sin(theta), 0));
+      const th = (i / samples) * Math.PI * 2;
+      curvePts.push(new THREE.Vector3(a * Math.cos(th), b * Math.sin(th), 0));
     }
-    const curve = new THREE.CatmullRomCurve3(curvePts, true);
 
-    const orbitMaterial = new THREE.MeshPhysicalMaterial({
-      color: this.colors.orbit,
-      metalness: 1,
-      roughness: 0.15,
-      clearcoat: 1,
-      clearcoatRoughness: 0.05,
-      envMap: this.envMap,
-      envMapIntensity: 1.1,
+    const orbitMat = new THREE.MeshStandardMaterial({
+      color:             this.colors.orbit,
+      emissive:          new THREE.Color(color).multiplyScalar(0.06),
+      emissiveIntensity: 1.0,
+      metalness:         0.8,
+      roughness:         0.35,
     });
+    pivot.add(new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(curvePts, true), samples, 0.045, 8, true),
+      orbitMat
+    ));
 
-    const orbitTube = new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 260, 0.09, 16, true),
-      orbitMaterial
-    );
-    pivot.add(orbitTube);
-
-    // --- Electron: no halo mesh — glow is baked into the material via Fresnel ---
-    const electronMat = new THREE.MeshPhysicalMaterial({
+    // Electron sphere
+    const electronMat = new THREE.MeshStandardMaterial({
       color,
-      emissive: color,
-      emissiveIntensity: 1.4,
-      roughness: 0.1,
-      clearcoat: 1,
-      envMap: this.envMap,
-      envMapIntensity: 0.4,
+      emissive:          color,
+      emissiveIntensity: 0.55,
+      roughness:         0.25,
+      metalness:         0.1,
     });
-    applyFresnelGlow(electronMat, color, 2.4, 1.6);
+    applyFresnelGlow(electronMat, color, 2.8, 0.9);
 
-    const electron = new THREE.Mesh(new THREE.SphereGeometry(0.46, 48, 48), electronMat);
+    const electron = new THREE.Mesh(new THREE.SphereGeometry(0.40, 32, 32), electronMat);
     pivot.add(electron);
 
-    // --- Tapered comet-tail trail (tube, not a flat line) ---
-    const trailPts = Array.from({ length: TRAIL_LENGTH }, (_, i) => new THREE.Vector3(i * 0.01, 0, 0));
-    const trailCurve = new THREE.CatmullRomCurve3(trailPts);
-    const trailGeom = new THREE.TubeGeometry(trailCurve, TRAIL_LENGTH - 1, 0.001, 8, false);
+    // Register electron for hover
+    this._hover.register(electron, ELECTRON_INFO[idx]);
 
-    const trailMaterial = new THREE.MeshBasicMaterial({
+    const electronLight = new THREE.PointLight(color, 0.8, 5.0, 2.0);
+    electron.add(electronLight);
+
+    // Comet trail
+    const history = Array.from({ length: TRAIL_LENGTH }, (_, i) => {
+      const th = startTheta - i * 0.06;
+      return new THREE.Vector3(a * Math.cos(th), b * Math.sin(th), 0);
+    });
+    const points   = history.map((p) => p.clone());
+    const trailGeom = new THREE.TubeGeometry(
+      new THREE.CatmullRomCurve3(points), TRAIL_LENGTH - 1, 0.015, 6, false
+    );
+    const trail = new THREE.Mesh(trailGeom, new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.5,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-
-    const trail = new THREE.Mesh(trailGeom, trailMaterial);
+      opacity:     0.40,
+      blending:    THREE.AdditiveBlending,
+      depthWrite:  false,
+    }));
     pivot.add(trail);
 
     this.electrons.push({
-      pivot,
-      electron,
-      trail,
-      trailCurve,
-      a,
-      b,
-      speed,
-      precess,
-      theta: Math.random() * Math.PI * 2,
-      history: Array.from({ length: TRAIL_LENGTH }, () => new THREE.Vector3()),
-      historyIdx: 0,                      // ring-buffer slot holding the OLDEST entry
+      pivot, electron, electronLight, trail,
+      history, historyIdx: 0, points,
+      a, b, speed, precess,
+      theta:       startTheta,
       jitterPhase: Math.random() * Math.PI * 2,
     });
   }
 
-  // =====================================================
+  // ===========================================================
   // DISPOSE
-  // =====================================================
+  // ===========================================================
   dispose() {
+    window.removeEventListener("mousemove", this._boundMouseMove);
+    this._hover.dispose();
     this.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose();
       if (obj.material) {
@@ -328,90 +619,83 @@ export class AtomicStructure extends THREE.Group {
         mats.forEach((m) => m.dispose());
       }
     });
-    if (this.envMap) this.envMap.dispose();
   }
 
-  // =====================================================
+  // ===========================================================
   // UPDATE
-  // =====================================================
+  // ===========================================================
   update() {
-    const delta = Math.min(this.clock.getDelta(), 0.05);
+    const delta   = Math.min(this.clock.getDelta(), 0.05);
     this.elapsed += delta;
-    const t = this.elapsed;
+    const t       = this.elapsed;
 
-    // Nucleus breathing + rotation
-    const pulse = 1 + Math.sin(t * 3) * 0.02;
+    // Nucleus
+    const pulse = 1 + Math.sin(t * 2.0) * 0.012;
     this.nucleus.scale.setScalar(pulse);
-    this.nucleus.rotation.y += delta * 0.15;
+    this.nucleus.rotation.y += delta * 0.10;
 
-    // Nucleon micro-jitter with simple neighbor-occlusion darkening
     this.nucleons.forEach((n) => {
       const wob = 1 + Math.sin(t * n.speed + n.phase) * n.amp;
       n.mesh.position.copy(n.basePos).multiplyScalar(wob);
-
-      // faces pointing "inward" toward cluster center get slightly dimmer —
-      // cheap fake AO that adds real volume to the cluster
-      const facingIn = THREE.MathUtils.clamp(1 - n.dir.y * 0.5 - 0.5, 0.75, 1);
-      n.mesh.material.emissiveIntensity = 0.7 * facingIn;
+      const ao = THREE.MathUtils.clamp(0.7 + n.dir.y * 0.3, 0.65, 1.0);
+      n.mesh.material.emissiveIntensity = 0.3 * ao;
     });
 
-    // Plasma flicker
-    const flicker = 0.85 + 0.1 * Math.sin(t * 7.3) + 0.05 * Math.sin(t * 17.1 + 1.3);
-    this.nucleusLight.intensity = 20 * flicker;
-    this.glowShell.material.opacity = 0.1 + 0.04 * flicker;
+    const flicker = 0.92 + 0.05 * Math.sin(t * 5.1) + 0.03 * Math.sin(t * 11.7 + 1.2);
+    this.nucleusLight.intensity          = 4.0 * flicker;
+    this.keyLight.intensity              = 3.5 * (0.96 + 0.04 * Math.sin(t * 3.3));
+    this.glowShell.material.opacity      = 0.035 + 0.015 * flicker;
 
     // Electrons
     this.electrons.forEach((e) => {
-      const r = ellipseRadius(e.a, e.b, e.theta);
+      const r            = ellipseRadius(e.a, e.b, e.theta);
       const angularSpeed = (e.speed * e.a * e.b) / (r * r);
-      e.theta += angularSpeed * delta;
+      e.theta           += angularSpeed * delta;
 
-      const wobbleZ = Math.sin(t * 2.3 + e.jitterPhase) * 0.09;
-      const wobbleR = 1 + Math.sin(t * 3.7 + e.jitterPhase * 1.7) * 0.01;
+      const wobbleZ = Math.sin(t * 1.7 + e.jitterPhase) * 0.06;
+      const wobbleR = 1 + Math.sin(t * 2.9 + e.jitterPhase * 1.5) * 0.008;
 
       const x = e.a * Math.cos(e.theta) * wobbleR;
       const y = e.b * Math.sin(e.theta) * wobbleR;
-
       e.electron.position.set(x, y, wobbleZ);
-      e.electron.rotation.y += delta * 4;
+      e.electron.rotation.y += delta * 2.5;
 
       const speedNorm = THREE.MathUtils.clamp(angularSpeed / (e.speed * (e.a / e.b)), 0, 1.5);
-      e.electron.material.emissiveIntensity = 1.2 + speedNorm * 1.2;
+      e.electron.material.emissiveIntensity = 0.45 + speedNorm * 0.35;
+      e.electronLight.intensity             = 0.6 + speedNorm * 0.5;
+      e.pivot.rotation.z                   += e.precess * delta;
 
-      // slow orbital precession — plane itself drifts over time
-      e.pivot.rotation.z += e.precess * delta;
-
-      // update trail geometry from position history: write the new head into
-      // the oldest preallocated slot (ring buffer — no pop/unshift/clone),
-      // then rebuild the tapered tube from the recycled curve.
+      // Trail ring-buffer mutate
+      const posAttr = e.trail.geometry.getAttribute("position");
+      const arr     = posAttr.array;
       e.history[e.historyIdx].copy(e.electron.position);
       e.historyIdx = (e.historyIdx + 1) % TRAIL_LENGTH;
-      for (let i = 0; i < TRAIL_LENGTH; i++) {
-        _trailPts[i].copy(e.history[(e.historyIdx + i) % TRAIL_LENGTH]);   // tail -> head
-      }
+      for (let i = 0; i < TRAIL_LENGTH; i++)
+        e.points[i].copy(e.history[(e.historyIdx + i) % TRAIL_LENGTH]);
 
-      const curve = e.trailCurve;          // one instance per electron, reused
-      curve.points = _trailPts;
-      const newGeom = new THREE.TubeGeometry(curve, TRAIL_LENGTH - 1, 0.001, 8, false);
-
-      // taper radius along the tube so it thins toward the tail
-      const posAttr = newGeom.getAttribute("position");
-      const radials = 8;
-      for (let seg = 0; seg <= TRAIL_LENGTH - 1; seg++) {
-        const frac = seg / (TRAIL_LENGTH - 1); // 0 at tail, 1 at head
-        const radius = 0.02 + frac * 0.16;
-        curve.getPoint(frac, _center);
+      const radials = 6;
+      for (let seg = 0; seg < TRAIL_LENGTH; seg++) {
+        const frac   = seg / (TRAIL_LENGTH - 1);
+        const radius = 0.015 + frac * 0.13;
+        _center.copy(e.points[seg]);
+        if (seg < TRAIL_LENGTH - 1) _next.copy(e.points[seg + 1]); else _next.copy(e.points[seg]);
+        if (seg > 0)                _prev.copy(e.points[seg - 1]); else _prev.copy(e.points[seg]);
         for (let rIdx = 0; rIdx <= radials; rIdx++) {
           const idx = seg * (radials + 1) + rIdx;
-          if (idx * 3 + 2 >= posAttr.array.length) continue;
-          _dir.set(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)).sub(_center).normalize();
-          posAttr.setXYZ(idx, _center.x + _dir.x * radius, _center.y + _dir.y * radius, _center.z + _dir.z * radius);
+          _dir.set(arr[idx*3], arr[idx*3+1], arr[idx*3+2]).sub(_center);
+          const len = _dir.length();
+          if (len > 1e-6) _dir.divideScalar(len); else _dir.set(1, 0, 0);
+          arr[idx*3]   = _center.x + _dir.x * radius;
+          arr[idx*3+1] = _center.y + _dir.y * radius;
+          arr[idx*3+2] = _center.z + _dir.z * radius;
         }
       }
       posAttr.needsUpdate = true;
-
-      e.trail.geometry.dispose();
-      e.trail.geometry = newGeom;
     });
+
+    // Drive hover raycasting every frame
+    if (this._camera) {
+      this._hover.update(this._camera);
+    }
   }
 }

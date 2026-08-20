@@ -246,7 +246,7 @@ async function boot() {
               bloomPass.strength = strength;
               bloomPass.threshold = threshold;
             }
-          });
+          }, interactableObjects.find((o) => o.userData && o.userData.isAtomSticker));
           hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard, atomView);
           interactions.setAtomHandler((sticker) => {
             // Only opens when the view is closed AND the player is empty-handed;

@@ -26,7 +26,7 @@ const PEDESTAL_FOOT = 0.42;    // collider half-size around the pedestal (m)
 const ZERO3 = new THREE.Vector3(0.001, 0.001, 0.001);
 const ONE3 = new THREE.Vector3(1, 1, 1);
 
-export function createAtomView(scene, camera, player, renderer, setBloom) {
+export function createAtomView(scene, camera, player, renderer, setBloom, sticker) {
   const hint = document.getElementById('action-hint');
 
   let state = 'closed';                   // 'opening' | 'open' | 'closing'
@@ -68,7 +68,7 @@ export function createAtomView(scene, camera, player, renderer, setBloom) {
 
     // The animated atom: gold nucleus + 3 orbit rings + 3 colored electrons.
     // Its own update() (electron orbits, nucleus pulse) runs every frame.
-    atom = new AtomicStructure(renderer);
+    atom = new AtomicStructure();
     atom.scale.setScalar(ATOM_SCALE);
     atom.position.set(0, ATOM_Y, 0);
     group.add(atom);
@@ -92,30 +92,31 @@ export function createAtomView(scene, camera, player, renderer, setBloom) {
     group.add(rimTarget);
     rim.target = rimTarget;
 
+    // The display is built ONCE at boot (scale ~0, invisible) so its shaders
+    // compile behind the loading screen — clicking the picture is then an
+    // instant show, never a multi-second shader-compile freeze. It stays in
+    // the scene for the whole session; opening/closing only animates scale.
     scene.add(group);
+  }
 
-    // The pedestal is solid: you bump into it instead of walking through.
+  // Prebuild the display ONCE at boot (scale ~0, invisible) so its materials
+  // and shaders compile behind the loading screen — clicking the picture is
+  // then an instant show, never a multi-second shader-compile freeze. It
+  // stays in the scene for the whole session; opening/closing only animates
+  // scale and the collider.
+  if (sticker) buildDisplay(sticker);
+
+  function focus(sticker) {
+    if (state !== 'closed') return;
+    if (!group) buildDisplay(sticker);   // defensive: no sticker at boot
+    // The pedestal is solid: you bump into it instead of walking through —
+    // but ONLY while the display is out (scale 0 must not block the wall).
     const out = group.userData.out;
     collider = new THREE.Box3(
       new THREE.Vector3(out.x - PEDESTAL_FOOT, 0, out.z - PEDESTAL_FOOT),
       new THREE.Vector3(out.x + PEDESTAL_FOOT, 1.3, out.z + PEDESTAL_FOOT)
     );
     player.colliders.push(collider);
-  }
-
-  function removeDisplay() {
-    scene.remove(group);
-    const i = player.colliders.indexOf(collider);
-    if (i >= 0) player.colliders.splice(i, 1);
-    if (atom) atom.dispose();
-    collider = null;
-    group = null;
-    atom = null;
-  }
-
-  function focus(sticker) {
-    if (state !== 'closed') return;
-    buildDisplay(sticker);
     state = 'opening';
   }
 
@@ -152,7 +153,10 @@ export function createAtomView(scene, camera, player, renderer, setBloom) {
         group.scale.lerp(ZERO3, e);
         rampBloom(BLOOM_HOME, delta);
         if (group.scale.x < 0.02) {
-          removeDisplay();
+          group.scale.copy(ZERO3);        // invisible again — stays in the scene
+          const i = player.colliders.indexOf(collider);
+          if (i >= 0) player.colliders.splice(i, 1);
+          collider = null;
           state = 'closed';
         }
       }
