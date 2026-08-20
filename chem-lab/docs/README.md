@@ -37,4 +37,5 @@ Each document follows the same structure so it is easy to scan:
 | 2026-08-20 | [Lab coat procedural rewrite + centred window + compressed sticker](2026-08-20-lab-coat-window-rewrite.md) | `src/coat.js`, `src/room.js`, `public/sticker/sticker3 chemistry .png` |
 | 2026-08-20 | [Exact stage-driven loading progress + fail-safe boot](2026-08-20-exact-stage-loading-progress.md) | `src/ui/loader.js`, `src/main.js` (all four labs) |
 | 2026-08-20 | [Perf — vendor-split three.js + addons chunks](2026-08-20-perf-vendor-split.md) | `vite.config.js` (all four labs) |
+| 2026-08-20 | [Perf — world delta clamp + per-frame allocation removal](2026-08-20-perf-delta-clamp-allocations.md) | `src/main.js`, `src/player.js` (all four labs), `src/tour.js`, `src/interactions.js`, `src/ui/atomicStructure.js` (chem-lab) |
 

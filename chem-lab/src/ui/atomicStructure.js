@@ -101,6 +101,13 @@ function applyFresnelGlow(material, glowColor, power = 2.2, intensity = 1.4) {
 
 const TRAIL_LENGTH = 26;
 
+// Scratch objects reused by the per-frame trail rebuild in update() — the
+// previous code allocated ~700 Vector3s plus a fresh CatmullRomCurve3 per frame
+// per electron while the atom showcase was open.
+const _trailPts = Array.from({ length: TRAIL_LENGTH }, () => new THREE.Vector3());
+const _center = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+
 export class AtomicStructure extends THREE.Group {
   constructor(renderer = null) {
     super();
@@ -305,6 +312,7 @@ export class AtomicStructure extends THREE.Group {
       precess,
       theta: Math.random() * Math.PI * 2,
       history: Array.from({ length: TRAIL_LENGTH }, () => new THREE.Vector3()),
+      historyIdx: 0,                      // ring-buffer slot holding the OLDEST entry
       jitterPhase: Math.random() * Math.PI * 2,
     });
   }
@@ -373,12 +381,17 @@ export class AtomicStructure extends THREE.Group {
       // slow orbital precession — plane itself drifts over time
       e.pivot.rotation.z += e.precess * delta;
 
-      // update trail geometry from position history
-      e.history.pop();
-      e.history.unshift(e.electron.position.clone());
+      // update trail geometry from position history: write the new head into
+      // the oldest preallocated slot (ring buffer — no pop/unshift/clone),
+      // then rebuild the tapered tube from the recycled curve.
+      e.history[e.historyIdx].copy(e.electron.position);
+      e.historyIdx = (e.historyIdx + 1) % TRAIL_LENGTH;
+      for (let i = 0; i < TRAIL_LENGTH; i++) {
+        _trailPts[i].copy(e.history[(e.historyIdx + i) % TRAIL_LENGTH]);   // tail -> head
+      }
 
-      const pts = e.history.slice().reverse(); // tail -> head
-      const curve = new THREE.CatmullRomCurve3(pts);
+      const curve = e.trailCurve;          // one instance per electron, reused
+      curve.points = _trailPts;
       const newGeom = new THREE.TubeGeometry(curve, TRAIL_LENGTH - 1, 0.001, 8, false);
 
       // taper radius along the tube so it thins toward the tail
@@ -387,16 +400,12 @@ export class AtomicStructure extends THREE.Group {
       for (let seg = 0; seg <= TRAIL_LENGTH - 1; seg++) {
         const frac = seg / (TRAIL_LENGTH - 1); // 0 at tail, 1 at head
         const radius = 0.02 + frac * 0.16;
+        curve.getPoint(frac, _center);
         for (let rIdx = 0; rIdx <= radials; rIdx++) {
           const idx = seg * (radials + 1) + rIdx;
           if (idx * 3 + 2 >= posAttr.array.length) continue;
-          const cx = posAttr.getX(idx);
-          const cy = posAttr.getY(idx);
-          const cz = posAttr.getZ(idx);
-          const center = curve.getPoint(frac);
-          const dir = new THREE.Vector3(cx, cy, cz).sub(center).normalize();
-          const scaled = center.clone().add(dir.multiplyScalar(radius));
-          posAttr.setXYZ(idx, scaled.x, scaled.y, scaled.z);
+          _dir.set(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)).sub(_center).normalize();
+          posAttr.setXYZ(idx, _center.x + _dir.x * radius, _center.y + _dir.y * radius, _center.z + _dir.z * radius);
         }
       }
       posAttr.needsUpdate = true;

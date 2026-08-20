@@ -98,6 +98,7 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   let card = null;                          // the floating info card mesh
 
   const POP_OFFSET = new THREE.Vector3(0, 0, 0.35);  // 35 cm off the wall
+  const _popTarget = new THREE.Vector3();            // scratch — reused every frame while a tile is out
   const POP_SCALE = new THREE.Vector3(1.8, 1.8, 1.8);
   const HOME_SCALE = new THREE.Vector3(1, 1, 1);
 
@@ -245,8 +246,8 @@ export function createInteractions(camera, controls, scene, interactableObjects)
       }
 
       if (selectedTile) {
-        const target = selectedTile.userData.homePosition.clone().add(POP_OFFSET);
-        selectedTile.position.lerp(target, t);
+        _popTarget.copy(selectedTile.userData.homePosition).add(POP_OFFSET);
+        selectedTile.position.lerp(_popTarget, t);
         selectedTile.scale.lerp(POP_SCALE, t);
       }
       if (card) {

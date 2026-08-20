@@ -31,12 +31,15 @@ export function createPlayer(camera) {
   overlay.addEventListener('click', () => {
     player.enter();
   });
-  // The pause-menu "Enter Lab / Resume" button — stopPropagation so the
-  // overlay's click-anywhere handler doesn't double-fire.
-  document.getElementById('enter-btn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    player.enter();
-  });
+  // The pause-menu "Enter Lab / Resume" button (chemistry lab only) —
+  // stopPropagation so the overlay's click-anywhere handler doesn't double-fire.
+  const enterBtn = document.getElementById('enter-btn');
+  if (enterBtn) {
+    enterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      player.enter();
+    });
+  }
   controls.addEventListener('lock', () => {
     overlay.style.display = 'none';
     crosshair.style.display = 'block';
@@ -49,7 +52,7 @@ export function createPlayer(camera) {
     crosshair.style.display = 'none';
     // Esc = pause: flip the start screen into a pause screen.
     document.getElementById('start-title').textContent = 'Paused';
-    document.getElementById('enter-btn').textContent = 'Resume';
+    if (enterBtn) enterBtn.textContent = 'Resume';
     unlockTime = performance.now();   // ignore the Esc that JUST paused
   });
 
@@ -131,6 +134,11 @@ export function createPlayer(camera) {
   // If a step would land inside one of these, we undo the step.
   const colliders = [];
 
+  // Scratch vectors, allocated ONCE and reused every frame — update() is the
+  // hot path, and a per-frame clone/`new THREE.Vector3` would churn the GC.
+  const _prevPos = new THREE.Vector3();   // where the player was, in case we collide
+  const _feet = new THREE.Vector3();      // feet-height point for furniture collision
+
   const player = {
     controls,
     colliders,
@@ -177,7 +185,7 @@ export function createPlayer(camera) {
     update(delta) {
       if (!player.enabled || !player.isActive || modal) return;
 
-      const prevPos = camera.position.clone();   // remember, in case we collide
+      _prevPos.copy(camera.position);     // remember, in case we collide
 
       const step = WALK_SPEED * delta;    // meters to move THIS frame
       if (keys['KeyW']) controls.moveForward(step);
@@ -192,10 +200,10 @@ export function createPlayer(camera) {
       camera.position.y = EYE_HEIGHT;     // no flying, no crouching
 
       // Furniture collision: check feet position against each box.
-      const feet = new THREE.Vector3(camera.position.x, 0.5, camera.position.z);
+      _feet.set(camera.position.x, 0.5, camera.position.z);
       for (const box of colliders) {
-        if (box.containsPoint(feet)) {
-          camera.position.copy(prevPos);  // step back — simpler than sliding
+        if (box.containsPoint(_feet)) {
+          camera.position.copy(_prevPos);  // step back — simpler than sliding
           break;
         }
       }

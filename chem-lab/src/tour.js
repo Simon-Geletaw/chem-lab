@@ -43,7 +43,9 @@ export function createTour(camera, player, interactions) {
   const angleAt = (stop, time) => stop.baseAngle + stop.sweep * Math.sin(time * 0.5);
 
   // Parametric circle: a point 'radius' meters from center, at angle a.
-  const posOnOrbit = (stop, a) => new THREE.Vector3(
+  // Reuses one scratch vector — update() calls this every frame while flying.
+  const _orbitPos = new THREE.Vector3();
+  const posOnOrbit = (stop, a) => _orbitPos.set(
     stop.center.x + Math.sin(a) * stop.radius,
     EYE,
     stop.center.z + Math.cos(a) * stop.radius

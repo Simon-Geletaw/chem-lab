@@ -335,7 +335,11 @@ async function boot() {
 
           animate = () => {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();     // seconds since last frame (~0.016 at 60fps)
+            // PERF (Phase 2a): cap the world clock at 50 ms. A tab switch or
+            // compositor stall can make getDelta() spike to whole seconds, which
+            // teleports the pooled particle systems and the camera in one step;
+            // 0.05 s only cuts those spikes — normal ~0.016 s frames pass through.
+            const delta = Math.min(clock.getDelta(), 0.05);  // seconds since last frame (~0.016 at 60fps)
             // T6 burn reveal: the whole world runs in slow-motion (hand.timeScale) while
             // the player watches the hand char — the charring itself uses its own
             // wall-clock in burnCard, so it still completes in ~3 real seconds.
