@@ -12,6 +12,7 @@ Each document follows the same structure so it is easy to scan:
 
 ## Index
 
+| 2026-08-20 | [Atom hover tooltips from server/data/atomic-model.json + hover activation](2026-08-20-data-driven-atom-hover.md) | `server/data/atomic-model.json`, `src/ui/atomicStructure.js`, `src/atomView.js` (chem) |
 | 2026-08-20 | [Periodic table from server/data/periodic-table.json](2026-08-20-data-driven-periodic-table.md) | `server/data/periodic-table.json`, `src/periodicTable.js`, `src/periodicWall.js` (chem) |
 | 2026-08-20 | [UI theme colors from server/data/theme.json](2026-08-20-data-driven-ui-theme.md) | `server/data/theme.json`, `src/ui/theme.js` (chem) |
 | 2026-08-20 | [Data-driven wall paint from server/data/room.json (all four labs)](2026-08-20-data-driven-wall-paint.md) | `server/data/room.json`, `src/roomRegistry.js`, `src/room.js` (all labs), `src/main.js` (chem) |

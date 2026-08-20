@@ -15,7 +15,7 @@
 // E is handled by hand.js (it owns the keyboard); clicking the picture again
 // does nothing while it's out — E is the ONLY exit.
 import * as THREE from 'three';
-import { AtomicStructure } from './ui/atomicStructure.js';
+import { AtomicStructure, ATOM_CATALOGUE } from './ui/atomicStructure.js';
 
 const EMERGE_DIST = 1.43;      // the atom glides this far off the wall (m)
 const ATOM_Y = 1.7;            // nucleus center — same eye height as the poster
@@ -73,6 +73,11 @@ export function createAtomView(scene, camera, player, renderer, setBloom, sticke
     atom.scale.setScalar(ATOM_SCALE);
     atom.position.set(0, ATOM_Y, 0);
     group.add(atom);
+
+    // Activate hover raycasting (this._camera was null until now) and let the
+    // pedestal join the tooltip targets — the whole exhibit is explorable.
+    atom.setCamera(camera);
+    atom.addHoverTarget(pedestal, ATOM_CATALOGUE.parts.pedestal);
 
     // The atom brings its OWN internal lighting (nucleus glow, orbit colors,
     // dark hemisphere) — no showcase lights here. DirectionalLights would

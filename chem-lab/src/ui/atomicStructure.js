@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import rawModel from '../../server/data/atomic-model.json';
 
 // ============================================================
 // Helpers
@@ -219,6 +220,12 @@ class HoverSystem {
     this._meshes.push(mesh);
   }
 
+  // The mesh currently under the cursor (null when nothing is hit) — lets the
+  // showcase give the hovered object a gentle emissive boost.
+  getHovered() {
+    return this._hoveredMesh || null;
+  }
+
   onMouseMove(evt) {
     this._mouse.x =  (evt.clientX / window.innerWidth)  * 2 - 1;
     this._mouse.y = -(evt.clientY / window.innerHeight) * 2 + 1;
@@ -229,6 +236,7 @@ class HoverSystem {
   update(camera) {
     this._rc.setFromCamera(this._mouse, camera);
     const hits = this._rc.intersectObjects(this._meshes, false);
+    this._hoveredMesh = hits.length > 0 ? hits[0].object : null;
 
     if (hits.length > 0) {
       const info = this._map.get(hits[0].object);
@@ -376,6 +384,88 @@ const ELECTRON_INFO = [
 ];
 
 // ============================================================
+// Catalogue loader — server/data/atomic-model.json is the source of truth
+// (same pattern as room.json / theme.json / periodic-table.json). The
+// PARTICLE_INFO / ELECTRON_INFO objects above are the fallback; any missing
+// or malformed field falls back per-entry, so a JSON typo can never blank a
+// tooltip.
+// ============================================================
+
+const INTRO_INFO = {
+  name: "Atomic Structure",
+  tag: "Interactive model",
+  color: "#e8820a",
+  hexIcon: "A",
+  rows: [
+    { label: "Model", value: "<strong>Protons + Neutrons + Electrons</strong>" },
+    { label: "Scale", value: "Simplified — a real atom is ~10⁻¹⁰ m" },
+    { label: "Hint", value: "Hover the nucleus, nucleons, electrons and orbit rings" },
+  ],
+};
+
+const ORBIT_INFO = {
+  name: "Orbit ring",
+  tag: "Electron path",
+  color: "#3a4a5a",
+  hexIcon: "o",
+  rows: [
+    { label: "Shape", value: "Elliptical orbital (simplified)" },
+    { label: "Shell", value: "Electrons travel along this path" },
+    { label: "Hint", value: "Watch the electron glide along the ring" },
+  ],
+};
+
+const PEDESTAL_INFO = {
+  name: "Pedestal",
+  tag: "Museum stand",
+  color: "#22303c",
+  hexIcon: "P",
+  rows: [
+    { label: "Role", value: "Raises the model to eye height" },
+    { label: "Material", value: "Dark lacquered trim" },
+    { label: "Hint", value: "Stand back to see the full model" },
+  ],
+};
+
+function _pick(info, field, fallback) {
+  const v = info ? info[field] : undefined;
+  return (typeof v === 'string' && v.trim()) ? v : fallback;
+}
+
+function _hex(info, field, fallback) {
+  const v = info ? info[field] : undefined;
+  return (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) ? v : fallback;
+}
+
+function buildInfo(json, def) {
+  return {
+    name:    _pick(json, 'name', def.name),
+    tag:     _pick(json, 'tag', def.tag),
+    color:   _hex(json, 'color', def.color),
+    hexIcon: _pick(json, 'hexIcon', def.hexIcon),
+    rows:    (Array.isArray(json && json.rows) && json.rows.length > 0)
+      ? json.rows.map((r) => ({ label: _pick(r, 'label', ''), value: _pick(r, 'value', '') }))
+      : def.rows,
+  };
+}
+
+function buildCatalogue() {
+  const parts = {};
+  for (const key of ['nucleus', 'proton', 'neutron', 'pedestal']) {
+    const def = key === 'pedestal' ? PEDESTAL_INFO : PARTICLE_INFO[key];
+    parts[key] = buildInfo(rawModel && rawModel.parts ? rawModel.parts[key] : null, def);
+  }
+  const shells = ELECTRON_INFO.map((d, i) =>
+    buildInfo(rawModel && rawModel.shells ? rawModel.shells[i] : null, d)
+  );
+  const orbit = buildInfo(rawModel ? rawModel.orbit : null, ORBIT_INFO);
+  const intro = buildInfo(rawModel ? rawModel.intro : null, INTRO_INFO);
+  return { parts, shells, orbit, intro };
+}
+
+export const ATOM_CATALOGUE = buildCatalogue();
+
+// ============================================================
 // Main class
 // ============================================================
 
@@ -419,6 +509,10 @@ export class AtomicStructure extends THREE.Group {
   // -----------------------------------------------------------
   setCamera(camera) { this._camera = camera; }
 
+  // Register an external mesh (e.g. the pedestal in atomView) as a hover
+  // target, so tooltips can cover the whole exhibit, not just the atom.
+  addHoverTarget(mesh, info) { this._hover.register(mesh, info); }
+
   // ===========================================================
   // NUCLEUS
   // ===========================================================
@@ -440,7 +534,7 @@ export class AtomicStructure extends THREE.Group {
     this.core = core;
 
     // Register nucleus for hover
-    this._hover.register(core, PARTICLE_INFO.nucleus);
+    this._hover.register(core, ATOM_CATALOGUE.parts.nucleus);
 
     // Nucleons
     const positions = fibonacciSphere(13);
@@ -470,7 +564,7 @@ export class AtomicStructure extends THREE.Group {
       this.nucleus.add(mesh);
 
       // Register each nucleon for hover
-      this._hover.register(mesh, isProton ? PARTICLE_INFO.proton : PARTICLE_INFO.neutron);
+      this._hover.register(mesh, isProton ? ATOM_CATALOGUE.parts.proton : ATOM_CATALOGUE.parts.neutron);
 
       this.nucleons.push({
         mesh, basePos, dir,
@@ -551,10 +645,14 @@ export class AtomicStructure extends THREE.Group {
       metalness:         0.8,
       roughness:         0.35,
     });
-    pivot.add(new THREE.Mesh(
+    const ring = new THREE.Mesh(
       new THREE.TubeGeometry(new THREE.CatmullRomCurve3(curvePts, true), samples, 0.045, 8, true),
       orbitMat
-    ));
+    );
+    pivot.add(ring);
+
+    // Register the orbit ring for hover
+    this._hover.register(ring, ATOM_CATALOGUE.orbit);
 
     // Electron sphere
     const electronMat = new THREE.MeshStandardMaterial({
@@ -570,7 +668,7 @@ export class AtomicStructure extends THREE.Group {
     pivot.add(electron);
 
     // Register electron for hover
-    this._hover.register(electron, ELECTRON_INFO[idx]);
+    this._hover.register(electron, ATOM_CATALOGUE.shells[idx]);
 
     const electronLight = new THREE.PointLight(color, 0.8, 5.0, 2.0);
     electron.add(electronLight);
@@ -689,9 +787,27 @@ export class AtomicStructure extends THREE.Group {
       posAttr.needsUpdate = true;
     });
 
-    // Drive hover raycasting every frame
+// Drive hover raycasting every frame + gentle "engaging" emissive boost
     if (this._camera) {
       this._hover.update(this._camera);
+      const hovered = this._hover.getHovered();
+
+      if (hovered && hovered.material && hovered.material.emissiveIntensity !== undefined) {
+        if (this._boosted && this._boosted !== hovered && this._boosted.material) {
+          this._boosted.material.emissiveIntensity =
+            this._boosted.userData.baseEmissiveIntensity ?? 0;
+        }
+        if (hovered.userData.baseEmissiveIntensity === undefined) {
+          hovered.userData.baseEmissiveIntensity = hovered.material.emissiveIntensity;
+        }
+        hovered.material.emissiveIntensity =
+          hovered.userData.baseEmissiveIntensity * 1.35;
+        this._boosted = hovered;
+      } else if (this._boosted && this._boosted.material) {
+        this._boosted.material.emissiveIntensity =
+          this._boosted.userData.baseEmissiveIntensity ?? 0;
+        this._boosted = null;
+      }
     }
   }
 }

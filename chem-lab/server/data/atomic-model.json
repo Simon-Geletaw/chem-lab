@@ -1,0 +1,111 @@
+{
+  "intro": {
+    "name": "Atomic Structure",
+    "tag": "Interactive model",
+    "color": "#e8820a",
+    "hexIcon": "A",
+    "rows": [
+      { "label": "Model", "value": "<strong>Protons + Neutrons + Electrons</strong>" },
+      { "label": "Scale", "value": "Simplified — a real atom is ~10⁻¹⁰ m" },
+      { "label": "Hint", "value": "Hover the nucleus, nucleons, electrons and orbit rings" }
+    ]
+  },
+  "parts": {
+    "nucleus": {
+      "name": "Nucleus",
+      "tag": "Atomic core",
+      "color": "#e8820a",
+      "hexIcon": "N",
+      "rows": [
+        { "label": "Contents", "value": "<strong>Protons + Neutrons</strong>" },
+        { "label": "Force", "value": "Strong nuclear (~10⁴⁴ N)" },
+        { "label": "Mass", "value": "≈ 99.97% of atom's mass" },
+        { "label": "Size", "value": "~1–10 fm (10⁻¹⁵ m)" }
+      ]
+    },
+    "proton": {
+      "name": "Proton",
+      "tag": "Hadron · +1e charge",
+      "color": "#d94f2a",
+      "hexIcon": "p",
+      "rows": [
+        { "label": "Quarks", "value": "<strong>2 up + 1 down</strong>" },
+        { "label": "Charge", "value": "+1.602 × 10⁻¹⁹ C" },
+        { "label": "Mass", "value": "938.3 MeV/c²" },
+        { "label": "Spin", "value": "½" }
+      ]
+    },
+    "neutron": {
+      "name": "Neutron",
+      "tag": "Hadron · neutral",
+      "color": "#c49030",
+      "hexIcon": "n",
+      "rows": [
+        { "label": "Quarks", "value": "<strong>1 up + 2 down</strong>" },
+        { "label": "Charge", "value": "0" },
+        { "label": "Mass", "value": "939.6 MeV/c²" },
+        { "label": "Role", "value": "Stabilises nucleus" }
+      ]
+    },
+    "pedestal": {
+      "name": "Pedestal",
+      "tag": "Museum stand",
+      "color": "#22303c",
+      "hexIcon": "P",
+      "rows": [
+        { "label": "Role", "value": "Raises the model to eye height" },
+        { "label": "Material", "value": "Dark lacquered trim" },
+        { "label": "Hint", "value": "Stand back to see the full model" }
+      ]
+    }
+  },
+  "shells": [
+    {
+      "name": "Electron — shell 1",
+      "tag": "Lepton · −1e charge",
+      "color": "#e03050",
+      "hexIcon": "e",
+      "rows": [
+        { "label": "Shell", "value": "<strong>1st orbital (K)</strong>" },
+        { "label": "Charge", "value": "−1.602 × 10⁻¹⁹ C" },
+        { "label": "Mass", "value": "0.511 MeV/c²" },
+        { "label": "Spin", "value": "½" }
+      ]
+    },
+    {
+      "name": "Electron — shell 2",
+      "tag": "Lepton · −1e charge",
+      "color": "#1a9fde",
+      "hexIcon": "e",
+      "rows": [
+        { "label": "Shell", "value": "<strong>2nd orbital (L)</strong>" },
+        { "label": "Charge", "value": "−1.602 × 10⁻¹⁹ C" },
+        { "label": "Mass", "value": "0.511 MeV/c²" },
+        { "label": "Spin", "value": "½" }
+      ]
+    },
+    {
+      "name": "Electron — shell 3",
+      "tag": "Lepton · −1e charge",
+      "color": "#9030e8",
+      "hexIcon": "e",
+      "rows": [
+        { "label": "Shell", "value": "<strong>3rd orbital (M)</strong>" },
+        { "label": "Charge", "value": "−1.602 × 10⁻¹⁹ C" },
+        { "label": "Mass", "value": "0.511 MeV/c²" },
+        { "label": "Spin", "value": "½" }
+      ]
+    }
+  ],
+  "orbit": {
+    "name": "Orbit ring",
+    "tag": "Electron path",
+    "color": "#3a4a5a",
+    "hexIcon": "o",
+    "rows": [
+      { "label": "Shape", "value": "Elliptical orbital (simplified)" },
+      { "label": "Shell", "value": "Electrons travel along this path" },
+      { "label": "Hint", "value": "Watch the electron glide along the ring" }
+    ]
+  }
+}
