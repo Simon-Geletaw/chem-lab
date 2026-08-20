@@ -33,6 +33,10 @@ const CARD_H = 0.34;          // plaque height
 const PITCH = 0.42;           // center-to-center card spacing (0.12 m gap)
 const CENTER = new THREE.Vector2(0, 0);
 
+// Dark plaque body — every card backplate is the same paint, so one shared
+// material serves them all (nothing mutates it after creation).
+const backplateMat = new THREE.MeshStandardMaterial({ color: 0x22303c, roughness: 0.85 });
+
 // --- card face texture: image + title + subtitle on one canvas, composited
 // once per card. The image loads async; until then (or if it 404s) the face
 // shows a solid accent band so the card never reads as blank.
@@ -128,7 +132,7 @@ export function createExperimentTable(scene, interactableObjects, colliders) {
     // Dark backplate — the plaque's body.
     const backplate = new THREE.Mesh(
       new THREE.BoxGeometry(CARD_W, CARD_H, 0.03),
-      new THREE.MeshStandardMaterial({ color: 0x22303c, roughness: 0.85 })
+      backplateMat
     );
     backplate.position.y = CARD_H / 2;
     card.add(backplate);

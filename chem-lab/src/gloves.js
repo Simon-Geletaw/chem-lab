@@ -252,6 +252,14 @@ export function createGloves(scene, camera, interactableObjects) {
     return t;
   }
 
+  // One shared cuff material for BOTH hands — same specs, never mutated
+  // (only visibility toggles when gloving/un-gloving).
+  const cuffMat = new THREE.MeshPhysicalMaterial({
+    color: NITRILE, roughness: 0.5, metalness: 0,
+    clearcoat: 0.6, clearcoatRoughness: 0.4,
+    side: THREE.DoubleSide
+  });
+
   // ----------------------------------------------------------- load the hand
   const loader = new GLTFLoader();
   let loadedEntries = 0;
@@ -378,11 +386,7 @@ export function createGloves(scene, camera, interactableObjects) {
       // Glove cuff: an open cylinder hugging the wrist, only visible gloved.
       const cuff = new THREE.Mesh(
         new THREE.CylinderGeometry(0.031, 0.027, 0.06, 24, 1, true),
-        new THREE.MeshPhysicalMaterial({
-          color: NITRILE, roughness: 0.5, metalness: 0,
-          clearcoat: 0.6, clearcoatRoughness: 0.4,
-          side: THREE.DoubleSide
-        })
+        cuffMat
       );
       cuff.position.set(0, -0.03, 0.012);   // below the wrist, toward the player
       cuff.visible = false;

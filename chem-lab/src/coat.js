@@ -70,6 +70,14 @@ function makeFabricTexture() {
   return texture;
 }
 
+// The weave artwork is deterministic (straight lines, no randomness), so ONE
+// texture serves both the hanging coat panels and the first-person sleeves.
+let fabricTexture = null;
+function getFabricTexture() {
+  if (!fabricTexture) fabricTexture = makeFabricTexture();
+  return fabricTexture;
+}
+
 
 function makeWoodTexture() {
   const W = 96;
@@ -974,7 +982,7 @@ function buildCoat() {
 
 
   const fabricTexture =
-    makeFabricTexture();
+    getFabricTexture();
 
 
   const fabric =
@@ -1818,7 +1826,7 @@ export function createCoat(
   const sleeveMaterial =
     new THREE.MeshStandardMaterial({
 
-      map: makeFabricTexture(),
+      map: getFabricTexture(),
 
       color: 0xf4f5f6,
 

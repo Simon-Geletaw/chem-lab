@@ -108,10 +108,16 @@ function createWallTexture() {
   }
   ctx.globalAlpha = 1;
 
+  return canvas;
+}
+
+// makeWallTexture() — wraps a wall canvas in a texture with the wrapping
+// contract every wall uses: repeat S (grain can tile slightly horizontally),
+// ClampToEdge T (the dado band stays pinned to the floor).
+function makeWallTexture(canvas) {
   const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.RepeatWrapping;   // grain can tile slightly horizontally
-  texture.wrapT = THREE.ClampToEdgeWrapping;  // band stays pinned to the floor
-  texture.repeat.set(2, 1);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
 }
 
@@ -193,23 +199,28 @@ export function createRoom(scene, interactableObjects) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  // Painted walls: each wall gets the two-tone painted texture (warm off-white
-  // upper, blue-gray dado band at the floor). A FRESH material + texture per wall
-  // keeps the grain independent so repeat never aliases across walls.
-  const paintMat = () => new THREE.MeshStandardMaterial({
-    map: createWallTexture(),
+  // Painted walls: ONE canvas is drawn once and shared by every wall. The
+  // mottle is near-invisible noise (alpha ≤ 0.06), so all four full-height
+  // walls reuse a single material + texture — the grain no longer aliases
+  // because there is only one grain. The window bands resample the same
+  // canvas with their own repeat/offset (see paintBandMat below).
+  const wallCanvas = createWallTexture();
+  const wallTex = makeWallTexture(wallCanvas);
+  wallTex.repeat.set(2, 1);
+  const wallMat = new THREE.MeshStandardMaterial({
+    map: wallTex,
     roughness: 0.9,
     metalness: 0.0
   });
 
   // Back wall
-  const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), paintMat());
+  const backwall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMat);
   backwall.position.set(0, 1.75, -5);
   backwall.receiveShadow = true;
   scene.add(backwall);
 
   // Left wall — rotated +90° so its visible face points INTO the room
-  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), paintMat());
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.5), wallMat);
   leftWall.position.set(-7, 1.75, 0);
   leftWall.rotation.y = Math.PI / 2;
   leftWall.receiveShadow = true;
@@ -223,13 +234,13 @@ export function createRoom(scene, interactableObjects) {
   // the cut edges. The opening sits in the wall's CENTER — between the AIT
   // logo (z=-2.5) and the fire extinguisher (z=2) — and the sky plane is
   // sized to the window only, so nothing of the outside shows beyond it.
-  const rightWallPanel1 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 3.5), paintMat());
+  const rightWallPanel1 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 3.5), wallMat);
   rightWallPanel1.position.set(7, 1.75, -2.935);         // z -5 .. -0.87, full height
   rightWallPanel1.rotation.y = -Math.PI / 2;
   rightWallPanel1.receiveShadow = true;
   scene.add(rightWallPanel1);
 
-  const rightWallPanel2 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 3.5), paintMat());
+  const rightWallPanel2 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 3.5), wallMat);
   rightWallPanel2.position.set(7, 1.75, 2.935);          // z +0.87 .. +5, full height
   rightWallPanel2.rotation.y = -Math.PI / 2;
   rightWallPanel2.receiveShadow = true;
@@ -242,7 +253,7 @@ export function createRoom(scene, interactableObjects) {
   // v ∈ [y0/3.5, y1/3.5] — so the dado stays glued to the floor on the
   // bottom band and the upper paint starts at the same height as the sides.
   const paintBandMat = (y0, y1) => {
-    const tex = createWallTexture();
+    const tex = makeWallTexture(wallCanvas);
     tex.repeat.set(2, (y1 - y0) / 3.5);
     tex.offset.y = y0 / 3.5;
     return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0.0 });
@@ -263,7 +274,7 @@ export function createRoom(scene, interactableObjects) {
   scene.add(rightWallBottom);
 
   // Front wall — rotated 180° so its face points back INTO the room
-  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), paintMat());
+  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), wallMat);
   frontWall.position.set(0, 1.75, 5);
   frontWall.rotation.y = Math.PI;
   frontWall.receiveShadow = true;
@@ -350,8 +361,10 @@ export function createRoom(scene, interactableObjects) {
   scene.add(exitSign);
 
   // Diagonal yellow/black hazard stripes; 4 stripes per canvas, one canvas
-  // covers 0.5 m, so repeat = 2x the wall width.
-  function createHazardStripe(width) {
+  // covers 0.5 m, so repeat = 2x the wall width. The artwork is deterministic
+  // (no randomness), so ONE canvas is drawn once and every stripe samples it
+  // with its own repeat.
+  function createHazardStripeCanvas() {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 32;
@@ -368,37 +381,41 @@ export function createRoom(scene, interactableObjects) {
       ctx.closePath();
       ctx.fill();
     }
+    return canvas;
+  }
+  function createHazardStripe(canvas, width) {
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.repeat.set(width * 2, 1);
     return new THREE.MeshStandardMaterial({ map: texture, roughness: 0.8 });
   }
 
-  const backStripe = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.14), createHazardStripe(14));
+  const hazardCanvas = createHazardStripeCanvas();
+  const backStripe = new THREE.Mesh(new THREE.PlaneGeometry(14, 0.14), createHazardStripe(hazardCanvas, 14));
   backStripe.position.set(0, 0.07, -4.99);
   scene.add(backStripe);
 
   // Left wall stripe keeps its full 10 m run; the RIGHT wall stripe is split
   // into two pieces that match the window-gap panels, so no stripe material
   // ever floats in front of the sky through the gap.
-  const leftStripe = new THREE.Mesh(new THREE.PlaneGeometry(10, 0.14), createHazardStripe(10));
+  const leftStripe = new THREE.Mesh(new THREE.PlaneGeometry(10, 0.14), createHazardStripe(hazardCanvas, 10));
   leftStripe.position.set(-6.99, 0.07, 0);
   leftStripe.rotation.y = Math.PI / 2;
   scene.add(leftStripe);
 
-  const rightStripe1 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 0.14), createHazardStripe(4.13));
+  const rightStripe1 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 0.14), createHazardStripe(hazardCanvas, 4.13));
   rightStripe1.position.set(6.99, 0.07, -2.935);
   rightStripe1.rotation.y = -Math.PI / 2;
   scene.add(rightStripe1);
 
   // Center stripe piece under the window sill — keeps the hazard line running
   // continuously along the wall base (sits inside the bottom wall band).
-  const rightStripe0 = new THREE.Mesh(new THREE.PlaneGeometry(1.74, 0.14), createHazardStripe(1.74));
+  const rightStripe0 = new THREE.Mesh(new THREE.PlaneGeometry(1.74, 0.14), createHazardStripe(hazardCanvas, 1.74));
   rightStripe0.position.set(6.99, 0.07, 0);
   rightStripe0.rotation.y = -Math.PI / 2;
   scene.add(rightStripe0);
 
-  const rightStripe2 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 0.14), createHazardStripe(4.13));
+  const rightStripe2 = new THREE.Mesh(new THREE.PlaneGeometry(4.13, 0.14), createHazardStripe(hazardCanvas, 4.13));
   rightStripe2.position.set(6.99, 0.07, 2.935);
   rightStripe2.rotation.y = -Math.PI / 2;
   scene.add(rightStripe2);

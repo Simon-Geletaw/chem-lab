@@ -15,6 +15,7 @@ const loader = new GLTFLoader();
 const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x6b7a87, roughness: 0.8 });
 const worktopMat = new THREE.MeshStandardMaterial({ color: 0x5f6870, roughness: 0.4, metalness: 0.1 });
 const woodMat    = new THREE.MeshStandardMaterial({ color: 0x9c7b4f, roughness: 0.8 });
+const capMat     = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
 // "Glass": MeshPhysicalMaterial.transmission is REAL refraction — it renders
 // the scene behind the glass through the material (IOR 1.5 = borosilicate).
 // The old opacity-only MeshStandardMaterial looked like frosted plastic.
@@ -141,6 +142,14 @@ function createTestTubeRack() {
   }
 
   const tubeColors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6];
+  // One material per color — both racks show the same five liquids, so the
+  // colors are cached instead of rebuilt per tube.
+  const rackLiquidMats = new Map();
+  const rackLiquidMat = (color) => {
+    let mat = rackLiquidMats.get(color);
+    if (!mat) { mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4 }); rackLiquidMats.set(color, mat); }
+    return mat;
+  };
   tubeColors.forEach((color, i) => {
     const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1, 12), glassMat);
     tube.position.set(-0.1 + i * 0.05, 0.1, 0);
@@ -148,7 +157,7 @@ function createTestTubeRack() {
 
     const liquid = new THREE.Mesh(
       new THREE.CylinderGeometry(0.006, 0.006, 0.04, 12),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.4 })
+      rackLiquidMat(color)
     );
     liquid.position.set(-0.1 + i * 0.05, 0.075, 0);
     rack.add(liquid);
@@ -160,7 +169,12 @@ function createTestTubeRack() {
 // A paper label texture for a chemical bottle — same canvas-texture trick
 // as the periodic table tiles, just smaller. Dark navy + white text so the
 // formula stays readable from across the room (and matches the poster board).
+// Built once per text: identical formulas share one texture.
+const labelTextures = new Map();
 function createLabelTexture(text) {
+  let texture = labelTextures.get(text);
+  if (texture) return texture;
+
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 192;
@@ -178,8 +192,9 @@ function createLabelTexture(text) {
   ctx.font = 'bold 72px Arial';
   ctx.fillText(text, 128, 96, 230);
 
-  const texture = new THREE.CanvasTexture(canvas);
+  texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearMipmapLinearFilter;
+  labelTextures.set(text, texture);
   return texture;
 }
 
@@ -211,7 +226,12 @@ function createStationSign(scene, text, position, rotationY) {
 
 // A grainy canvas texture for powder chemicals: base color + speckles of
 // slightly lighter/darker shade, so the bottle reads "crystals", not liquid.
+// Built once per base color — powders of the same shade share one texture.
+const powderTextures = new Map();
 function makePowderTexture(baseColor) {
+  let t = powderTextures.get(baseColor);
+  if (t) return t;
+
   const c = document.createElement('canvas');
   c.width = 128;
   c.height = 128;
@@ -224,10 +244,11 @@ function makePowderTexture(baseColor) {
     g.fillStyle = `rgb(${Math.min(255, col.r * 255 * k) | 0},${Math.min(255, col.g * 255 * k) | 0},${Math.min(255, col.b * 255 * k) | 0})`;
     g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random(), 1 + Math.random());
   }
-  const t = new THREE.CanvasTexture(c);
+  t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(2, 2);
+  powderTextures.set(baseColor, t);
   return t;
 }
 
@@ -249,16 +270,22 @@ function createBottle(chem, labelText, labelAngle) {
   body.position.y = 0.08;
   bottle.add(body);
 
+  // Liquid bottles: the neck is the same liquid color at the same roughness
+  // as the body, so both meshes share ONE material. Powder bottles keep a
+  // separate matte neck (no grain map).
+  const neckMat = isPowder
+    ? new THREE.MeshStandardMaterial({ color: liquidColor, roughness: 0.95 })
+    : body.material;
   const neck = new THREE.Mesh(
     new THREE.CylinderGeometry(0.018, 0.03, 0.04, 20),
-    new THREE.MeshStandardMaterial({ color: liquidColor, roughness: isPowder ? 0.95 : 0.35 })
+    neckMat
   );
   neck.position.y = 0.18;
   bottle.add(neck);
 
   const cap = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.02, 0.025, 20),
-    new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 })
+    capMat
   );
   cap.position.y = 0.21;
   bottle.add(cap);
