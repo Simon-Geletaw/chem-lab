@@ -9,7 +9,14 @@
 //
 // SAFETY RULE that outranks the theme: a DANGER warning stays RED (deepened so
 // it reads on pale glass). The green look must never let an unsafe card blend in.
-export const theme = {
+//
+// The tokens live in server/data/theme.json — read like every other data file
+// (static import + validation, with the defaults below as the fallback). Edit
+// the JSON, rebuild, the whole UI restyles. A malformed token only falls back;
+// it must never brick the UI.
+import rawTheme from '../../server/data/theme.json';
+
+const DEFAULT_THEME = {
     heading: "'Space Grotesk', 'Inter', system-ui, sans-serif",
     font: "'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
 
@@ -51,6 +58,20 @@ export const theme = {
     safeSoft: 'rgba(46, 125, 66, 0.14)',
     safeBorder: 'rgba(46, 125, 66, 0.45)'
 };
+
+// buildTheme() — merge the JSON over the defaults: every token must be a
+// non-empty string, otherwise the default wins. Same contract as the room
+// paint: the JSON is the source of truth, the code below is the fallback.
+function buildTheme() {
+    const out = {};
+    for (const key of Object.keys(DEFAULT_THEME)) {
+        const v = rawTheme ? rawTheme[key] : undefined;
+        out[key] = (typeof v === 'string' && v.trim()) ? v : DEFAULT_THEME[key];
+    }
+    return out;
+}
+
+export const theme = buildTheme();
 
 // glassPanel() — the shared CSS block every frosted panel pastes in, so the
 // fill + blur + border + shadow live in exactly ONE place. The `-webkit-` twin
