@@ -59,11 +59,49 @@ function applyFresnelGlow(material, glowColor, power = 3.5, intensity = 0.6) {
 // Constants
 // ============================================================
 
-const TRAIL_LENGTH = 32;
-const _center = new THREE.Vector3();
-const _dir    = new THREE.Vector3();
-const _prev   = new THREE.Vector3();
-const _next   = new THREE.Vector3();
+const TRAIL_LENGTH  = 32;
+const TRAIL_RADIALS = 6;   // vertices per ring = RADIALS + 1
+const _center  = new THREE.Vector3();
+const _prev    = new THREE.Vector3();
+const _next    = new THREE.Vector3();
+const _tangent = new THREE.Vector3();
+const _uAxis   = new THREE.Vector3();
+const _vAxis   = new THREE.Vector3();
+const _up      = new THREE.Vector3(0, 1, 0);
+
+// Writes one oriented disc per trail point. Each ring is built in the plane
+// perpendicular to the local path tangent (central-difference), so the head
+// ring hugs the electron's travel direction instead of collapsing toward it
+// (the fixed radial rescale let the freshest ring drift onto the electron).
+function writeTrailRings(arr, points, radials, taperStart, taperEnd) {
+  for (let seg = 0; seg < points.length; seg++) {
+    const frac   = points.length > 1 ? seg / (points.length - 1) : 0;
+    const radius = taperStart + frac * (taperEnd - taperStart);
+
+    _center.copy(points[seg]);
+    if (seg < points.length - 1) _next.copy(points[seg + 1]); else _next.copy(points[seg]);
+    if (seg > 0)                _prev.copy(points[seg - 1]); else _prev.copy(points[seg]);
+
+    _tangent.copy(_next).sub(_prev);
+    if (_tangent.lengthSq() < 1e-12) _tangent.set(0, 0, 1);
+    _tangent.normalize();
+
+    if (Math.abs(_tangent.dot(_up)) > 0.999) _up.set(1, 0, 0); else _up.set(0, 1, 0);
+    _uAxis.copy(_up).cross(_tangent);
+    if (_uAxis.lengthSq() < 1e-12) _uAxis.set(1, 0, 0); else _uAxis.normalize();
+    _vAxis.copy(_tangent).cross(_uAxis);
+
+    for (let r = 0; r <= radials; r++) {
+      const ang = (r / radials) * Math.PI * 2;
+      const c   = Math.cos(ang) * radius;
+      const s   = Math.sin(ang) * radius;
+      const idx = (seg * (radials + 1) + r) * 3;
+      arr[idx]     = _center.x + _uAxis.x * c + _vAxis.x * s;
+      arr[idx + 1] = _center.y + _uAxis.y * c + _vAxis.y * s;
+      arr[idx + 2] = _center.z + _uAxis.z * c + _vAxis.z * s;
+    }
+  }
+}
 
 // ============================================================
 // HoverSystem — self-contained raycaster + DOM tooltip
@@ -674,14 +712,32 @@ export class AtomicStructure extends THREE.Group {
     electron.add(electronLight);
 
     // Comet trail
-    const history = Array.from({ length: TRAIL_LENGTH }, (_, i) => {
+const history = Array.from({ length: TRAIL_LENGTH }, (_, i) => {
       const th = startTheta - i * 0.06;
       return new THREE.Vector3(a * Math.cos(th), b * Math.sin(th), 0);
     });
     const points   = history.map((p) => p.clone());
-    const trailGeom = new THREE.TubeGeometry(
-      new THREE.CatmullRomCurve3(points), TRAIL_LENGTH - 1, 0.015, 6, false
-    );
+
+    // Tube built from TRAIL_LENGTH oriented rings (tangent-basis discs), so
+    // the freshest ring stays perpendicular to the motion instead of being
+    // pulled onto the electron.
+    const ringVerts = new Float32Array(TRAIL_LENGTH * (TRAIL_RADIALS + 1) * 3);
+    writeTrailRings(ringVerts, points, TRAIL_RADIALS, 0.015, 0.145);
+    const trailGeom = new THREE.BufferGeometry();
+    trailGeom.setAttribute('position', new THREE.BufferAttribute(ringVerts, 3));
+    const trailIdx = [];
+    for (let seg = 0; seg < TRAIL_LENGTH - 1; seg++) {
+      for (let r = 0; r <= TRAIL_RADIALS; r++) {
+        const rn = (r + 1) % (TRAIL_RADIALS + 1);
+        const a  = seg * (TRAIL_RADIALS + 1) + r;
+        const b  = seg * (TRAIL_RADIALS + 1) + rn;
+        const c  = (seg + 1) * (TRAIL_RADIALS + 1) + r;
+        const d  = (seg + 1) * (TRAIL_RADIALS + 1) + rn;
+        trailIdx.push(a, c, b, b, c, d);
+      }
+    }
+    trailGeom.setIndex(trailIdx);
+
     const trail = new THREE.Mesh(trailGeom, new THREE.MeshBasicMaterial({
       color,
       transparent: true,
@@ -759,7 +815,7 @@ export class AtomicStructure extends THREE.Group {
       e.electronLight.intensity             = 0.6 + speedNorm * 0.5;
       e.pivot.rotation.z                   += e.precess * delta;
 
-      // Trail ring-buffer mutate
+// Trail ring-buffer mutate — rewrite every ring from the tangent basis
       const posAttr = e.trail.geometry.getAttribute("position");
       const arr     = posAttr.array;
       e.history[e.historyIdx].copy(e.electron.position);
@@ -767,23 +823,7 @@ export class AtomicStructure extends THREE.Group {
       for (let i = 0; i < TRAIL_LENGTH; i++)
         e.points[i].copy(e.history[(e.historyIdx + i) % TRAIL_LENGTH]);
 
-      const radials = 6;
-      for (let seg = 0; seg < TRAIL_LENGTH; seg++) {
-        const frac   = seg / (TRAIL_LENGTH - 1);
-        const radius = 0.015 + frac * 0.13;
-        _center.copy(e.points[seg]);
-        if (seg < TRAIL_LENGTH - 1) _next.copy(e.points[seg + 1]); else _next.copy(e.points[seg]);
-        if (seg > 0)                _prev.copy(e.points[seg - 1]); else _prev.copy(e.points[seg]);
-        for (let rIdx = 0; rIdx <= radials; rIdx++) {
-          const idx = seg * (radials + 1) + rIdx;
-          _dir.set(arr[idx*3], arr[idx*3+1], arr[idx*3+2]).sub(_center);
-          const len = _dir.length();
-          if (len > 1e-6) _dir.divideScalar(len); else _dir.set(1, 0, 0);
-          arr[idx*3]   = _center.x + _dir.x * radius;
-          arr[idx*3+1] = _center.y + _dir.y * radius;
-          arr[idx*3+2] = _center.z + _dir.z * radius;
-        }
-      }
+      writeTrailRings(arr, e.points, TRAIL_RADIALS, 0.015, 0.145);
       posAttr.needsUpdate = true;
     });
 
