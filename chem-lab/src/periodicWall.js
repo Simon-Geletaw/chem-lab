@@ -101,15 +101,20 @@ function createTitleTexture() {
 // bands x -7..-2.1 and x +2.1..+7 are empty wall — stickers 1 and 2 are
 // centered in those bands (±4.55). Sticker 3 hangs on the FRONT wall's
 // free band between the Physics sim door (x=-1.7) and the exit door
-// (x=2.55), centered at x=0.425. Decorative only (no interaction). Plain
-// canvas, no frame: the PNGs are transparent, so the painted wall shows
-// through their empty pixels, same treatment as the AIT logo on the right
-// wall. Unlit like the poster tiles (the image carries its own lighting) —
-// no per-pixel light cost.
+// (x=2.55), centered at x=0.425. Plain canvas, no frame: the PNGs are
+// transparent, so the painted wall shows through their empty pixels, same
+// treatment as the AIT logo on the right wall. Unlit like the poster tiles
+// (the image carries its own lighting) — no per-pixel light cost.
+//
+// Sticker 1 (the one beside the periodic table) is CLICKABLE: passing
+// interactableObjects registers it so clicking the picture pops the animated
+// 3D atom out of it (atomView.js) — the same raycast pool as tiles/doors.
+// Stickers 2 and 3 stay decorative (no interactableObjects).
 // Params: scene, url (texture path, spaces %20-encoded), x (center along
 // the wall), z (wall plane depth; +4.97 front / -4.98 back), rotY (0 for
-// the back wall, Math.PI for the front wall so the plane faces the room).
-export function createWallSticker(scene, url, x, z, rotY = 0) {
+// the back wall, Math.PI for the front wall so the plane faces the room),
+// interactableObjects (optional — clickable sticker).
+export function createWallSticker(scene, url, x, z, rotY = 0, interactableObjects) {
   const texture = new THREE.TextureLoader().load(url);
   texture.colorSpace = THREE.SRGBColorSpace;
 
@@ -125,6 +130,16 @@ export function createWallSticker(scene, url, x, z, rotY = 0) {
   sticker.position.set(x, 1.7, z);
   sticker.rotation.y = rotY;
   scene.add(sticker);
+
+  if (interactableObjects) {
+    sticker.userData = {
+      name: 'Atomic Structure',
+      description: 'Click to bring the atomic model out of the picture.',
+      isAtomSticker: true,
+      homePosition: sticker.position.clone()
+    };
+    interactableObjects.push(sticker);
+  }
 }
 
 export function createPeriodicWall(scene, interactableObjects) {

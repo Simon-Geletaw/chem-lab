@@ -72,6 +72,17 @@ export function createInteractions(camera, controls, scene, interactableObjects)
   const mouse = new THREE.Vector2();
   const CENTER = new THREE.Vector2(0, 0);   // screen center in normalized coords
 
+  // The atom view's OrbitControls ends every drag with a 'click' event. A
+  // click that travelled across the screen is a DRAG, never a real click —
+  // remember where the pointer went down and compare.
+  let downX = 0;
+  let downY = 0;
+  document.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY; });
+
+  // Wired by main.js to the atom view: passed the clicked atomic-structure
+  // picture mesh so the view can open (E is the only way it closes).
+  let atomHandler = null;
+
   // HTML panel (still used for non-element objects like the bench)
   const panel = document.getElementById('info-panel');
   const panelTitle = document.getElementById('info-title');
@@ -159,6 +170,9 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     if (event.target.closest('#start-overlay') ||
         event.target.closest('#info-panel') ||
         event.target.closest('#mobile-controls')) return;
+    // A drag (atom-view OrbitControls) fires a click on release — a click
+    // that moved across the screen is not a click.
+    if (Math.abs(event.clientX - downX) > 6 || Math.abs(event.clientY - downY) > 6) return;
 
     if (controls.isLocked) {
       raycaster.setFromCamera(CENTER, camera);          // crosshair aim
@@ -180,6 +194,12 @@ export function createInteractions(camera, controls, scene, interactableObjects)
       // Clicking the popped tile again puts it back; a new tile swaps over
       if (obj === selectedTile) deselect();
       else select(obj);
+    } else if (obj.userData.isAtomSticker) {
+      // The atomic-structure picture beside the periodic table: clicking it
+      // pops the animated 3D atom out (atomView.js). While the atom is out
+      // the ONLY exit is E — a second click does nothing (the handler gates
+      // on atomView.active).
+      if (atomHandler) atomHandler(obj);
     } else {
       panelTitle.textContent = obj.userData.name;
       panelText.textContent = obj.userData.description;
@@ -191,6 +211,24 @@ export function createInteractions(camera, controls, scene, interactableObjects)
     addProximityPanel,
     panels: proximityPanels,
     setPicking(v) { pickingEnabled = v; if (!v) deselect(); },
+    setAtomHandler(cb) { atomHandler = cb; },
+
+    // Headless smoke-test hook (precedent: window.beaker in main.js): fires a
+    // REAL click event at the atomic-structure picture's screen position, so
+    // the whole raycast → handler → atomView path is exercised.
+    simulateAtomClick() {
+      const s = interactableObjects.find((o) => o.userData && o.userData.isAtomSticker);
+      if (!s) return 'no-sticker';
+      const v = s.userData.homePosition.clone();
+      v.project(camera);
+      const x = (v.x + 1) / 2 * window.innerWidth;
+      const y = (1 - v.y) / 2 * window.innerHeight;
+      // Real clicks are always preceded by a pointerdown at the same spot —
+      // the drag filter (OrbitControls) relies on that; mirror it here.
+      document.body.dispatchEvent(new MouseEvent('pointerdown', { clientX: x, clientY: y, bubbles: true }));
+      document.body.dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y, bubbles: true }));
+      return 'clicked-at ' + Math.round(x) + ',' + Math.round(y);
+    },
 
     update(delta) {
       // The easing idiom: each frame move a FRACTION of the remaining distance.

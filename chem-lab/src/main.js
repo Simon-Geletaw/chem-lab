@@ -9,6 +9,7 @@ import { createPlayer } from './player.js';
 import { createFurniture } from './furniture.js';
 import { createInteractions } from './interactions.js';
 import { createTour } from './tour.js';
+import { createAtomView } from './atomView.js';
 import { createHand } from './hand.js';
 import { createBeaker } from './beaker.js';
 import { createEffectRunner, initEffectPools, prewarmEffects } from './effects/index.js';
@@ -98,6 +99,7 @@ async function boot() {
   // Bloom: real lights glow (fixtures, EXIT sign, reaction fire). Post FX cost
   // is only paid on the HIGH preset â€” LOW renders straight to the screen.
   let composer = null;
+  let bloomPass = null;                    // reused by atomView's showcase ramp
   if (quality.level === 'high') {
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
@@ -113,6 +115,7 @@ async function boot() {
     );
     composer.addPass(bloom);
     composer.addPass(new OutputPass());   // tone mapping + color space, after bloom
+    bloomPass = bloom;
   }
 
   // 4. Build the world (each module adds its own part to the scene)
@@ -134,7 +137,7 @@ async function boot() {
   // the Physics sim door and the exit door (decorative canvases, load with
   // the other wall art). Note: the PNG filenames contain spaces â€” encoded as
   // %20 in the URLs, same pattern as the AIT logo (/Logo/AIT%20logo%20.png).
-  createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker-1-atomic-structure-1.png`, -4.55, -4.98);
+  createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker-1-atomic-structure-1.png`, -4.55, -4.98, 0, interactableObjects);
   createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker-2%20c2h205%20.png`, 4.55, -4.98);
   createWallSticker(scene, `${import.meta.env.BASE_URL}sticker/sticker3%20chemistry%20.png`, 0.425, 4.97, Math.PI);
   const player = createPlayer(camera);
@@ -211,13 +214,35 @@ const goggles = createEyegoggles(scene, camera, interactableObjects, hud);
   const coat = createCoat(scene, camera, interactableObjects, hud, gloves);
   // The biohazard bin: the ONLY way used PPE comes off (dispensers only put ON).
   const trashBin = createTrashBin(scene, interactableObjects);
-  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard);
+  // The atomic-structure picture (sticker 1 beside the periodic table):
+  // clicking it pops the animated 3D atom out on a pedestal with the demo
+  // showcase (key/rim lights + boosted bloom) — and you keep walking freely
+  // around it. E (hand.js) is the ONLY way back; the atom retracts into the
+  // picture and the room's normal glow returns.
+  const atomView = createAtomView(scene, camera, player, renderer, (strength, threshold) => {
+    if (bloomPass) {
+      bloomPass.strength = strength;
+      bloomPass.threshold = threshold;
+    }
+  });
+  const hand = createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard, atomView);
+  interactions.setAtomHandler((sticker) => {
+    // Only opens when the view is closed AND the player is empty-handed;
+    // while the atom is out a click on the picture is a no-op (E exits).
+    if (sticker && !atomView.active && hand.state === 'EMPTY') {
+      atomView.focus(sticker);
+    }
+  });
+  // Headless smoke-test hook (precedent: window.beaker above).
+  window.__atomView = atomView;
+  window.__interactions = interactions;
 
   // resetLab() — a "fresh session": every lab module back to its start state,
   // the camera home at the entrance. Shared by the exit card's "Return to Lab"
   // (E at the exit door) and the T6 burn-game-over "Restart Experiment" card,
   // so one function defines what "starting over" means.
   function resetLab() {
+      if (atomView.active) atomView.exit();         // retract the 3D atom if it's out
       hand.resolveBurn();                    // gripped/fallen bottle -> shelf, hand cleared
       player.enabled = true;                 // re-enable walking (was off during the reveal)
       interactions.setPicking(true);         // re-enable clicks (tiles, panels)
@@ -284,6 +309,7 @@ const goggles = createEyegoggles(scene, camera, interactableObjects, hud);
       if (composer) {
         composer.dispose();
         composer = null;
+        bloomPass = null;                  // the atom showcase ramps a real pass only
       }
     }
     player.update(worldDelta);               // walking (does nothing while the tour runs)
@@ -294,6 +320,7 @@ const goggles = createEyegoggles(scene, camera, interactableObjects, hud);
     beaker.update(worldDelta);               // billboard the content label
     effectRunner.update(worldDelta);         // animate live effects, dispose finished ones
     tour.update(worldDelta);                 // tour camera (does nothing while idle)
+    atomView.update(worldDelta);             // atom orbit view (does nothing while closed)
     interactions.update(worldDelta);
     trashBin.update(worldDelta);             // lid swing + flying PPE props
     if (composer) composer.render();

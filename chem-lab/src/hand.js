@@ -87,7 +87,7 @@ function showAimInfo(target, beaker) {
     infoPanel.style.display = 'block';
 }
 
-export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard) {
+export function createHand(camera, scene, interactableObjects, beaker, player, pourDialog, gloves, warningCard, hud, mask, trashBin, effectRunner, simDoors, coat, goggles, expTable, experimentOverlay, exitCard, atomView) {
     let state = 'EMPTY';    // 'EMPTY' | 'HOLDING' | 'CHOOSING' | 'RETURNING' | 'POURING'
     let heldBottle = null;
 
@@ -264,6 +264,14 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
 
     window.addEventListener('keydown', (event) => {
         if (burnOut) return;   // game-over: block every E/Q interaction during the burn reveal
+        // Atom view: while the 3D atomic model is out, E is the ONLY way back
+        // — E retracts it (the same press never also picks up a bottle), and
+        // every other key is ignored by the hand (WASD still walks: that's
+        // the whole point of the free-walk showcase).
+        if (atomView && atomView.active) {
+            if (event.code === 'KeyE') atomView.exit();
+            return;
+        }
         if (event.code === 'KeyE' && state === 'EMPTY') {
             // Experiment cards: E on a card (crosshair) opens its detail
             // overlay — description, safety chips, then "Open Experiment".
@@ -624,6 +632,13 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
         },
 
         update(delta) {
+            // Atom view: the 3D model is out — the hint bar becomes the exit
+            // sign ("E puts it back"); no other hand work while it's out.
+            if (atomView && atomView.active) {
+                hint.textContent = '[E] Put the atomic model back';
+                hint.style.display = 'block';
+                return;
+            }
             const t = Math.min(1, delta * 8);   // the easing idiom (book Ch 2.1 #4)
             // T6 game-over reveal: freeze normal hand behaviour. The char ramp
             // (applyBurn) and the drop (applyDropProgress) are driven by burnCard
@@ -801,7 +816,9 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 const card = expTable.aim(camera);
                 const simDoor = card ? null : simDoors.aim(camera);
                 const exitDoor = simDoor ? null : aimAt('exitDoor', 3);
-                const target = (card || simDoor || exitDoor) ? null : aimAt('isBottle', 2.5);
+                const atomSticker = exitDoor ? null : aimAt('isAtomSticker', 3);
+                const elementTile = atomSticker ? null : aimAt('isElement', 4);
+                const target = (card || simDoor || exitDoor || atomSticker || elementTile) ? null : aimAt('isBottle', 2.5);
                 const gbox = target ? null : aimAt('gloveBox', 2.5);
                 const mbox = target || gbox ? null : aimAt('maskBox', 2.5);
                 const gox = target || gbox || mbox ? null : aimAt('goggleBox', 2.5);
@@ -810,6 +827,8 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 if (card) hint.textContent = `[E] View ${card.title} experiment`;
                 else if (simDoor) hint.textContent = `[E] Enter ${simDoor.label} simulation`;
                 else if (exitDoor) hint.textContent = '[E] Leave the lab';
+                else if (atomSticker) hint.textContent = '[Click] Show the 3D atomic structure';
+                else if (elementTile) hint.textContent = '[Click] Pop out an element to learn about it';
                 else if (target) hint.textContent = `[E] Pick up ${target.userData.name}`;
                 else if (gbox) hint.textContent = gloves.on ? 'Used gloves go in the biohazard bin' : '[E] Put on gloves';
                 else if (mbox) hint.textContent = mask.on ? 'Used masks go in the biohazard bin' : '[E] Put on mask';
@@ -820,7 +839,7 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                         ? '[E] Throw away gloves'
                         : mask.on ? '[E] Throw away mask' : 'Nothing to throw away';
                 }
-                hint.style.display = (card || simDoor || exitDoor || target || gbox || mbox || gox || coatRack || tbin) ? 'block' : 'none';
+                hint.style.display = (card || simDoor || exitDoor || atomSticker || elementTile || target || gbox || mbox || gox || coatRack || tbin) ? 'block' : 'none';
                 // F2 data sheet for bottles; F3: empty-handed aim at the flask
                 // shows its contents breakdown instead.
                 showAimInfo(target || aimAt('isBeaker', 2.5), beaker);
@@ -828,7 +847,8 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 const overCard = expTable.aim(camera);
                 const overSimDoor = overCard ? null : simDoors.aim(camera);
                 const overExitDoor = overSimDoor ? null : aimAt('exitDoor', 3);
-                const overBeaker = overExitDoor ? null : aimAt('isBeaker', 2);
+                const overAtomSticker = overExitDoor ? null : aimAt('isAtomSticker', 3);
+                const overBeaker = overAtomSticker ? null : aimAt('isBeaker', 2);
                 const overGloveBox = overBeaker ? null : aimAt('gloveBox', 2.5);
                 const overGoggleBox = overGloveBox ? null : aimAt('goggleBox', 2.5);
                 // The [Q] return notice only appears near the chemical shelf —
@@ -838,8 +858,8 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
                 if (overCard) {
                     hint.textContent = 'Set the bottle down first';     // nothing is carried to an experiment
                     showHint = true;
-                } else if (overSimDoor || overExitDoor) {
-                    hint.textContent = 'Set the bottle down first';     // nothing is carried past a door
+                } else if (overSimDoor || overExitDoor || overAtomSticker) {
+                    hint.textContent = 'Set the bottle down first';     // nothing is carried past a door or to the picture
                     showHint = true;
                 } else if (overBeaker) {
                     hint.textContent = `[E] Pour ${heldBottle.userData.name}`;
