@@ -31,7 +31,7 @@ export function createPlayer(camera) {
   overlay.addEventListener('click', () => {
     player.enter();
   });
-  // The pause-menu "Enter Lab / Resume" button (chemistry lab only) —
+  // The pause-menu "Enter Lab / Resume" button (all labs) —
   // stopPropagation so the overlay's click-anywhere handler doesn't double-fire.
   const enterBtn = document.getElementById('enter-btn');
   if (enterBtn) {

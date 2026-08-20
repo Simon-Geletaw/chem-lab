@@ -1,6 +1,6 @@
-// main.js — the Biology Lab standalone app. Boots the room (same shell as the
-// Chemistry Lab), walks the player around, and lets them exit back to the
-// Chemistry Lab via the door.
+// main.js — a satellite-lab standalone app (Biology / Mathematics / Physics).
+// Boots the room (same shell as the Chemistry Lab hub), walks the player
+// around, and lets them exit back to the Chemistry Lab via the door.
 //
 // Everything user-facing (title, tagline, signs, back link) comes from
 // server/data/room.json — loaded here before the world is built.

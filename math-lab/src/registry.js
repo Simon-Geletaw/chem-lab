@@ -1,4 +1,4 @@
-// registry.js — the ONE place that knows where the Biology Lab's room data
+// registry.js — the ONE place that knows where the Mathematics Lab's room data
 // comes from. Everything user-facing in this app (room name, tagline, accent,
 // the back-to-chem-lab link, station signs) is driven by server/data/room.json
 // — change the JSON, restart, and the room relabels itself.

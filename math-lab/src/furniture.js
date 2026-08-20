@@ -1,4 +1,4 @@
-// furniture.js — the Biology room's furniture: a few lab benches plus the
+// furniture.js — the Mathematics room's furniture: a few lab benches plus the
 // station signs. NO chemistry equipment — this is the themed room shell.
 //
 // Everything user-facing comes from server/data/room.json via registry.js:

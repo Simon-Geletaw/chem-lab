@@ -1,4 +1,4 @@
-// exitDoor.js — the Biology room's exit: press E at the steel door on the
+// exitDoor.js — the Mathematics room's exit: press E at the steel door on the
 // front wall to travel back to the Chemistry Lab hub. The destination comes
 // from server/data/room.json (backHref/backLabel) — change the JSON to point
 // this door somewhere else.
