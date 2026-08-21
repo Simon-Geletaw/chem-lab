@@ -1,10 +1,7 @@
-// furniture.js — the Mathematics room's furniture: a few lab benches plus the
-// station signs. NO chemistry equipment — this is the themed room shell.
-//
-// Everything user-facing comes from server/data/room.json via registry.js:
-// the benches are the same geometry as chem-lab, and each station in
-// room.json.stations[] gets a hanging sign (canvas texture) labelled with its
-// JSON text, so the room relabels itself purely by editing the JSON.
+// furniture.js — the Mathematics room's furniture: lab benches only.
+// Station signs and toggle signs are now handled by signs.js.
+// Bench geometry matches chem-lab; everything user-facing comes from
+// server/data/room.json via registry.js.
 import * as THREE from 'three';
 import { getRoom } from './registry.js';
 
@@ -28,37 +25,6 @@ export function createBench(x, z, rotationY, length = 2.8) {
   bench.position.set(x, 0, z);
   bench.rotation.y = rotationY || 0;
   return bench;
-}
-
-// A hanging station sign: dark board + white text + accent rule, hung above a
-// station so the workflow reads from across the room. Text comes from JSON.
-function createStationSign(scene, station) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 96;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#22303c';
-  ctx.fillRect(0, 0, 512, 96);
-  ctx.strokeStyle = getRoom().accent;
-  ctx.lineWidth = 4;
-  ctx.strokeRect(4, 4, 504, 88);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 42px Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(station.label, 256, 42, 500);
-  ctx.font = '22px Arial';
-  ctx.fillStyle = '#b9cbe2';
-  ctx.fillText(station.subtitle, 256, 78, 500);
-
-  const sign = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.6, 0.3),
-    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(canvas) })
-  );
-  sign.position.set(station.x, 2.3, station.z);
-  sign.rotation.y = station.rotationY || 0;
-  scene.add(sign);
 }
 
 // A 2.8 m island bench in the middle of the room (the main workstation) + a
@@ -85,6 +51,5 @@ export function createFurniture(scene, interactableObjects, colliders) {
   interactableObjects.push(wallBench);
   colliders.push(new THREE.Box3().setFromObject(wallBench));
 
-  // Station signs — all labels/subtitles come from room.json.
-  getRoom().stations.forEach((station) => createStationSign(scene, station));
+  // Station signs and toggle sign are created by signs.js (data-driven from room.json)
 }
