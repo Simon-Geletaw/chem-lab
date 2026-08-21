@@ -2,6 +2,105 @@
   "name": "Mathematics Lab",
   "tagline": "Numbers, shapes & equations",
   "accent": "#1f6fd6",
+  "geometry": {
+    "width": 14,
+    "depth": 10,
+    "height": 3.5
+  },
+  "lighting": {
+    "ambient": {
+      "color": "#c8d4da",
+      "intensity": 0.10
+    },
+    "fill": {
+      "color": "#dde6ea",
+      "ground": "#8f8a80",
+      "intensity": 0.22
+    },
+    "dir": {
+      "color": "#dfe8ec",
+      "intensity": 0.12,
+      "position": [0, 6, 0],
+      "shadow": {
+        "radius": 6,
+        "mapSize": [1024, 1024],
+        "camera": {
+          "left": -7.3,
+          "right": 7.3,
+          "top": 5.3,
+          "bottom": -5.3,
+          "near": 1,
+          "far": 7
+        },
+        "bias": -0.0001,
+        "normalBias": 0.02
+      }
+    },
+    "fixtures": [
+      {
+        "x": 0,
+        "y": 3.47,
+        "z": -2.5,
+        "size": [1.2, 0.3],
+        "emissiveColor": "#ffffff",
+        "emissiveIntensity": 1.5,
+        "lightColor": "#e9f4f6",
+        "lightIntensity": 3.2,
+        "lookAt": [0, 0, -2.5]
+      },
+      {
+        "x": 0,
+        "y": 3.47,
+        "z": 0,
+        "size": [1.2, 0.3],
+        "emissiveColor": "#ffffff",
+        "emissiveIntensity": 1.5,
+        "lightColor": "#e9f4f6",
+        "lightIntensity": 3.2,
+        "lookAt": [0, 0, 0]
+      },
+      {
+        "x": 0,
+        "y": 3.47,
+        "z": 2.5,
+        "size": [1.2, 0.3],
+        "emissiveColor": "#ffffff",
+        "emissiveIntensity": 1.5,
+        "lightColor": "#e9f4f6",
+        "lightIntensity": 3.2,
+        "lookAt": [0, 0, 2.5]
+      },
+      {
+        "x": 5.25,
+        "y": 3.42,
+        "z": 1.75,
+        "size": [0.6, 0.3],
+        "emissiveColor": "#ffffff",
+        "emissiveIntensity": 1.5,
+        "lightColor": "#e9f4f6",
+        "lightIntensity": 2.0,
+        "lookAt": [6.95, 0, 1.75]
+      }
+    ]
+  },
+  "sky": {
+    "colors": ["#2f5c8f", "#7fa8c9", "#d9e7f1"],
+    "size": [2.2, 1.9],
+    "position": [9, 1.55, 0],
+    "opacity": 1
+  },
+  "hazard": {
+    "baseColor": "#e0b81f",
+    "stripeColor": "#1b1b1b",
+    "height": 0.14,
+    "stripePeriod": 32
+  },
+  "exit": {
+    "doorPos": [3, 4.97],
+    "signPos": [3, 2.55, 4.97],
+    "label": "EXIT",
+    "color": "#1f7a3c"
+  },
   "wallPaint": {
     "upper": "#d3d4d3",
     "dado": "#82a1b4",
@@ -17,15 +116,60 @@
       "label": "MATHEMATICS LAB",
       "subtitle": "Numbers, shapes & equations",
       "x": 0,
+      "y": 2.3,
       "z": -1.5,
-      "rotationY": 0
+      "rotationY": 0,
+      "width": 1.6,
+      "height": 0.3,
+      "fontSize": 42,
+      "subtitleSize": 22,
+      "accent": "#1f6fd6"
     },
     {
       "label": "GEOMETRY",
       "subtitle": "Shapes & proofs",
       "x": -6.55,
+      "y": 2.3,
       "z": 2.5,
-      "rotationY": 0
+      "rotationY": 0,
+      "width": 1.6,
+      "height": 0.3,
+      "fontSize": 42,
+      "subtitleSize": 22,
+      "accent": "#1f6fd6"
+    }
+  ],
+  "toggleSigns": [
+    {
+      "id": "geom-alg",
+      "x": 6.95,
+      "y": 1.9,
+      "z": 1.5,
+      "rotationY": -1.5707963267948966,
+      "width": 0.95,
+      "height": 0.4,
+      "states": [
+        {
+          "label": "GEOMETRY",
+          "subtitle": "Shapes & proofs",
+          "bg": "#22303c",
+          "text": "#ffffff",
+          "accent": "#1f6fd6",
+          "borderColor": "#9fc5e8",
+          "fontSize": 42,
+          "subtitleSize": 22
+        },
+        {
+          "label": "ALGEBRA",
+          "subtitle": "Equations & identity",
+          "bg": "#22303c",
+          "text": "#ffffff",
+          "accent": "#8e44ad",
+          "borderColor": "#d4b5f5",
+          "fontSize": 42,
+          "subtitleSize": 22
+        }
+      ]
     }
   ]
 }
