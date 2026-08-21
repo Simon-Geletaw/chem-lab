@@ -13,7 +13,9 @@ import { createRoom } from './room.js';
 import { createPlayer } from './player.js';
 import { createFurniture } from './furniture.js';
 import { createExitDoor } from './exitDoor.js';
+import { createToggleWallSign, handleToggleSignKeyDown } from './signs.js';
 import { loadRoom, getRoom } from './registry.js';
+import { rebuildFixtureLights } from './lights.js';
 import { quality, effectivePixelRatio, createFpsMeter, createQualityMonitor } from './quality.js';
 import { loader } from './ui/loader.js';
 import './fullscreen.js';
@@ -44,6 +46,14 @@ async function boot() {
     // objects built by earlier ones, so their bindings live here.
     let scene, camera, renderer, composer, interactableObjects;
     let player, exitDoor, room, animate;
+    let fixtureLights = [];
+
+    // Toggle sign E-key handler
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyE') {
+        handleToggleSignKeyDown(camera);
+      }
+    });
 
     loader.register([
       // Room data first — the whole app labels itself from server/data/room.json.
@@ -108,7 +118,8 @@ async function boot() {
           }
 
           interactableObjects = [];
-          createRoom(scene, interactableObjects);
+          const roomResult = createRoom(scene, interactableObjects);
+          fixtureLights = roomResult.fixtureLights || [];
           player = createPlayer(camera);
           await loader.yieldToPaint();
           loader.progress(1);
@@ -117,6 +128,7 @@ async function boot() {
       { name: 'Setting up the furniture\u2026', weight: 20, run: async () => {
           createFurniture(scene, interactableObjects, player.colliders);
           exitDoor = createExitDoor(scene, camera, interactableObjects);
+          const toggleSign = createToggleWallSign(scene, camera, interactableObjects);
 
           const clock = new THREE.Clock();
           const fpsMeter = createFpsMeter();
@@ -136,9 +148,12 @@ async function boot() {
                 composer.dispose();
                 composer = null;
               }
+              // Rebuild fixture lights on quality change
+              rebuildFixtureLights(scene, { fixtureLights });
             }
             player.update(delta);
             if (exitDoor) exitDoor.update();
+            if (toggleSign) toggleSign.update(camera);
             if (composer) composer.render();
             else renderer.render(scene, camera);
             fpsMeter.tick(delta);
