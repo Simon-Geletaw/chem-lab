@@ -74,14 +74,14 @@ export function createRoom(scene, interactableObjects) {
   const sidePanelZ = (geometry.depth - windowWidth) / 2; // distance from corner to window edge
 
   // Panel 1: below window opening (z: -halfD .. -windowWidth/2)
-  const rightWallPanel1 = new THREE.Mesh(new THREE.PlaneGeometry(geometry.depth - windowWidth, wallH), wallMat);
+  const rightWallPanel1 = new THREE.Mesh(new THREE.PlaneGeometry(sidePanelZ, wallH), wallMat);
   rightWallPanel1.position.set(halfW, wallH / 2, -sidePanelZ / 2);
   rightWallPanel1.rotation.y = -Math.PI / 2;
   rightWallPanel1.receiveShadow = true;
   scene.add(rightWallPanel1);
 
   // Panel 2: above window opening (z: windowWidth/2 .. halfD)
-  const rightWallPanel2 = new THREE.Mesh(new THREE.PlaneGeometry(geometry.depth - windowWidth, wallH), wallMat);
+  const rightWallPanel2 = new THREE.Mesh(new THREE.PlaneGeometry(sidePanelZ, wallH), wallMat);
   rightWallPanel2.position.set(halfW, wallH / 2, sidePanelZ / 2);
   rightWallPanel2.rotation.y = -Math.PI / 2;
   rightWallPanel2.receiveShadow = true;
