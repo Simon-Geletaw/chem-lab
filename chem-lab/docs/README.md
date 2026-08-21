@@ -12,6 +12,7 @@ Each document follows the same structure so it is easy to scan:
 
 ## Index
 
+| 2026-08-21 | [Perf — atom hover raycaster + tooltip on every 2nd frame](2026-08-21-perf-atom-hover-throttle.md) | `src/ui/atomicStructure.js` (chem-lab) |
 | 2026-08-21 | [Perf — one crosshair raycast per frame: hint chains read a cached hit list](2026-08-21-perf-crosshair-raycast-budget.md) | `src/hand.js` (chem-lab) |
 | 2026-08-20 | [Backdrop-blur trim on near-opaque overlays + geometry micro-trim](2026-08-20-backdrop-blur-trim-and-geometry-trim.md) | `index.html` �4, `src/ui/burnCard.js`, `src/ui/atomicStructure.js` |
 | 2026-08-20 | [Tangent-basis comet trails (no more head-ring drift)](2026-08-20-tangent-basis-comet-trails.md) | `src/ui/atomicStructure.js` (chem) |

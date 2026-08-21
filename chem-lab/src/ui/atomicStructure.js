@@ -537,9 +537,12 @@ export class AtomicStructure extends THREE.Group {
     this._boundMouseMove = (e) => this._hover.onMouseMove(e);
     window.addEventListener("mousemove", this._boundMouseMove, { passive: true });
 
-    this._buildNucleus();
+this._buildNucleus();
     this._buildLighting();
     this._buildElectrons();
+
+    // PERF: the hover raycaster + tooltip run on every 2nd frame (see update()).
+    this._hoverTick = 0;
   }
 
   // -----------------------------------------------------------
@@ -827,8 +830,13 @@ const history = Array.from({ length: TRAIL_LENGTH }, (_, i) => {
       posAttr.needsUpdate = true;
     });
 
-// Drive hover raycasting every frame + gentle "engaging" emissive boost
-    if (this._camera) {
+// Drive hover raycasting every frame + gentle "engaging" emissive boost.
+    // PERF: a tooltip doesn't need 60 Hz pointer precision — throttle the
+    // raycast + DOM move to every 2nd frame. The emissive boost rides the same
+    // tick so it never reads a half-updated hover state; electrons/trails still
+    // animate at full rate (their math is upstream of this block).
+    this._hoverTick = (this._hoverTick || 0) + 1;
+    if (this._camera && (this._hoverTick & 1) === 0) {
       this._hover.update(this._camera);
       const hovered = this._hover.getHovered();
 
