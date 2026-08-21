@@ -20,6 +20,7 @@ const wanted = new Set(args.filter((a) => a !== '--build'));
 const labs = JSON.parse((await import('node:fs')).readFileSync(resolve(ROOT, 'labs.json'), 'utf8'));
 
 const pad = (s, n) => String(s).padEnd(n);
+const buildJobs = [];
 
 for (const lab of labs) {
   if (wanted.size > 0 && !wanted.has(lab.name)) continue;
@@ -33,10 +34,9 @@ for (const lab of labs) {
   const cliArgs = buildMode
     ? []
     : ['--', '--port', String(lab.port), '--strictPort'];
-  const child = spawn('npm', ['run', script, ...cliArgs], {
-    cwd: dir,
-    shell: process.platform === 'win32'
-  });
+  const child = process.platform === 'win32'
+    ? spawn('cmd.exe', ['/d', '/s', '/c', `npm run ${script} ${cliArgs.join(' ')}`], { cwd: dir })
+    : spawn('npm', ['run', script, ...cliArgs], { cwd: dir });
   child.stdout.on('data', (d) => {
     for (const line of String(d).trimEnd().split('\n')) {
       console.log(`\x1b[36m${pad(lab.name, 6)}\x1b[0m ${line}`);
@@ -47,7 +47,21 @@ for (const lab of labs) {
       console.error(`\x1b[33m${pad(lab.name, 6)}\x1b[0m ${line}`);
     }
   });
-  child.on('exit', (code) => {
+    child.on('exit', (code) => {
     console.log(`${pad(lab.name, 6)} exited (code ${code})`);
   });
+
+  if (buildMode) {
+    buildJobs.push(new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`${lab.name} build exited with code ${code}`));
+      });
+    }));
+  }
+}
+
+if (buildMode) {
+  await Promise.all(buildJobs);
 }

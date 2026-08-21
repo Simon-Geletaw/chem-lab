@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node dev.mjs",
-    "build": "node dev.mjs --build",
+    "build": "node dev.mjs --build && node scripts/prepare-vercel.mjs",
     "serve": "node server.mjs",
     "labs": "npm run build && npm run serve",
     "dev:chem": "node dev.mjs chem",
