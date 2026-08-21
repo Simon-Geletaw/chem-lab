@@ -63,6 +63,8 @@ verified /p/ (4 route-prefixed assets)
 vercel output verification passed
 ```
 
+The Vercel project was also missing a dependency install command for the four child Vite applications. The repository root has no lockfile of its own; each lab has its own `package-lock.json`. The committed `vercel.json` therefore installs each lab lockfile with `npm ci --prefix <lab>` before running the root build. Without this setting, Vercel can start the root build without the child Vite dependencies and fail before producing `public/`.
+
 The generated `public/` directory is intentionally not committed. Vercel creates it during the deployment build from the committed source and scripts.
 
 ## How to redeploy on Vercel
@@ -83,7 +85,7 @@ Then push the committed changes to the branch connected to the Vercel project, o
 | Framework Preset | Other, or the configuration from `vercel.json` |
 | Build Command | `npm run build` |
 | Output Directory | `public` |
-| Install Command | `npm install` |
+| Install Command | `npm ci --prefix chem-lab && npm ci --prefix biology-lab && npm ci --prefix math-lab && npm ci --prefix physics-lab` |
 
 Do not set the Vercel Root Directory to `math-lab` for this combined deployment; doing so would omit the other lab outputs and bypass the root packaging script.
 
