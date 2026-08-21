@@ -47,16 +47,13 @@
           <button id="tour-btn">&#9654; Start Guided Tour</button>
           <button id="reset-flask-btn">&#8635; Reset Flask</button>
           <button id="controls-btn">&#9432; Controls &amp; Safety</button>
+          <button id="fullscreen-btn" type="button" aria-pressed="false">&#9974; Fullscreen</button>
         </div>
         <p id="overlay-status"></p>
       </div>
     </div>
     <div id="crosshair"></div>
     <div id="action-hint"></div>
-    <button id="fullscreen-btn" aria-label="Enter fullscreen" title="Enter fullscreen">
-      <svg viewBox="0 0 24 24" class="fs-enter" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <svg viewBox="0 0 24 24" class="fs-exit" aria-hidden="true"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
     <div id="travel-overlay" hidden>
       <div id="travel-card">
         <div id="travel-spinner"></div>
@@ -94,35 +91,6 @@
       ::-webkit-scrollbar-thumb:hover { background: rgba(10, 43, 77, 0.55); background-clip: padding-box; }
       ::-webkit-scrollbar-corner { background: transparent; }
 
-      /* --- fullscreen toggle: dark glass chip, top-right corner --- */
-      #fullscreen-btn {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 30;
-        width: 44px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 12px;
-        border: 1px solid rgba(77, 163, 255, 0.35);
-        background: rgba(4, 16, 34, 0.88);
-        color: #eaf4ff;
-        cursor: pointer;
-        font-family: inherit;
-        -webkit-user-select: none;
-        user-select: none;
-      }
-      #fullscreen-btn svg { width: 20px; height: 20px; }
-      #fullscreen-btn .fs-exit { display: none; }
-      #fullscreen-btn.fullscreen .fs-enter { display: none; }
-      #fullscreen-btn.fullscreen .fs-exit { display: block; }
-      #fullscreen-btn:hover {
-        border-color: rgba(77, 163, 255, 0.7);
-        background: rgba(77, 163, 255, 0.10);
-      }
-      #fullscreen-btn:focus-visible { outline: 2px solid #4da3ff; outline-offset: 2px; }
 
       #loading-screen {
         display: flex;
@@ -535,6 +503,20 @@
         color: #0a2b4d;
         border-color: rgba(10, 43, 77, 0.55);
       }
+      /* Fullscreen is intentionally a pause-menu action, not gameplay HUD. */
+      #fullscreen-btn {
+        background: rgba(10, 79, 138, 0.08);
+        color: #0a4d84;
+        border: 1px solid rgba(10, 79, 138, 0.42);
+      }
+      #fullscreen-btn:hover {
+        background: rgba(10, 79, 138, 0.16);
+        border-color: rgba(10, 79, 138, 0.80);
+      }
+      #fullscreen-btn.fullscreen {
+        background: rgba(10, 79, 138, 0.17);
+        color: #063a64;
+      }
       #overlay-status {
         margin: 16px 0 0;
         min-height: 20px;
@@ -623,4 +605,5 @@
     </style>
   </body>
 </html>
+
 
