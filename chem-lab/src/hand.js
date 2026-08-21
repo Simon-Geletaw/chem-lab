@@ -235,17 +235,51 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
     // userData carries `flag` (climbing parents — the interactions.js pattern).
     //
     // Two separate jobs, kept separate on purpose:
-    //   1. skip anything belonging to the bottle already in our hand — it sits
+    //   1. skip everything belonging to the bottle already in our hand — it sits
     //      right in front of the camera and would eat every ray (book Ch 14)
     //   2. stop at the first REAL hit: if a bench or wall is nearer than the
     //      bottle, the bottle is behind it and should not be reachable.
-    function aimAt(flag, maxDistance) {
-        raycaster.setFromCamera(CENTER, camera);
-        const intersects = raycaster.intersectObjects(interactableObjects, true);
+    //
+    // PERF (single-raycast hint): the empty/holding hint chains used to call
+    // aimAt up to ~9 times per frame — one full intersectObjects pass per flag.
+    // Every call casts from the SAME crosshair at the SAME moment, so the
+    // sorted hit list cannot change between them. intersectFrame() runs that
+    // ONE pass and every flag reads the same cached list, cutting the room-wide
+    // raycast work from ~9/frame to 1. The cache self-invalidates whenever the
+    // camera moves, so keydown handlers (rare, off-frame) can never read
+    // stale hits — they just rebuild lazily on their first call.
+    let frameHits = null;   // this shared sorted hit list (null = not yet cast)
+    const _cachePos = new THREE.Vector3();
+    const _cacheQuat = new THREE.Quaternion();
+    let _cacheAspect = -1;
 
+    function intersectFrame() {
+        const moved =
+            !frameHits ||
+            !_cachePos.equals(camera.position) ||
+            !_cacheQuat.equals(camera.quaternion) ||
+            _cacheAspect !== camera.aspect;
+        if (moved) {
+            raycaster.setFromCamera(CENTER, camera);
+            frameHits = raycaster.intersectObjects(interactableObjects, true);
+            _cachePos.copy(camera.position);
+            _cacheQuat.copy(camera.quaternion);
+            _cacheAspect = camera.aspect;
+        }
+        return frameHits;
+    }
+
+    function aimAt(flag, maxDistance) {
+        return scanHits(flag, maxDistance, intersectFrame());
+    }
+
+    // The shared single-pass resolver: scans a pre-sorted hit list near -> far
+    // for the first real object carrying `flag` within maxDistance. Hits owned
+    // by the held bottle are skipped (they sit in front of the camera).
+    function scanHits(flag, maxDistance, intersects) {
         for (const hit of intersects) {
-            // intersects is sorted near -> far, so the first one past our reach
-            // means everything after it is too far as well.
+            // Sorted near -> far, so the first one past our reach means
+            // everything after it is too far as well.
             if (hit.distance > maxDistance) return null;
 
             let obj = hit.object;
@@ -632,6 +666,9 @@ export function createHand(camera, scene, interactableObjects, beaker, player, p
         },
 
         update(delta) {
+            // PERF: one room-wide raycast per frame. The hint chains below
+            // call aimAt up to ~9 times; they all share this sorted hit list.
+            frameHits = null;
             // Atom view: the 3D model is out — the hint bar becomes the exit
             // sign ("E puts it back"); no other hand work while it's out.
             if (atomView && atomView.active) {
